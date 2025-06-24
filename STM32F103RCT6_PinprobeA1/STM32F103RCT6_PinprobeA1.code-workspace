@@ -1,0 +1,40 @@
+{
+    "folders": [
+        {
+            "path": "."
+        }
+    ],
+    "settings": {
+        "files.associations": {
+            "scpi-def.h": "c",
+            "main.h": "c",
+            "scpi_switch.h": "c"
+        },
+        "cSpell.words": [
+            "AHBCLK",
+            "CLOCKTYPE",
+            "cmsis",
+            "GPIO",
+            "HCLK",
+            "hdma",
+            "hiwdg",
+            "htim",
+            "huart",
+            "IDLEFLAG",
+            "IWDG",
+            "OSCILLATORTYPE",
+            "PCLK",
+            "PLLCLK",
+            "PLLMUL",
+            "PLLSOURCE",
+            "PREDIV",
+            "Scpi",
+            "SYSCLK",
+            "SYSCLKSOURCE",
+            "Systick",
+            "usart"
+        ],
+        "cortex-debug.variableUseNaturalFormat": false
+    },
+    "extensions": {}
+}
