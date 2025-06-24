@@ -162,7 +162,7 @@ uint8_t Idle_Action(uint8_t in_01_08, uint8_t in_09_16, uint8_t out_01_08, uint8
         }
         if((door_ready_num >= Door_Delay_num)&&(Release_flag<=0))       // door action ready num
         {
-            LED_Write(led_source[3]);
+            LED_Write(led_source[3]); // 黄灯亮起，表示门动作准备就绪
             system_status = Ready;  // door action ready
             door_ready_num = 0;  
         }
@@ -228,7 +228,7 @@ uint8_t Running_Action(uint8_t in_01_08, uint8_t in_09_16, uint8_t out_01_08, ui
         {
             if(in_01_08&door_sensor_down)   // 触发后限位传感
             {
-                // LED_Write(led_source[1]);   // 绿灯亮起，关门完毕，进入软件测试流程
+                LED_Write(led_source[1]);   // 绿灯亮起，关门完毕，进入软件测试流程
                 system_status = Complete;   // 气缸到达后限位
             }
             else{
