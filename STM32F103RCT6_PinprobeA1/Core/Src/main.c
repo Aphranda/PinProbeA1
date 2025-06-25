@@ -196,39 +196,53 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
+/**
+  * @brief SCPI命令处理任务
+  * 
+  * 该任务循环检测串口1接收缓冲区(usart1_buff_IsReady)是否有SCPI命令数据，
+  * 如果有，则调用SCPI_Input进行命令解析和处理，处理完成后清空缓冲区。
+  * 任务执行期间会申请互斥锁(COMMutexHandle)以保证串口和SCPI资源的线程安全。
+  * 每次循环结束后延时10ms，并喂狗防止看门狗复位。
+  */
 void SCPITask(void *argument)
 {
   /* USER CODE BEGIN SCPITask */
-  /* Infinite loop */
+  /* 无限循环 */
   for(;;)
   {
-    osMutexWait(COMMutexHandle,osWaitForever);
-    if(strlen((const char *)usart1_buff_IsReady)>3)
+    osMutexWait(COMMutexHandle,osWaitForever); // 申请互斥锁，保护串口和SCPI资源
+    if(strlen((const char *)usart1_buff_IsReady)>3) // 判断是否有有效SCPI命令
     {
-      // begin Scpi serve
+      // 调用SCPI解析处理函数
       SCPI_Input(&scpi_context, (const char *)usart1_buff_IsReady, strlen((const char *)usart1_buff_IsReady)-1);
-      // clear usart1_buff_IsReady
+      // 处理完成后清空缓冲区
       memset((uint8_t *)usart1_buff_IsReady, 0, MAX_RX_LEN);
     }
-    osMutexRelease(COMMutexHandle);
-    osDelay(10);
-    HAL_IWDG_Refresh(&hiwdg);
+    osMutexRelease(COMMutexHandle); // 释放互斥锁
+    osDelay(10);                   // 任务延时10ms
+    HAL_IWDG_Refresh(&hiwdg);      // 喂狗，防止看门狗复位
   }
   /* USER CODE END SCPITask */
 }
 
+/**
+  * @brief ModBus及主状态机处理任务
+  * 
+  * 该任务循环调用StateMachine_Input()，用于处理系统主状态机逻辑（如门控、继电器等）。
+  * 任务执行期间会申请互斥锁(COMMutexHandle)以保证与其它任务的数据访问安全。
+  * 每次循环结束后延时50ms，并喂狗防止看门狗复位。
+  */
 void ModBusTask(void *argument)
 {
   /* USER CODE BEGIN ModBusTask */
-  /* Infinite loop */
-  
+  /* 无限循环 */
   for(;;)
   {
-    osMutexWait(COMMutexHandle,osWaitForever);
-    StateMachine_Input();
-    osMutexRelease(COMMutexHandle);
-    osDelay(50);
-    HAL_IWDG_Refresh(&hiwdg);
+    osMutexWait(COMMutexHandle,osWaitForever); // 申请互斥锁，保护共享资源
+    StateMachine_Input();                      // 调用主状态机处理函数
+    osMutexRelease(COMMutexHandle);            // 释放互斥锁
+    osDelay(50);                               // 任务延时50ms
+    HAL_IWDG_Refresh(&hiwdg);                  // 喂狗，防止看门狗复位
   }
   /* USER CODE END ModBusTask */
 }
