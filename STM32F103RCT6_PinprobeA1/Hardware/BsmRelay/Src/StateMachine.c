@@ -2,33 +2,38 @@
 #include "BsmRelay.h"
 #include "cmsis_os.h"
 
+// 定义锁定和关门动作的延迟计数
 #define Lock_Delay_num 3
 #define Door_Delay_num 3
 #define Debug
 
+// 外部变量声明
 extern scpi_choice_def_t cylinder_source[];
 extern scpi_choice_def_t lock_source[];
 extern scpi_choice_def_t led_source[];
 
-uint16_t lock_num = 0;
-uint16_t lock_idle = Lock_Delay_num; // LOCK切换的按压时间
+// 全局变量定义
+uint16_t lock_num = 0;                // 锁定动作计数
+uint16_t lock_idle = Lock_Delay_num;  // 锁定动作松开计数
 
-uint16_t door_ready_num = 0;
-uint16_t door_open_num = 0;
-uint16_t door_close_num = 0;
-uint16_t Release_flag = 0;
-uint8_t system_status = SYS_INIT;
-uint8_t system_old_status;
+uint16_t door_ready_num = 0;          // 关门准备计数
+uint16_t door_open_num = 0;           // 开门动作计数
+uint16_t door_close_num = 0;          // 关门动作计数
+uint16_t Release_flag = 0;            // 按钮释放标志
+uint8_t system_status = SYS_INIT;     // 系统当前状态
+uint8_t system_old_status;            // 系统上一次状态
 
-uint8_t door_status = Door_Mid;
-uint8_t door_old_status;
+uint8_t door_status = Door_Mid;       // 门当前状态
+uint8_t door_old_status;              // 门上一次状态
 
+uint16_t door_close_timer = 0;        // 关门计时器，单位为调用周期
+uint16_t door_close_default_time = 40;// 关门默认时间，单位为调用周期
+uint8_t door_close_timing = 0;        // 关门计时标志
+
+// 状态机主入口，周期性调用
 uint8_t StateMachine_Input()
 {
-
-    // init Status
-
-    // global check
+    // 读取输入输出状态
     uint8_t* I_status = InputIO_Read(CHECK_NUM);
     uint8_t in_01_08 = I_status[0];
     uint8_t in_09_16 = I_status[1];
@@ -39,6 +44,7 @@ uint8_t StateMachine_Input()
     system_old_status = system_status;
     door_old_status = door_status;
 
+    // 各状态动作处理
     Init_Action(in_01_08, in_09_16, out_01_08, out_09_16);
     Lock_Action(in_01_08, in_09_16, out_01_08, out_09_16);
     Idle_Action(in_01_08, in_09_16, out_01_08, out_09_16);
@@ -49,6 +55,7 @@ uint8_t StateMachine_Input()
     Release_detection(in_01_08, in_09_16, out_01_08, out_09_16);
     Door_detection(in_01_08, in_09_16, out_01_08, out_09_16);
     
+    // 状态变化时打印
     if(system_status != system_old_status)
     {
         showStatus();
@@ -60,9 +67,16 @@ uint8_t StateMachine_Input()
         showDoorStatus();
         door_old_status = door_status;
     }
+
+    // 关门计时
+    if(door_close_timing)
+    {
+        door_close_timer++; // 每次调用加1，单位为调用周期
+    }
     return 0;
 }
 
+// 初始化动作：系统上电后进入锁定状态
 uint8_t Init_Action(uint8_t in_01_08, uint8_t in_09_16, uint8_t out_01_08, uint8_t out_09_16)
 {
     if(system_status == SYS_INIT) 
@@ -72,6 +86,7 @@ uint8_t Init_Action(uint8_t in_01_08, uint8_t in_09_16, uint8_t out_01_08, uint8
     return 0;
 }
 
+// 锁定状态动作及切换
 uint8_t Lock_Action(uint8_t in_01_08, uint8_t in_09_16, uint8_t out_01_08, uint8_t out_09_16)
 {
     // 状态迁移：动作状态->次级状态
@@ -104,18 +119,18 @@ uint8_t Lock_Action(uint8_t in_01_08, uint8_t in_09_16, uint8_t out_01_08, uint8
         }
     }
 
-
-    if((in_09_16&(power_button>>8)) && (lock_ready_status == 1)&&(lock_idle <= 0)) // power button must be idle, jump action.
+    // 按钮松开后，切换锁定/空闲状态
+    if((in_09_16&(power_button>>8)) && (lock_ready_status == 1)&&(lock_idle <= 0))
     {
         if(out_01_08&power_out)
         {
-            Lock_Write(lock_source[1]); // 若系统处于解锁状态，按下按钮后，系统进入锁定状态
+            Lock_Write(lock_source[1]); // 若系统处于解锁状态，按下按钮后，系统進入锁定状态
             LED_Write(led_source[0]);   // 清除所有LED灯
             system_status = Lock;
         }
         else
         {
-            Lock_Write(lock_source[0]); // 若系统处于锁定状态，按下按钮后，系统进行空闲状态，
+            Lock_Write(lock_source[0]); // 若系统处于锁定状态，按下按钮后，系统进行空闲状态
             LED_Write(led_source[0]);   // 清除所有LED灯
             system_status = Idle;
         }
@@ -126,6 +141,7 @@ uint8_t Lock_Action(uint8_t in_01_08, uint8_t in_09_16, uint8_t out_01_08, uint8
     return 0;
 }
 
+// 空闲状态动作及切换
 uint8_t Idle_Action(uint8_t in_01_08, uint8_t in_09_16, uint8_t out_01_08, uint8_t out_09_16)
 {
     // 判断当前状态
@@ -152,8 +168,8 @@ uint8_t Idle_Action(uint8_t in_01_08, uint8_t in_09_16, uint8_t out_01_08, uint8
             system_status = Complete;
         }
         
-        // 动作跳转执行
-        if((in_09_16&(door_button1>>8))||(in_09_16&(door_button2>>8)))  // 同时短按两个关门按钮
+        // 动作跳转执行：短按两个关门按钮，准备关门
+        if((in_09_16&(door_button1>>8))||(in_09_16&(door_button2>>8)))
         {
             if(!(out_01_08&door_close))      // 若不在执行关闭动作，且门处于打开状态，进行动作跳转准备
             {
@@ -170,6 +186,7 @@ uint8_t Idle_Action(uint8_t in_01_08, uint8_t in_09_16, uint8_t out_01_08, uint8
     return 0;
 }
 
+// 准备状态动作及切换
 uint8_t Ready_Action(uint8_t in_01_08, uint8_t in_09_16, uint8_t out_01_08, uint8_t out_09_16)
 {
     // 判断当前状态
@@ -177,21 +194,22 @@ uint8_t Ready_Action(uint8_t in_01_08, uint8_t in_09_16, uint8_t out_01_08, uint
     {
         if(!(out_01_08&led_yellow)) 
         {
-            system_status = Idle;                                       // 在准备状态时，黄灯熄灭，回到空闲状态
+            system_status = Idle; // 在准备状态时，黄灯熄灭，回到空闲状态
         }
         else 
         {
+            // 关门动作执行中
             if((out_01_08&door_close)&&(!(in_01_08&door_sensor_down))) 
             {
-                system_status = Running;                                // 黄灯亮起，在执行关门动作，且还未关门完成时，系统处于运动状态
+                system_status = Running; // 黄灯亮起，在执行关门动作，且还未关门完成时，系统处于运动状态
             }
             else if((out_01_08&door_open)&&(in_01_08&door_sensor_up))
             {
-                system_status = Ready;                                  // 黄灯亮起，执行开门动作，并且开门完成时，系统处于准备状态
+                system_status = Ready; // 黄灯亮起，执行开门动作，并且开门完成时，系统处于准备状态
             }
         }
 
-        // 动作跳转执行
+        // 动作跳转执行：短按两个关门按钮，准备关门
         uint8_t door_ready_status = 0;
         if((in_09_16&(door_button1>>8))||(in_09_16&(door_button2>>8)))
         {
@@ -199,123 +217,158 @@ uint8_t Ready_Action(uint8_t in_01_08, uint8_t in_09_16, uint8_t out_01_08, uint
             {
                 door_close_num ++;
             }
-            if(door_close_num >= Door_Delay_num*2)                   // door action read num
+            if(door_close_num >= Door_Delay_num*2) // 按钮按下次数达到要求
             {
-                door_ready_status = 1;                              // door action ready
+                door_ready_status = 1;             // door action ready
             }
         }
 
+        // 同时按下两个关门按钮，且准备就绪，开始关门
         if(((in_09_16&(door_button1>>8))&&(in_09_16&(door_button2>>8)))&&(door_ready_status ==1)&&(Release_flag<=0))
         {
             if(!(out_01_08&door_close))
             {
-                Cylinder_Write(1, cylinder_source[0]); // door closing
+                Cylinder_Write(1, cylinder_source[0]); // 执行关门动作
                 door_close_num = 0;
                 door_ready_status = 0;
                 Release_flag = Door_Delay_num;
                 system_status = Running;
+                
+                door_close_timer = 0; // 重置计时器
+                door_close_timing = 1; // 开始计时
             }
         }
     }
     return 0;
 }
 
+// 运动状态（关门中）动作及切换
 uint8_t Running_Action(uint8_t in_01_08, uint8_t in_09_16, uint8_t out_01_08, uint8_t out_09_16)
 {
     if(system_status == Running)
     {
-        if(out_01_08&door_close) //气缸回缩
+        if(out_01_08&door_close) // 气缸回缩
         {
             if(in_01_08&door_sensor_down)   // 触发后限位传感
             {
-                LED_Write(led_source[1]);   // 绿灯亮起，关门完毕，进入软件测试流程
+                LED_Write(led_source[1]);   // 绿灯亮起，关门完毕
                 system_status = Complete;   // 气缸到达后限位
+                door_close_timing = 0;      // 停止关门计时
+                door_close_default_time = door_close_timer; // 记录关门时间
+                U1_Printf("Door close time: %lu\r\n", door_close_default_time);
             }
             else{
-                system_status = Running;        // 气缸回缩中
+                system_status = Running;    // 气缸回缩中
             }
-            
         }
     }
     return 0;
 }
 
+/**
+ * @brief  关门完成状态动作及切换
+ * @param  in_01_08   输入IO的低8位
+ * @param  in_09_16   输入IO的高8位
+ * @param  out_01_08  输出IO的低8位
+ * @param  out_09_16  输出IO的高8位
+ * @retval 0
+ *
+ * 该函数在系统处于Complete（关门完成）状态时调用，主要处理：
+ * 1. 检查是否需要开门（气缸伸出），并根据前限位传感器状态切换到Idle状态。
+ * 2. 检查是否有开门请求（按钮按下），并在满足条件时执行开门动作。
+ */
 uint8_t Complete_Action(uint8_t in_01_08, uint8_t in_09_16, uint8_t out_01_08, uint8_t out_09_16)
 {
     if(system_status == Complete)
     {
-        if(out_01_08&door_open) // 气缸伸出
+        // 1. 检查气缸是否正在伸出（开门动作）
+        if(out_01_08 & door_open) // 如果气缸正在伸出
         {
-            if(in_01_08&door_sensor_up) // 触发前限位传感
+            // 检查前限位传感器（门已完全打开）
+            if(in_01_08 & door_sensor_up)
             {
-                LED_Write(led_source[0]);
-                system_status = Idle; // 气缸到达前限位
+                LED_Write(led_source[0]);   // 点亮绿灯，表示门已打开
+                system_status = Idle;       // 切换到Idle（空闲）状态
             }
         }
 
-        uint8_t door_complete_status = 0;
-        // ready action door
-        if((in_09_16&(door_button1>>8))||(in_09_16&(door_button2>>8)))
+        uint8_t door_complete_status = 0; // 标志：是否满足开门动作的条件
+
+        // 2. 检查是否有开门请求（任意一个开门按钮被按下）
+        if((in_09_16 & (door_button1 >> 8)) || (in_09_16 & (door_button2 >> 8)))
         {
-            if(!(out_01_08&door_open)&&(in_01_08&door_sensor_down)) //open door
+            // 如果当前没有执行开门动作且门已关到位
+            if(!(out_01_08 & door_open) && (in_01_08 & door_sensor_down))
             {
-                door_open_num ++;
+                door_open_num++; // 按钮按下次数累加
             }
-            if(door_open_num >= Door_Delay_num/2)                   // door action read num
+            // 如果按钮按下次数达到要求（防抖或确认）
+            if(door_open_num >= Door_Delay_num / 2)
             {
-                door_complete_status = 1;                              // door action ready
+                door_complete_status = 1; // 标记可以执行开门动作
             }
         }
-        if(((in_09_16&(door_button1>>8))||(in_09_16&(door_button2>>8)))&& (door_complete_status ==1)&&(Release_flag<=0))
+
+        // 3. 满足开门条件且按钮已释放，执行开门动作
+        if(((in_09_16 & (door_button1 >> 8)) || (in_09_16 & (door_button2 >> 8))) && 
+            (door_complete_status == 1) && (Release_flag <= 0))
         {
-            if(!(out_01_08&door_open))
+            if(!(out_01_08 & door_open)) // 如果当前没有执行开门动作
             {
-                Cylinder_Write(1, cylinder_source[1]);  // door opening
-                door_open_num = 0;
-                door_complete_status = 0;
-                Release_flag = Door_Delay_num;
+                Cylinder_Write(1, cylinder_source[1]);  // 执行开门动作（气缸伸出）
+                door_open_num = 0;                      // 清零按钮计数
+                door_complete_status = 0;               // 清除动作标志
+                Release_flag = Door_Delay_num;          // 设置释放标志，防止重复触发
             }
         }
     }
     return 0;
 }
 
+// 紧急状态检测与处理
 uint8_t Emerge_Action(uint8_t in_01_08, uint8_t in_09_16, uint8_t out_01_08, uint8_t out_09_16)
 {
+    // 如果当前系统状态为紧急状态
     if(system_status == Emergency)
     {
+        // 检查所有激光传感器是否恢复正常（即没有异常信号）
         if(((in_01_08&laser_sensor1) != 0x20)||((in_01_08&laser_sensor2) != 0x40)||((in_01_08&laser_sensor3) != 0x80)||((in_09_16&(laser_sensor4>>8) != 0x01)))
         {
-            system_status = Lock;
+            system_status = Lock; // 恢复到锁定状态
             if(in_01_08&door_sensor_up)
             {
-                LED_Write(led_source[0]);
+                LED_Write(led_source[0]); // 点亮绿灯，表示门已打开
             }
         }
-
     }
 
+    // 检查急停按钮是否被按下（stop_button），如果被按下则立即进入紧急状态
     if((in_09_16&(stop_button>>8))!=0x08)
     {
-        system_status = Emergency;
-        Cylinder_Write(1,cylinder_source[1]);
-        Lock_Write(lock_source[1]);
-        LED_Write(led_source[2]);
+        system_status = Emergency;                    // 设置系统状态为紧急
+        Cylinder_Write(1,cylinder_source[1]);         // 执行气缸紧急动作（通常为开门）
+        Lock_Write(lock_source[1]);                   // 执行锁紧急动作（通常为解锁）
+        LED_Write(led_source[2]);                     // 点亮红灯表示紧急状态
     }
-    else if(((in_01_08&laser_sensor1)==0x20)||((in_01_08&laser_sensor2)==0x40)||((in_01_08&laser_sensor3)==0x80)||((in_09_16&(laser_sensor4>>8) ==
-     0x01)))
+    // 检查激光传感器（laser_sensor1~4）是否有异常触发
+    else if(((in_01_08&laser_sensor1)==0x20)||((in_01_08&laser_sensor2)==0x40)||((in_01_08&laser_sensor3)==0x80)||((in_09_16&(laser_sensor4>>8) == 0x01)))
     {
-        if(!(in_01_08&door_sensor_down)&&!(in_01_08&door_sensor_up)) // 门未关上
+        // 如果门未完全关闭，且关门计时超过默认时间的2/3，则进入紧急状态
+        if(!(in_01_08&door_sensor_down)&&(door_close_timer>(door_close_default_time*2/3)))
         {
-            system_status = Emergency;
-            Cylinder_Write(1,cylinder_source[1]);
-            Lock_Write(lock_source[1]);
-            LED_Write(led_source[2]);
+            system_status = Emergency;                // 设置系统状态为紧急
+            Cylinder_Write(1,cylinder_source[1]);     // 执行气缸紧急动作（通常为开门）
+            Lock_Write(lock_source[1]);               // 执行锁紧急动作（通常为解锁）
+            LED_Write(led_source[2]);                 // 点亮红灯表示紧急状态
+            U1_Printf("Door close time: %lu\r\n", door_close_timer); // 打印当前关门计时
+            door_close_timer = 0;                     // 重置关门计时器
+            door_close_timing = 0;                    // 停止关门计时
         }
     }
     return 0;
 }
 
+// 按钮释放检测，防止误触发
 uint8_t Release_detection(uint8_t in_01_08, uint8_t in_09_16, uint8_t out_01_08, uint8_t out_09_16)
 {
     if((!(in_09_16&(door_button1>>8)))&&(!(in_09_16&(door_button2>>8))))
@@ -328,6 +381,7 @@ uint8_t Release_detection(uint8_t in_01_08, uint8_t in_09_16, uint8_t out_01_08,
     return 0;
 }
 
+// 门状态检测
 uint8_t Door_detection(uint8_t in_01_08, uint8_t in_09_16, uint8_t out_01_08, uint8_t out_09_16)
 {
     if((out_01_08&door_close)&&(in_01_08&door_sensor_down))
@@ -340,6 +394,8 @@ uint8_t Door_detection(uint8_t in_01_08, uint8_t in_09_16, uint8_t out_01_08, ui
     }
     return 0;
 }
+
+// 系统状态打印（调试用）
 uint8_t showStatus()
 {
     #ifdef Debug
@@ -370,6 +426,7 @@ uint8_t showStatus()
     return 0;
 }
 
+// 门状态打印（调试用）
 uint8_t showDoorStatus(){
     switch (door_status)
     {
