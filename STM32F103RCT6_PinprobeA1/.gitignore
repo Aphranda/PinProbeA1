@@ -389,14 +389,11 @@ JLinkLog.txt
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
-/RZDemo/IniHelper.zip
-/iCL-RS/packages.config
 *.resx
 *.csproj
 *.exe
 *.config
 .cmsis/include/*
-.eide/*
 .pack/Keil/STM32F1xx_DFP.2.3.0/*
 build/*
 .clang-format
