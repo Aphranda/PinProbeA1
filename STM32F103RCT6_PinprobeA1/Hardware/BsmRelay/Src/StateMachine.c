@@ -255,7 +255,6 @@ uint8_t Running_Action(uint8_t in_01_08, uint8_t in_09_16, uint8_t out_01_08, ui
                 system_status = Complete;   // 气缸到达后限位
                 door_close_timing = 0;      // 停止关门计时
                 door_close_default_time = door_close_timer; // 记录关门时间
-                U1_Printf("Door close time: %lu\r\n", door_close_default_time);
             }
             else{
                 system_status = Running;    // 气缸回缩中
@@ -360,7 +359,6 @@ uint8_t Emerge_Action(uint8_t in_01_08, uint8_t in_09_16, uint8_t out_01_08, uin
             Cylinder_Write(1,cylinder_source[1]);     // 执行气缸紧急动作（通常为开门）
             Lock_Write(lock_source[1]);               // 执行锁紧急动作（通常为解锁）
             LED_Write(led_source[2]);                 // 点亮红灯表示紧急状态
-            U1_Printf("Door close time: %lu\r\n", door_close_timer); // 打印当前关门计时
             door_close_timer = 0;                     // 重置关门计时器
             door_close_timing = 0;                    // 停止关门计时
         }
