@@ -386,6 +386,7 @@ JLinkLog.txt
 *.lst
 *.scvd
 *.iex
+*.zip
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
