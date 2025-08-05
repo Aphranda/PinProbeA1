@@ -268,13 +268,10 @@ void DMA1_Channel5_IRQHandler(void)
 void USART1_IRQHandler(void)
 {
   /* USER CODE BEGIN USART1_IRQn 0 */
-  uint32_t data_length;
   if (RESET != __HAL_UART_GET_FLAG(&huart1, UART_FLAG_IDLE))
   {
     HAL_UART_DMAStop(&huart1); // stop DMA
 
-    // data length = MAX len - 
-    data_length = MAX_RX_LEN - __HAL_DMA_GET_COUNTER(&hdma_usart1_rx); 
 
     // double cache
     if(Usart1_RX_BUF1_IsReady)

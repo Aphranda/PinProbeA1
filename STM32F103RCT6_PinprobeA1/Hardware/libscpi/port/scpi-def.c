@@ -66,6 +66,74 @@ static scpi_result_t SCPI_ConfigureSwitch(scpi_t *context)
     return SCPI_RES_OK;
 }
 
+static scpi_result_t SCPI_Configurebaudrate(scpi_t *context)
+{
+    uint32_t baudrate;
+    if(!SCPI_ParamUInt32(context, &baudrate, true))
+    {
+        return SCPI_RES_ERR;
+    }
+        // Verify the input baudrate is 115200
+    if (baudrate != 115200) {
+        SCPI_ResultText(context, "ERROR: Only 115200 baudrate is supported");
+        return SCPI_RES_ERR;
+    }
+
+    // First change UART3 baudrate to 9600 to match BSM default
+    huart3.Init.BaudRate = 9600;
+    if (HAL_UART_Init(&huart3) != HAL_OK)
+    {
+        return SCPI_RES_ERR;
+    }
+
+    // Send command to change BSM baudrate to 115200
+    uint8_t set_baud_cmd[] = {0x01, 0x06, 0x00, 0x02, 0x04, 0x80, 0x2B, 0x6A};
+    HAL_UART_Transmit(&huart3, set_baud_cmd, sizeof(set_baud_cmd), HAL_MAX_DELAY);
+
+    // Small delay to ensure command is processed
+    HAL_Delay(100);
+
+    // Write settings to flash
+    uint8_t write_flash_cmd[] = {0x01, 0x06, 0x00, 0x09, 0x00, 0x6F, 0x19, 0xE4};
+    HAL_UART_Transmit(&huart3, write_flash_cmd, sizeof(write_flash_cmd), HAL_MAX_DELAY);
+    HAL_Delay(100);
+ 
+    // Perform warm restart
+    uint8_t warm_restart_cmd[] = {0x01, 0x06, 0x00, 0x09, 0x00, 0x7B, 0x19, 0xEB};
+    HAL_UART_Transmit(&huart3, warm_restart_cmd, sizeof(warm_restart_cmd), HAL_MAX_DELAY);
+    HAL_Delay(1000); // Longer delay for restart to complete
+
+    // Change UART3 baudrate to new value (115200)
+    huart3.Init.BaudRate = 115200;
+    if (HAL_UART_Init(&huart3) != HAL_OK)
+    {
+        return SCPI_RES_ERR;
+    }
+
+    // Verify the baudrate was changed by reading it back
+    uint8_t read_baud_cmd[] = {0x01, 0x03, 0x00, 0x02, 0x00, 0x01, 0x25, 0xCA};
+    uint8_t response[8];
+    
+    HAL_UART_Transmit(&huart3, read_baud_cmd, sizeof(read_baud_cmd), HAL_MAX_DELAY);
+    
+    // Wait for response (adjust timeout as needed)
+    if (HAL_UART_Receive(&huart3, response, sizeof(response), 100) != HAL_OK)
+    {
+        return SCPI_RES_ERR;
+    }
+
+    // Check if response indicates 115200 baud (0x04 0x80)
+    if (response[3] != 0x04 || response[4] != 0x80)
+    {
+        return SCPI_RES_ERR;
+    }
+
+    SCPI_ResultText(context, "115200 baudrate is enable");
+
+    return SCPI_RES_OK;
+}
+
+
 static scpi_result_t SCPI_ReadSwitchState(scpi_t *context)
 {
     int32_t number[2] = {0};
@@ -327,6 +395,10 @@ const scpi_command_t scpi_commands[] = {
     {
         .pattern = "CONFigure:SWITch#",
         .callback = SCPI_ConfigureSwitch,
+    },
+    {
+        .pattern = "CONFigure:BAUDrate",
+        .callback = SCPI_Configurebaudrate,
     },
     {
         .pattern = "READ:SWITch#:STATe?",
