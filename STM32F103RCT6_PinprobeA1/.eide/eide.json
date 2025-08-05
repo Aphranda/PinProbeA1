@@ -324,7 +324,7 @@
         "OpenOCD": {
           "bin": "",
           "target": "stm32f1x",
-          "interface": "cmsis-dap-v1",
+          "interface": "",
           "baseAddr": "0x08000000"
         },
         "STLink": {
@@ -336,6 +336,14 @@
           "address": "0x08000000",
           "elFile": "None",
           "optionBytes": ".eide/stm32f103rct6_pinprobem1i.st.option.bytes.ini",
+          "otherCmds": ""
+        },
+        "pyOCD": {
+          "bin": "",
+          "targetName": "cortex_m",
+          "baseAddr": "0x08000000",
+          "speed": "4M",
+          "config": ".eide/stm32f103rct6_pinprobem1i.pyocd.yaml",
           "otherCmds": ""
         }
       },
