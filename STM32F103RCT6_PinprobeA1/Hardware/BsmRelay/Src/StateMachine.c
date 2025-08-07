@@ -363,6 +363,14 @@ uint8_t Emerge_Action(uint8_t in_01_08, uint8_t in_09_16, uint8_t out_01_08, uin
             door_close_timing = 0;                    // 停止关门计时
         }
     }
+    // 检查气压传感器,如果气压传感器未触发，且关门完成，说明气压过低，向外抛出气压过低异常
+    else if((in_01_08&laser_sensor1)!=0x20)
+    {
+        if(in_01_08&door_sensor_down)
+        {
+            U1_Printf("Intake air pressure too low\r\n");
+        }
+    }
     return 0;
 }
 
