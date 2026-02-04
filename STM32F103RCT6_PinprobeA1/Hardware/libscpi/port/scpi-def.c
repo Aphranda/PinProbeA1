@@ -43,7 +43,7 @@
 #include "scpi_switch.h"
 #include "BsmRelay.h"
 
-
+extern UART_HandleTypeDef huart3;
 
 static scpi_result_t SCPI_ConfigureSwitch(scpi_t *context)
 {

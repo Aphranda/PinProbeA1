@@ -8,7 +8,9 @@
         "files.associations": {
             "scpi-def.h": "c",
             "main.h": "c",
-            "scpi_switch.h": "c"
+            "scpi_switch.h": "c",
+            "cmsis_os.h": "c",
+            "statemachine copy": "c"
         },
         "cSpell.words": [
             "AHBCLK",

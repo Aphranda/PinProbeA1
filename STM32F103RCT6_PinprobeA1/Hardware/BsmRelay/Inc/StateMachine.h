@@ -1,72 +1,80 @@
 #ifndef __STATEMACHINE_H
 #define __STATEMACHINE_H
 
-#include <stdio.h>
-#include <stdlib.h>
 #include <stdint.h>
-#include <string.h>
+#include "BsmRelay.h"
+#include "cmsis_os.h"
+// 状态枚举定义
 typedef enum {
-    Lock = 0,
-    Idle = 1,       // Machine Hardware Idle
-    Ready = 2,      // Machine Hardware Ready
-    Running = 3,      // Machine Hardware Error
-    Emergency = 4,     // Machine Hardware Merge
-    Complete = 5,
-    SYS_INIT = 6,
-} MachineState;
+    SYS_INIT = 0,
+    LOCK,
+    IDLE,
+    READY,
+    RUNNING,
+    COMPLETE,
+    EMERGENCY,
+    STATE_COUNT
+} SystemState;
 
-
-
+// 门状态枚举
 typedef enum {
-    twinkle = 0,        // Machine LED twinkle
-    Green = 1,          // Machine LED Green
-    Red = 2,            // Machine LED Red
-    Yellow = 3,         // Machine LED Yellow
-    Led_OFF = 4,        // Machine LED OFF
-} LEDState;
+    DOOR_CLOSED = 0,
+    DOOR_OPENED = 1,
+    DOOR_MID = 2
+} DoorState;
 
-
+// 事件枚举
 typedef enum {
-    PressDown = 0,      // Machine is normal press
-    PressUp = 1,        // Machine is Error and Stop
-} EStopButtonState;
+    EVENT_NONE = 0,
+    EVENT_POWER_ON,
+    EVENT_UNLOCK,
+    EVENT_DOOR_READY,
+    EVENT_DOOR_CLOSE_START,
+    EVENT_DOOR_CLOSED,
+    EVENT_DOOR_OPEN_START,
+    EVENT_DOOR_OPENED,
+    EVENT_EMERGENCY,
+    EVENT_COUNT
+} SystemEvent;
 
-typedef enum {
-    PressFall = 0,      // Machine is single Falling press
-    PressRise = 1,      // Machine is single Rising press
-} StartButtonState;
+// 状态机配置参数
+#define LOCK_DELAY_COUNT 3
+#define DOOR_DELAY_COUNT 3
+#define DOOR_CLOSE_DEFAULT_TIME 40
 
-typedef enum {
-    Trigger = 0,        // Machine is unsafe trigger
-    UnTriggered = 1,    // Machine is safe
-} SafeSensorState;
+// 状态机上下文结构体
+typedef struct {
+    SystemState currentState;
+    SystemState previousState;
+    DoorState doorStatus;
+    
+    // 计时相关
+    uint16_t doorCloseTimer;
+    uint16_t doorCloseDefaultTime;
+    uint8_t doorCloseTiming;
+    
+    // 按钮防抖
+    uint16_t lockPressCount;
+    uint16_t lockReleaseCount;
+    uint16_t doorReadyCount;
+    uint16_t doorOpenCount;
+    uint16_t doorCloseCount;
+    uint16_t releaseFlag;
+} StateMachineContext;
 
-typedef enum {
-    Door_Closed = 0,          // Cylinder is Down
-    Door_Opened = 1,         // Cylinder is Up
-    Door_Mid = 2,           // Cylinder is Mid          
-} CylinderState;
+// 初始化函数
+void StateMachine_Init(void);
 
-typedef struct Action_Map {
-    MachineState Machine;
-    LEDState led;
-    EStopButtonState eStopButton;
-    StartButtonState startButton;
-    SafeSensorState  safeSensor;
-    CylinderState cylinder;
-} MachineAction;
+// 主处理函数
+void StateMachine_Process(void);
 
-uint8_t StateMachine_Input();
-uint8_t Init_Action(uint8_t in_01_08, uint8_t in_09_16, uint8_t out_01_08, uint8_t out_09_16);
-uint8_t Lock_Action(uint8_t in_01_08, uint8_t in_09_16, uint8_t out_01_08, uint8_t out_09_16);
-uint8_t Idle_Action(uint8_t in_01_08, uint8_t in_09_16, uint8_t out_01_08, uint8_t out_09_16);
-uint8_t Ready_Action(uint8_t in_01_08, uint8_t in_09_16, uint8_t out_01_08, uint8_t out_09_16);
-uint8_t Running_Action(uint8_t in_01_08, uint8_t in_09_16, uint8_t out_01_08, uint8_t out_09_16);
-uint8_t Complete_Action(uint8_t in_01_08, uint8_t in_09_16, uint8_t out_01_08, uint8_t out_09_16);
-uint8_t Emerge_Action(uint8_t in_01_08, uint8_t in_09_16, uint8_t out_01_08, uint8_t out_09_16);
-uint8_t Release_detection(uint8_t in_01_08, uint8_t in_09_16, uint8_t out_01_08, uint8_t out_09_16);
-uint8_t Door_detection(uint8_t in_01_08, uint8_t in_09_16, uint8_t out_01_08, uint8_t out_09_16);
-uint8_t showStatus();
-uint8_t showDoorStatus();
+// 获取当前状态
+SystemState StateMachine_GetCurrentState(void);
+
+// 获取门状态
+DoorState StateMachine_GetDoorState(void);
+
+// 强制设置状态(用于调试)
+void StateMachine_SetState(SystemState newState);
 
 #endif /* __STATEMACHINE_H */

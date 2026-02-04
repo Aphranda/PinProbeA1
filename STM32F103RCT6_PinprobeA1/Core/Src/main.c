@@ -239,7 +239,7 @@ void ModBusTask(void *argument)
   for(;;)
   {
     osMutexWait(COMMutexHandle,osWaitForever); // 申请互斥锁，保护共享资源
-    StateMachine_Input();                      // 调用主状态机处理函数
+    StateMachine_Process();                      // 调用主状态机处理函数
     osMutexRelease(COMMutexHandle);            // 释放互斥锁
     osDelay(50);                               // 任务延时50ms
     HAL_IWDG_Refresh(&hiwdg);                  // 喂狗，防止看门狗复位
