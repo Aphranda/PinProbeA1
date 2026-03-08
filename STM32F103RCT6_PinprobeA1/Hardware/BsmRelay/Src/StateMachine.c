@@ -30,6 +30,8 @@ uint16_t door_close_timer = 0;        // 关门计时器，单位为调用周期
 uint16_t door_close_default_time = 40;// 关门默认时间，单位为调用周期
 uint8_t door_close_timing = 0;        // 关门计时标志
 
+uint8_t air_check_num = 0;            // 关门之后，延迟一段时间进行气压检测。
+
 // 状态机主入口，周期性调用
 uint8_t StateMachine_Input()
 {
@@ -286,7 +288,7 @@ uint8_t Complete_Action(uint8_t in_01_08, uint8_t in_09_16, uint8_t out_01_08, u
             // 检查前限位传感器（门已完全打开）
             if(in_01_08 & door_sensor_up)
             {
-                LED_Write(led_source[0]);   // 点亮绿灯，表示门已打开
+                LED_Write(led_source[0]);   // 关灯，表示门已打开
                 system_status = Idle;       // 切换到Idle（空闲）状态
             }
         }
@@ -336,7 +338,7 @@ uint8_t Emerge_Action(uint8_t in_01_08, uint8_t in_09_16, uint8_t out_01_08, uin
             system_status = Lock; // 恢复到锁定状态
             if(in_01_08&door_sensor_up)
             {
-                LED_Write(led_source[0]); // 点亮绿灯，表示门已打开
+                LED_Write(led_source[0]); // 关灯，表示门已打开
             }
         }
     }
@@ -344,6 +346,7 @@ uint8_t Emerge_Action(uint8_t in_01_08, uint8_t in_09_16, uint8_t out_01_08, uin
     // 检查急停按钮是否被按下（stop_button），如果被按下则立即进入紧急状态
     if((in_09_16&(stop_button>>8))!=0x08)
     {
+        U1_Printf("E-STOP_Emerge_Action:%u\r\n",door_close_timer);
         system_status = Emergency;                    // 设置系统状态为紧急
         Cylinder_Write(1,cylinder_source[1]);         // 执行气缸紧急动作（通常为开门）
         Lock_Write(lock_source[1]);                   // 执行锁紧急动作（通常为解锁）
@@ -355,22 +358,32 @@ uint8_t Emerge_Action(uint8_t in_01_08, uint8_t in_09_16, uint8_t out_01_08, uin
         // 如果门未完全关闭，且关门计时超过默认时间的2/3，则进入紧急状态
         if(!(in_01_08&door_sensor_down)&&(door_close_timer>(door_close_default_time*2/3)))
         {
+            U1_Printf("Door_Emerge_Action:%u\r\n",door_close_timer);
             system_status = Emergency;                // 设置系统状态为紧急
             Cylinder_Write(1,cylinder_source[1]);     // 执行气缸紧急动作（通常为开门）
             Lock_Write(lock_source[1]);               // 执行锁紧急动作（通常为解锁）
-            LED_Write(led_source[2]);                 // 点亮红灯表示紧急状态
+            LED_Write(led_source[2]);                 // 点亮红灯表示紧急状态       
             door_close_timer = 0;                     // 重置关门计时器
             door_close_timing = 0;                    // 停止关门计时
         }
     }
+
     // 检查气压传感器,如果气压传感器未触发，且关门完成，说明气压过低，向外抛出气压过低异常
-    else if((in_01_08&laser_sensor1)!=0x20)
+    if(in_01_08&door_sensor_down && door_close_timer!=0)
     {
-        if(in_01_08&door_sensor_down)
+        air_check_num++;
+        if(air_check_num>30)
         {
-            U1_Printf("Intake air pressure too low\r\n");
+            if(((in_01_08&laser_sensor1)!=0x20))
+            {
+                U1_Printf("Intake air pressure too low, check_num:%u\r\n",air_check_num);
+                
+            }
+            air_check_num=0;
         }
     }
+    
+
     return 0;
 }
 
@@ -434,6 +447,7 @@ uint8_t showStatus()
 
 // 门状态打印（调试用）
 uint8_t showDoorStatus(){
+    osDelay(50);
     switch (door_status)
     {
         case 0:

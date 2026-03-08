@@ -236,6 +236,7 @@ void ModBusTask(void *argument)
 {
   /* USER CODE BEGIN ModBusTask */
   /* 无限循环 */
+  osDelay(1000); // 延迟于IO拓展板启动
   for(;;)
   {
     osMutexWait(COMMutexHandle,osWaitForever); // 申请互斥锁，保护共享资源

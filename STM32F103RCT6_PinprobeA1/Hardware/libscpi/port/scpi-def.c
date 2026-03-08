@@ -413,7 +413,7 @@ const scpi_command_t scpi_commands[] = {
         .callback = SCPI_ReadLinkState,
     },
     {
-        .pattern = "CONFigure:CYLinder#",
+        .pattern = "CONFigure:CYLInder#",
         .callback = SCPI_ConfigureCylinder,
     },
     {
