@@ -42,7 +42,214 @@
 #include "scpi-def.h"
 #include "scpi_switch.h"
 #include "BsmRelay.h"
+#include "flash.h"
 
+/* ========================================================================== */
+/*            SCPI *IDN? 运行时缓冲区                                         */
+/* ========================================================================== */
+
+/**
+ * @brief SCPI *IDN? 运行时缓冲 - 可在运行时通过 SCPI 命令修改
+ * @note 这些缓冲区的指针被传递给 SCPI_Init() 并存储在 scpi_context.idn[] 中。
+ *       通过 SCPI_SyncIdnFromFlash() 可从 Flash 配置同步数据到此缓冲区。
+ */
+char scpi_idn_buf1[SCPI_IDN_BUF1_SIZE] = SCPI_IDN1;
+char scpi_idn_buf2[SCPI_IDN_BUF2_SIZE] = SCPI_IDN2;
+char scpi_idn_buf3[SCPI_IDN_BUF3_SIZE] = SCPI_IDN3;
+char scpi_idn_buf4[SCPI_IDN_BUF4_SIZE] = SCPI_IDN4;
+
+/**
+ * @brief 从 Flash 配置同步 SCPI IDN 字符串到运行时缓冲区
+ * @note 调用此函数后，*IDN? 将返回 Flash 中存储的值。
+ *       通常在 Flash_Init() 之后调用一次，也可在修改 Flash 配置后调用。
+ */
+void SCPI_SyncIdnFromFlash(void)
+{
+    const Flash_Config_t *cfg = Flash_GetConfig();
+
+    /* 从 Flash 配置拷贝到运行时缓冲区 */
+    strncpy(scpi_idn_buf1, cfg->scpi_idn1, SCPI_IDN_BUF1_SIZE - 1);
+    scpi_idn_buf1[SCPI_IDN_BUF1_SIZE - 1] = '\0';
+
+    strncpy(scpi_idn_buf2, cfg->scpi_idn2, SCPI_IDN_BUF2_SIZE - 1);
+    scpi_idn_buf2[SCPI_IDN_BUF2_SIZE - 1] = '\0';
+
+    strncpy(scpi_idn_buf3, cfg->scpi_idn3, SCPI_IDN_BUF3_SIZE - 1);
+    scpi_idn_buf3[SCPI_IDN_BUF3_SIZE - 1] = '\0';
+
+    strncpy(scpi_idn_buf4, cfg->scpi_idn4, SCPI_IDN_BUF4_SIZE - 1);
+    scpi_idn_buf4[SCPI_IDN_BUF4_SIZE - 1] = '\0';
+
+    /* 更新 SCPI 上下文的 IDN 指针指向运行时缓冲区 */
+    scpi_context.idn[0] = scpi_idn_buf1;
+    scpi_context.idn[1] = scpi_idn_buf2;
+    scpi_context.idn[2] = scpi_idn_buf3;
+    scpi_context.idn[3] = scpi_idn_buf4;
+}
+
+/* ========================================================================== */
+/*            SCPI IDN 设置/查询 命令处理                                     */
+/* ========================================================================== */
+
+/**
+ * @brief 设置 SCPI *IDN? 字段1 (厂商名)
+ * @note 命令格式: SYSTem:IDN1 <string>
+ *        例如: SYSTem:IDN1 "MyCompany"
+ */
+static scpi_result_t SCPI_SetIdn1(scpi_t *context)
+{
+    char buffer[SCPI_IDN_BUF1_SIZE];
+    size_t copy_len = 0;
+
+    /* 获取参数中的字符串 */
+    memset(buffer, 0, sizeof(buffer));
+    if (!SCPI_ParamCopyText(context, buffer, sizeof(buffer), &copy_len, TRUE))
+    {
+        return SCPI_RES_ERR;
+    }
+
+    /* 更新 Flash 配置并保存 */
+    if (Flash_SetScpiIdn1(buffer) != FLASH_OK)
+    {
+        return SCPI_RES_ERR;
+    }
+    if (Flash_Save() != FLASH_OK)
+    {
+        return SCPI_RES_ERR;
+    }
+
+    /* 同步到运行时缓冲区 */
+    SCPI_SyncIdnFromFlash();
+
+    return SCPI_RES_OK;
+}
+
+/**
+ * @brief 查询 SCPI *IDN? 字段1 (厂商名)
+ * @note 命令格式: SYSTem:IDN1?
+ */
+static scpi_result_t SCPI_ReadIdn1Q(scpi_t *context)
+{
+    SCPI_ResultCharacters(context, scpi_idn_buf1, strlen(scpi_idn_buf1));
+    return SCPI_RES_OK;
+}
+
+/**
+ * @brief 设置 SCPI *IDN? 字段2 (产品型号)
+ * @note 命令格式: SYSTem:IDN2 <string>
+ */
+static scpi_result_t SCPI_SetIdn2(scpi_t *context)
+{
+    char buffer[SCPI_IDN_BUF2_SIZE];
+    size_t copy_len = 0;
+
+    memset(buffer, 0, sizeof(buffer));
+    if (!SCPI_ParamCopyText(context, buffer, sizeof(buffer), &copy_len, TRUE))
+    {
+        return SCPI_RES_ERR;
+    }
+
+    if (Flash_SetScpiIdn2(buffer) != FLASH_OK)
+    {
+        return SCPI_RES_ERR;
+    }
+    if (Flash_Save() != FLASH_OK)
+    {
+        return SCPI_RES_ERR;
+    }
+
+    SCPI_SyncIdnFromFlash();
+
+    return SCPI_RES_OK;
+}
+
+/**
+ * @brief 查询 SCPI *IDN? 字段2 (产品型号)
+ * @note 命令格式: SYSTem:IDN2?
+ */
+static scpi_result_t SCPI_ReadIdn2Q(scpi_t *context)
+{
+    SCPI_ResultCharacters(context, scpi_idn_buf2, strlen(scpi_idn_buf2));
+    return SCPI_RES_OK;
+}
+
+/**
+ * @brief 设置 SCPI *IDN? 字段3 (序列号/日期)
+ * @note 命令格式: SYSTem:IDN3 <string>
+ */
+static scpi_result_t SCPI_SetIdn3(scpi_t *context)
+{
+    char buffer[SCPI_IDN_BUF3_SIZE];
+    size_t copy_len = 0;
+
+    memset(buffer, 0, sizeof(buffer));
+    if (!SCPI_ParamCopyText(context, buffer, sizeof(buffer), &copy_len, TRUE))
+    {
+        return SCPI_RES_ERR;
+    }
+
+    if (Flash_SetScpiIdn3(buffer) != FLASH_OK)
+    {
+        return SCPI_RES_ERR;
+    }
+    if (Flash_Save() != FLASH_OK)
+    {
+        return SCPI_RES_ERR;
+    }
+
+    SCPI_SyncIdnFromFlash();
+
+    return SCPI_RES_OK;
+}
+
+/**
+ * @brief 查询 SCPI *IDN? 字段3 (序列号/日期)
+ * @note 命令格式: SYSTem:IDN3?
+ */
+static scpi_result_t SCPI_ReadIdn3Q(scpi_t *context)
+{
+    SCPI_ResultCharacters(context, scpi_idn_buf3, strlen(scpi_idn_buf3));
+    return SCPI_RES_OK;
+}
+
+/**
+ * @brief 设置 SCPI *IDN? 字段4 (固件版本)
+ * @note 命令格式: SYSTem:IDN4 <string>
+ */
+static scpi_result_t SCPI_SetIdn4(scpi_t *context)
+{
+    char buffer[SCPI_IDN_BUF4_SIZE];
+    size_t copy_len = 0;
+
+    memset(buffer, 0, sizeof(buffer));
+    if (!SCPI_ParamCopyText(context, buffer, sizeof(buffer), &copy_len, TRUE))
+    {
+        return SCPI_RES_ERR;
+    }
+
+    if (Flash_SetScpiIdn4(buffer) != FLASH_OK)
+    {
+        return SCPI_RES_ERR;
+    }
+    if (Flash_Save() != FLASH_OK)
+    {
+        return SCPI_RES_ERR;
+    }
+
+    SCPI_SyncIdnFromFlash();
+
+    return SCPI_RES_OK;
+}
+
+/**
+ * @brief 查询 SCPI *IDN? 字段4 (固件版本)
+ * @note 命令格式: SYSTem:IDN4?
+ */
+static scpi_result_t SCPI_ReadIdn4Q(scpi_t *context)
+{
+    SCPI_ResultCharacters(context, scpi_idn_buf4, strlen(scpi_idn_buf4));
+    return SCPI_RES_OK;
+}
 
 
 static scpi_result_t SCPI_ConfigureSwitch(scpi_t *context)
@@ -391,6 +598,39 @@ const scpi_command_t scpi_commands[] = {
     {
         .pattern = "SYSTem:ERRor:COUNt?",
         .callback = SCPI_SystemErrorCountQ,
+    },
+    /* SCPI *IDN? 字段配置命令 - 可运行时修改并持久化到 Flash */
+    {
+        .pattern = "SYSTem:IDN1",
+        .callback = SCPI_SetIdn1,
+    },
+    {
+        .pattern = "SYSTem:IDN1?",
+        .callback = SCPI_ReadIdn1Q,
+    },
+    {
+        .pattern = "SYSTem:IDN2",
+        .callback = SCPI_SetIdn2,
+    },
+    {
+        .pattern = "SYSTem:IDN2?",
+        .callback = SCPI_ReadIdn2Q,
+    },
+    {
+        .pattern = "SYSTem:IDN3",
+        .callback = SCPI_SetIdn3,
+    },
+    {
+        .pattern = "SYSTem:IDN3?",
+        .callback = SCPI_ReadIdn3Q,
+    },
+    {
+        .pattern = "SYSTem:IDN4",
+        .callback = SCPI_SetIdn4,
+    },
+    {
+        .pattern = "SYSTem:IDN4?",
+        .callback = SCPI_ReadIdn4Q,
     },
     {
         .pattern = "CONFigure:SWITch#",

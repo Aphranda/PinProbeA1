@@ -101,6 +101,7 @@ targets:
         - Hardware/RFLink/inc
         - Hardware/libscpi/port
         - Hardware/CheckMode/inc
+        - Hardware/Flash/Inc
       libList: []
     excludeList: []
     settings:
@@ -235,4 +236,4 @@ targets:
         otherCmds: ""
         speed: 4M
         targetName: cortex_m
-    uploader: OpenOCD
+    uploader: STLink

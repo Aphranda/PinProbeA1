@@ -31,6 +31,7 @@
 #include "RS485.h"
 #include "scpi/scpi.h"
 #include "scpi-def.h"
+#include "flash.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -122,13 +123,20 @@ int main(void)
   HAL_UART_Receive_DMA(&huart1, usart1_buff_Occupied, MAX_RX_LEN);
   HAL_UART_Receive_DMA(&huart3, usart3_buff_Occupied, MAX_RX_LEN);
 
+  /* 初始化 Flash 配置 (从 Flash 加载或使用默认值) */
+  Flash_Init();
+
+  /* 初始化 SCPI 上下文，使用运行时 IDN 缓冲区 (而非宏常量) */
   SCPI_Init(&scpi_context,
     scpi_commands,
     &scpi_interface,
     scpi_units_def,
-    SCPI_IDN1, SCPI_IDN2, SCPI_IDN3, SCPI_IDN4,
+    scpi_idn_buf1, scpi_idn_buf2, scpi_idn_buf3, scpi_idn_buf4,
     scpi_input_buffer, SCPI_INPUT_BUFFER_LENGTH,
     scpi_error_queue_data, SCPI_ERROR_QUEUE_SIZE);
+
+  /* 从 Flash 同步 IDN 字符串到运行时缓冲区 (覆盖默认值) */
+  SCPI_SyncIdnFromFlash();
 
  
   /* USER CODE END 2 */
