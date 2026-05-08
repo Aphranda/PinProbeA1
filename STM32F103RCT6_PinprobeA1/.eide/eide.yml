@@ -103,6 +103,8 @@ targets:
         - Hardware/CheckMode/inc
       libList: []
     excludeList: []
+    settings:
+      debugger: cortex-debug
     toolchain: AC5
     toolchainConfigMap:
       AC5:
@@ -217,7 +219,7 @@ targets:
         interface: cmsis-dap-v1
         target: stm32f1x
       STLink:
-        address: "0x08000000"
+        address: "0x8000000"
         bin: ""
         elFile: None
         optionBytes: .eide/stm32f103rct6_pinprobem1i.st.option.bytes.ini
