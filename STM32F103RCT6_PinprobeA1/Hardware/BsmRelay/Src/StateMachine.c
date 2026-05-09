@@ -7,6 +7,9 @@
 #define Door_Delay_num 3
 #define Debug
 
+// 气压稳定延时周期数：关门后气压需约2秒才能达到最大值，在此期间不进行气压检测
+#define AIR_STABILIZE_CYCLES 60
+
 // 外部变量声明
 extern scpi_choice_def_t cylinder_source[];
 extern scpi_choice_def_t lock_source[];
@@ -238,6 +241,7 @@ uint8_t Ready_Action(uint8_t in_01_08, uint8_t in_09_16, uint8_t out_01_08, uint
                 
                 door_close_timer = 0; // 重置计时器
                 door_close_timing = 1; // 开始计时
+                air_check_num = 0;    // 复位气压检测稳定计数器
             }
         }
     }
@@ -370,18 +374,27 @@ uint8_t Emerge_Action(uint8_t in_01_08, uint8_t in_09_16, uint8_t out_01_08, uin
         }
     }
 
-    // 检查气压传感器,如果气压传感器未触发，且关门完成，说明气压过低，向外抛出气压过低异常
-    if(in_01_08&door_sensor_down && door_close_timer!=0)
+    // 检查气压传感器：关门完成后等待气压稳定，再周期性检测
+    // 气压稳定延时：关门后气路气压需约2秒才能达到最大值，稳定期间不检测，避免误报
+    if((in_01_08 & door_sensor_down) && (door_close_timer != 0))
     {
         air_check_num++;
-        if(air_check_num>30)
+        
+        // 先等待气压稳定延时，再开始检测
+        if(air_check_num > AIR_STABILIZE_CYCLES)
         {
-            if(((in_01_08&laser_sensor1)!=0x20))
+            uint16_t post_stabilize = air_check_num - AIR_STABILIZE_CYCLES;
+            
+            // 稳定后每30个周期检测一次气压传感器
+            if(post_stabilize >= 30)
             {
-                U1_Printf("Intake air pressure too low, check_num:%u\r\n",air_check_num);
-                
+                if(((in_01_08 & laser_sensor1) != 0x20))
+                {
+                    U1_Printf("Intake air pressure too low, check_num:%u\r\n", air_check_num);
+                }
+                // 保留稳定延时基数，重置检测周期计数
+                air_check_num = AIR_STABILIZE_CYCLES;
             }
-            air_check_num=0;
         }
     }
     
