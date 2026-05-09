@@ -1,4 +1,5 @@
 #include "BsmRelay.h"
+#include "StateMachine.h"
 #include <math.h>
 
 
@@ -6,7 +7,6 @@ extern scpi_choice_def_t cylinder_source[];
 extern scpi_choice_def_t lock_source[];
 extern scpi_choice_def_t led_source[];
 extern scpi_choice_def_t sys_source[];
-extern uint8_t system_status;
 
 
 uint8_t Cylinder_Write(uint32_t cylinder_id, scpi_choice_def_t cylinder_value)
