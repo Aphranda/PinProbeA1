@@ -255,6 +255,7 @@ uint8_t Running_Action(uint8_t in_01_08, uint8_t in_09_16, uint8_t out_01_08, ui
             {
                 LED_Write(led_source[1]);   // 绿灯亮起，关门完毕
                 system_status = Complete;   // 气缸到达后限位
+                door_status = Door_Closed;        // 门状态更新为关闭
                 door_close_timing = 0;      // 停止关门计时
                 door_close_default_time = door_close_timer; // 记录关门时间
             }
@@ -290,6 +291,7 @@ uint8_t Complete_Action(uint8_t in_01_08, uint8_t in_09_16, uint8_t out_01_08, u
             {
                 LED_Write(led_source[0]);   // 关灯，表示门已打开
                 system_status = Idle;       // 切换到Idle（空闲）状态
+                door_status = Door_Opened;        // 门状态更新为打开
             }
         }
 
