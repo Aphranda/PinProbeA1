@@ -51,6 +51,9 @@ void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOC, SPI3_CS_Pin|RF_C2_Pin|RF_C3_Pin|RF_C4_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOA, RF_C5_Pin|RF_C6_Pin|LED_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
@@ -59,8 +62,14 @@ void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(RF_C1_GPIO_Port, RF_C1_Pin, GPIO_PIN_SET);
 
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOC, RF_C2_Pin|RF_C3_Pin|RF_C4_Pin, GPIO_PIN_RESET);
+  /*Configure GPIO pins : SPI3_CS_Pin RF_C1_Pin RF_C2_Pin RF_C3_Pin
+                           RF_C4_Pin */
+  GPIO_InitStruct.Pin = SPI3_CS_Pin|RF_C1_Pin|RF_C2_Pin|RF_C3_Pin
+                          |RF_C4_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
   /*Configure GPIO pins : RF_C5_Pin RF_C6_Pin LED_Pin */
   GPIO_InitStruct.Pin = RF_C5_Pin|RF_C6_Pin|LED_Pin;
@@ -75,13 +84,6 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-  /*Configure GPIO pins : RF_C1_Pin RF_C2_Pin RF_C3_Pin RF_C4_Pin */
-  GPIO_InitStruct.Pin = RF_C1_Pin|RF_C2_Pin|RF_C3_Pin|RF_C4_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
 }
 
