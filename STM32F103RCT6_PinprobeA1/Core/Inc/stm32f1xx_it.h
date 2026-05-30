@@ -22,7 +22,7 @@
 #define __STM32F1xx_IT_H
 
 #ifdef __cplusplus
- extern "C" {
+extern "C" {
 #endif
 
 /* Private includes ----------------------------------------------------------*/
@@ -63,9 +63,16 @@ void DMA1_Channel2_IRQHandler(void);
 void DMA1_Channel3_IRQHandler(void);
 void DMA1_Channel4_IRQHandler(void);
 void DMA1_Channel5_IRQHandler(void);
+void USB_HP_CAN1_TX_IRQHandler(void);
+void USB_LP_CAN1_RX0_IRQHandler(void);
+void CAN1_RX1_IRQHandler(void);
+void CAN1_SCE_IRQHandler(void);
 void USART1_IRQHandler(void);
 void USART3_IRQHandler(void);
 void TIM5_IRQHandler(void);
+void SPI3_IRQHandler(void);
+void DMA2_Channel1_IRQHandler(void);
+void DMA2_Channel2_IRQHandler(void);
 /* USER CODE BEGIN EFP */
 void DMA_Usart1_Tx_Data(uint8_t *buffer, uint16_t size); // DMA Usart1 Tx Data
 void DMA_Usart3_Tx_Data(uint8_t *buffer, uint16_t size); // DMA Usart3 Tx Data
