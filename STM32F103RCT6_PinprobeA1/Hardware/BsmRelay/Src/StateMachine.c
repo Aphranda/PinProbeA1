@@ -11,9 +11,9 @@
 #define DOOR_READY_MS        300   // 关门准备确认时间
 #define DOOR_CLOSE_CONFIRM_MS 700  // 关门动作确认时间（需同时按两个按钮）
 
-#define DOOR_OPEN_CONFIRM_MS 500   // 开门动作确认时间
+#define DOOR_OPEN_CONFIRM_MS 300   // 开门动作确认时间
 #define RELEASE_DELAY_MS     200   // 按钮释放防抖时间
-#define AIR_STABILIZE_MS     2000  // 气压稳定延时：关门后气压需约2秒才能达到最大值
+#define AIR_STABILIZE_MS     3000  // 气压稳定延时：关门后气压需约2秒才能达到最大值
 #define AIR_CHECK_INTERVAL_MS 1500 // 气压检测间隔
 #define Debug
 
@@ -48,6 +48,7 @@ uint8_t door_status = Door_Mid;       // 门当前状态
 uint8_t door_old_status;              // 门上一次状态
 
 uint32_t door_close_start_tick = 0;   // 关门开始时刻(ms)，0=未开始关门
+uint32_t door_close_done_tick = 0;    // 关门完成时刻(ms)，气压稳定延时起点
 uint32_t door_open_start_tick = 0;    // 开门开始时刻(ms)，0=未开始开门
 uint32_t door_close_default_ms = 2000;// 关门默认时间(ms)，运行时由实际关门时间更新
 uint8_t door_close_timing = 0;        // 关门计时标志
@@ -305,6 +306,7 @@ uint8_t Running_Action(uint8_t in_01_08, uint8_t in_09_16, uint8_t out_01_08, ui
                 door_status = Door_Closed;  // 门状态更新为关闭
                 door_close_timing = 0;      // 停止关门计时
                 door_close_default_ms = GetTim1Ms() - door_close_start_tick; // 记录关门实际耗时(ms)
+                door_close_done_tick = GetTim1Ms(); // 记录关门完成时刻，气压稳定延时起点
                 LOG_ACTION_TIME("CLOSE_DONE", door_close_default_ms);
             }
             else{
@@ -437,11 +439,11 @@ uint8_t Emerge_Action(uint8_t in_01_08, uint8_t in_09_16, uint8_t out_01_08, uin
         }
     }
 
-    // 检查气压传感器：关门完成后等待气压稳定，再周期性检测
+    // 检查气压传感器：从关门完成时刻起算，等待气压稳定后再周期性检测
     // 气压稳定延时：关门后气路气压需约2秒才能达到最大值，稳定期间不检测，避免误报
-    if((in_01_08 & door_sensor_down) && (door_close_start_tick != 0))
+    if((in_01_08 & door_sensor_down) && (door_close_done_tick != 0))
     {
-        uint32_t elapsed = now - door_close_start_tick;
+        uint32_t elapsed = now - door_close_done_tick;
 
         // 先等待气压稳定延时，再开始检测
         if(elapsed >= AIR_STABILIZE_MS)

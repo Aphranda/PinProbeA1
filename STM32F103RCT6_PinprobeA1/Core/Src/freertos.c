@@ -68,6 +68,13 @@ const osThreadAttr_t ModBus_attributes = {
   .stack_size = 1024 * 4,
   .priority = (osPriority_t) osPriorityLow,
 };
+/* Definitions for WatchDog */
+osThreadId_t WatchDogHandle;
+const osThreadAttr_t WatchDog_attributes = {
+  .name = "WatchDog",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityLow,
+};
 /* Definitions for SCPITimer */
 osTimerId_t SCPITimerHandle;
 const osTimerAttr_t SCPITimer_attributes = {
@@ -87,6 +94,7 @@ const osMutexAttr_t COMMutex_attributes = {
 void StartDefaultTask(void *argument);
 void SCPITask(void *argument);
 void ModBusTask(void *argument);
+void WatchDogTask(void *argument);
 void SCPITimerCallback(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
@@ -133,6 +141,9 @@ void MX_FREERTOS_Init(void) {
 
   /* creation of ModBus */
   ModBusHandle = osThreadNew(ModBusTask, NULL, &ModBus_attributes);
+
+  /* creation of WatchDog */
+  WatchDogHandle = osThreadNew(WatchDogTask, NULL, &WatchDog_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -196,6 +207,24 @@ __weak void ModBusTask(void *argument)
     osDelay(1);
   }
   /* USER CODE END ModBusTask */
+}
+
+/* USER CODE BEGIN Header_WatchDogTask */
+/**
+* @brief Function implementing the WatchDog thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_WatchDogTask */
+__weak void WatchDogTask(void *argument)
+{
+  /* USER CODE BEGIN WatchDogTask */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END WatchDogTask */
 }
 
 /* SCPITimerCallback function */
