@@ -25,7 +25,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "iwdg.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -222,7 +222,8 @@ __weak void WatchDogTask(void *argument)
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1);
+    HAL_IWDG_Refresh(&hiwdg); // 独立看门狗喂狗，超时约4秒
+    osDelay(500);             // 每500ms喂一次，留足余量
   }
   /* USER CODE END WatchDogTask */
 }

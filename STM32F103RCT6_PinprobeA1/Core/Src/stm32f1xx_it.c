@@ -63,6 +63,7 @@ uint8_t Usart3_RX_BUF1[MAX_RX_LEN];
 uint8_t Usart3_RX_BUF2[MAX_RX_LEN];
 
 uint8_t Usart3_RX_BUF1_IsReady = 0;
+uint32_t usart3_rx_length = 0;           // 最近一次USART3接收帧长度
 
 uint8_t* usart3_buff_IsReady = Usart3_RX_BUF2;
 uint8_t* usart3_buff_Occupied = Usart3_RX_BUF2;
@@ -381,8 +382,8 @@ void USART3_IRQHandler(void)
   {
     HAL_UART_DMAStop(&huart3); // stop DMA
 
-    uint32_t data_length = MAX_RX_LEN - __HAL_DMA_GET_COUNTER(&hdma_usart3_rx); 
-  
+    uint32_t data_length = MAX_RX_LEN - __HAL_DMA_GET_COUNTER(&hdma_usart3_rx);
+    usart3_rx_length = data_length; // 记录接收长度供上层校验
 
   // double cache
     if(Usart3_RX_BUF1_IsReady)

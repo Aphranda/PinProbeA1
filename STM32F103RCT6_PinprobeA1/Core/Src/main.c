@@ -232,7 +232,6 @@ void SCPITask(void *argument)
     }
     osMutexRelease(COMMutexHandle); // 释放互斥锁
     osDelay(10);                   // 任务延时10ms
-    HAL_IWDG_Refresh(&hiwdg);      // 喂狗，防止看门狗复位
   }
   /* USER CODE END SCPITask */
 }
@@ -255,7 +254,6 @@ void ModBusTask(void *argument)
     StateMachine_Input();                      // 调用主状态机处理函数
     osMutexRelease(COMMutexHandle);            // 释放互斥锁
     osDelay(50);                               // 任务延时50ms
-    HAL_IWDG_Refresh(&hiwdg);                  // 喂狗，防止看门狗复位
   }
   /* USER CODE END ModBusTask */
 }

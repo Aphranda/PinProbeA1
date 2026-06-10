@@ -149,10 +149,14 @@ scpi_choice_def_t SYS_Status(){
     return sys_source[system_status];
 }
 
+// IO状态缓存，避免返回局部变量指针
+static uint8_t input_io_cache[2] = {0, 0};
+static uint8_t output_io_cache[2] = {0, 0};
+
 uint8_t IO_Read(uint8_t checkNum, uint8_t direction, uint8_t* trueData){
     uint8_t State_count = 0;
     while (State_count < checkNum)
-    {   
+    {
         // Read bsm input IO status
         uint8_t* data;
         ReadIO(direction, data);
@@ -172,17 +176,15 @@ uint8_t IO_Read(uint8_t checkNum, uint8_t direction, uint8_t* trueData){
         }
         State_count++;
     }
-    return 0; 
+    return 0;
 }
 
 uint8_t* InputIO_Read(uint8_t checkNum){
-    uint8_t data[2];
-    IO_Read(checkNum, 2, data);
-    return data;
+    IO_Read(checkNum, 2, input_io_cache);
+    return input_io_cache;
 }
 
 uint8_t* OutputIO_Read(uint8_t checkNum){
-    uint8_t data[2];
-    IO_Read(checkNum, 1, data);
-    return data;
+    IO_Read(checkNum, 1, output_io_cache);
+    return output_io_cache;
 }

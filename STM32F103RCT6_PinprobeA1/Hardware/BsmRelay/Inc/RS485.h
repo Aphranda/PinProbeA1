@@ -9,6 +9,9 @@
 #include "usart.h"
 #include "stm32f1xx_hal.h"
 
+// RS485 发送超时(ms)，避免总线故障时死锁
+#define RS485_TX_TIMEOUT_MS  100
+
 uint8_t WriteIO(uint8_t index, uint8_t status);
 uint8_t* ReadIO(uint8_t index, uint8_t* status);
 uint8_t* IOWriteOrder(uint8_t index, uint8_t num);

@@ -18,7 +18,7 @@
 #define Debug
 
 // 动作时间打印宏：定义 ACTION_TIMING 以启用动作耗时输出
-#define ACTION_TIMING
+// #define ACTION_TIMING
 #ifdef ACTION_TIMING
 #define LOG_ACTION_TIME(name, elapsed_ms) \
     U1_Printf("[%s] %u ms\r\n", name, (unsigned int)(elapsed_ms))
