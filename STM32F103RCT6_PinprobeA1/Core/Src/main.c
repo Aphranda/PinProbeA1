@@ -23,6 +23,7 @@
 #include "dma.h"
 #include "iwdg.h"
 #include "spi.h"
+#include "tim.h"
 #include "usart.h"
 #include "gpio.h"
 
@@ -113,6 +114,7 @@ int main(void)
   MX_USART3_UART_Init();
   MX_SPI3_Init();
   MX_CAN_Init();
+  MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
 
   __HAL_UART_ENABLE_IT(&huart1, UART_IT_IDLE);
@@ -277,7 +279,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     HAL_IncTick();
   }
   /* USER CODE BEGIN Callback 1 */
-
+  if (htim->Instance == TIM1)
+  {
+    tim1_ms++;
+  }
   /* USER CODE END Callback 1 */
 }
 
