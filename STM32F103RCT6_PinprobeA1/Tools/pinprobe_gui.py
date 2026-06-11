@@ -64,12 +64,22 @@ SCPI_COMMANDS = {
     ],
     "系统状态": [
         ("读系统状态", "READ:SYSTem:STATe?"),
-        ("读全部IO", "READ:IO:ALL?"),
     ],
     "急停": [
         ("常闭 NC (默认)", "CONFigure:ESTOP:TYPE NC"),
         ("常开 NO", "CONFigure:ESTOP:TYPE NO"),
         ("读急停类型", "CONFigure:ESTOP:TYPE?"),
+    ],
+    "IDN配置": [
+        ("🔍 读*IDN?", "*IDN?"),
+        ("读厂商", "SYSTem:IDN1?"),
+        ("读型号", "SYSTem:IDN2?"),
+        ("读序列号", "SYSTem:IDN3?"),
+        ("读固件版本", "SYSTem:IDN4?"),
+        ("✏ 设厂商...", "__IDN1_SET__"),
+        ("✏ 设型号...", "__IDN2_SET__"),
+        ("✏ 设序列号...", "__IDN3_SET__"),
+        ("✏ 设固件版本...", "__IDN4_SET__"),
     ],
 }
 
@@ -761,6 +771,12 @@ class PinProbeApp:
         led_frame = ttk.LabelFrame(parent, text="IO 指示灯")
         led_frame.pack(fill=tk.X, padx=5, pady=3)
 
+        # 标题行 + 刷新按钮
+        title_row = ttk.Frame(led_frame)
+        title_row.pack(fill=tk.X, padx=5, pady=(3, 0))
+        ttk.Button(title_row, text="刷新IO", width=10,
+                   command=lambda: self._send_scpi("READ:IO:ALL?")).pack(side=tk.RIGHT)
+
         # LED 定义: (类型, 字节索引, 位掩码, 标签名) — 全部16位
         self.led_defs_input = [
             ("IN", 0, 0x01, "门上限"),
@@ -826,6 +842,12 @@ class PinProbeApp:
         self._draw_leds(self.canvas_in, self.led_defs_input, LED_R, LED_GAP, LABEL_H)
         self._draw_leds(self.canvas_out, self.led_defs_output, LED_R, LED_GAP, LABEL_H)
 
+        # IO 原始值显示
+        self.io_raw_label = ttk.Label(led_frame, text="---",
+                                       font=("Cascadia Code", 10, "bold"),
+                                       foreground="#2c3e50")
+        self.io_raw_label.pack(pady=(6, 3))
+
     def _draw_leds(self, canvas: tk.Canvas, defs: list, r: int, gap: int, lh: int):
         """在 Canvas 上绘制 LED 灯（圆+标签），返回 circle ID 列表"""
         ids = []
@@ -849,10 +871,18 @@ class PinProbeApp:
         self._led_canvas_ids[canvas] = ids
 
     def _update_leds_from_response(self, response: str):
-        """根据 READ:IO:ALL? 响应更新所有 LED 指示灯"""
+        """根据 READ:IO:ALL? 响应更新所有 LED 指示灯和原始值显示"""
         data = parse_io_response(response)
         if not data:
             return
+
+        # 更新原始值标签
+        in0 = data.get(("IN", 0), 0)
+        in1 = data.get(("IN", 1), 0)
+        out0 = data.get(("OUT", 0), 0)
+        out1 = data.get(("OUT", 1), 0)
+        self.io_raw_label.configure(
+            text=f"IN: 0x{in0:02X}, 0x{in1:02X}    OUT: 0x{out0:02X}, 0x{out1:02X}")
 
         ON_COLOR = "#00CC00"   # 绿色=激活
         OFF_COLOR = "#cccccc"  # 灰色=未激活
@@ -1116,11 +1146,31 @@ class PinProbeApp:
             self._log(f"日志已导出到: {filename}", "INFO")
 
     # ── SCPI 命令发送 ────────────────────────────────────────────────
+    # IDN 设置命令映射
+    _IDN_SET_MAP = {
+        "__IDN1_SET__": ("厂商名", "SYSTem:IDN1"),
+        "__IDN2_SET__": ("产品型号", "SYSTem:IDN2"),
+        "__IDN3_SET__": ("序列号/日期", "SYSTem:IDN3"),
+        "__IDN4_SET__": ("固件版本", "SYSTem:IDN4"),
+    }
+
     def _send_scpi(self, cmd: str):
         """发送 SCPI 命令"""
         if not self.serial_worker.is_connected:
             messagebox.showwarning("未连接", "请先连接串口")
             return
+
+        # IDN 设置：弹窗输入值
+        if cmd in self._IDN_SET_MAP:
+            label, scpi_cmd = self._IDN_SET_MAP[cmd]
+            from tkinter import simpledialog
+            value = simpledialog.askstring(f"设置 {label}",
+                                           f"请输入新的{label}：",
+                                           parent=self.root)
+            if not value:
+                return
+            cmd = f'{scpi_cmd} "{value}"'
+
         self._log(f">>> {cmd}", "CMD")
         self.serial_worker.send_command(cmd, expect_response=cmd.endswith("?"))
         self._add_to_history(cmd)
