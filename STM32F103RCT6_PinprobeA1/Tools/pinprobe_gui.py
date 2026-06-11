@@ -69,6 +69,9 @@ SCPI_COMMANDS = {
         ("常闭 NC (默认)", "CONFigure:ESTOP:TYPE NC"),
         ("常开 NO", "CONFigure:ESTOP:TYPE NO"),
         ("读急停类型", "CONFigure:ESTOP:TYPE?"),
+        ("风险模式 ON", "CONFigure:RISK:MODE ON"),
+        ("风险模式 OFF", "CONFigure:RISK:MODE OFF"),
+        ("读风险模式", "CONFigure:RISK:MODE?"),
     ],
     "IDN配置": [
         ("🔍 读*IDN?", "*IDN?"),
@@ -101,7 +104,7 @@ IO_BIT_MAP = {
     ("IN", 0, 0x04): "门中位(mid)",
     ("IN", 0, 0x08): "USB上位",
     ("IN", 0, 0x10): "USB下位",
-    ("IN", 0, 0x20): "激光1",
+    ("IN", 0, 0x20): "气压",
     ("IN", 0, 0x40): "激光2",
     ("IN", 0, 0x80): "激光3",
     # 输入 IN[1]
@@ -784,7 +787,7 @@ class PinProbeApp:
             ("IN", 0, 0x04, "门中位"),
             ("IN", 0, 0x08, "USB上位"),
             ("IN", 0, 0x10, "USB下位"),
-            ("IN", 0, 0x20, "激光1"),
+            ("IN", 0, 0x20, "气压"),
             ("IN", 0, 0x40, "激光2"),
             ("IN", 0, 0x80, "激光3"),
             ("IN", 1, 0x01, "激光4"),

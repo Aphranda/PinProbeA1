@@ -543,3 +543,17 @@ uint8_t Flash_GetEstopType(void)
 {
     return config_cache.estop_type;
 }
+
+/* ===== 风险模式访问函数 ===== */
+
+Flash_Status_t Flash_SetRiskMode(uint8_t mode)
+{
+    if (mode > 1) return FLASH_ERR_PARAM;
+    config_cache.risk_mode = mode;
+    return FLASH_OK;
+}
+
+uint8_t Flash_GetRiskMode(void)
+{
+    return config_cache.risk_mode;
+}

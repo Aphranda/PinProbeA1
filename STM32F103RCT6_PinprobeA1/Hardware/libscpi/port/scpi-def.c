@@ -596,6 +596,38 @@ static scpi_result_t SCPI_ReadEstopTypeQ(scpi_t *context)
     return SCPI_RES_OK;
 }
 
+/* ===== 风险模式 (气压传感器替代限位) ===== */
+
+scpi_choice_def_t risk_mode_source[] = {
+    {"OFF", 0},
+    {"ON",  1},
+    SCPI_CHOICE_LIST_END
+};
+
+static scpi_result_t SCPI_ConfigureRiskMode(scpi_t *context)
+{
+    int32_t param;
+    if (!SCPI_ParamChoice(context, risk_mode_source, &param, TRUE))
+        return SCPI_RES_ERR;
+    if (Flash_SetRiskMode((uint8_t)param) != FLASH_OK)
+        return SCPI_RES_ERR;
+    if (Flash_Save() != FLASH_OK)
+        return SCPI_RES_ERR;
+    const char *name;
+    SCPI_ChoiceToName(risk_mode_source, param, &name);
+    SCPI_ResultCharacters(context, name, strlen(name));
+    return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_ReadRiskModeQ(scpi_t *context)
+{
+    uint8_t mode = Flash_GetRiskMode();
+    const char *name;
+    SCPI_ChoiceToName(risk_mode_source, mode, &name);
+    SCPI_ResultCharacters(context, name, strlen(name));
+    return SCPI_RES_OK;
+}
+
 /// @brief 查询所有IO状态（输入+输出）
 /// @note 命令: READ:IO:ALL?
 ///       返回: IN:0xHH,0xHH OUT:0xHH,0xHH（16进制原始值）
@@ -738,6 +770,14 @@ const scpi_command_t scpi_commands[] = {
     {
         .pattern = "CONFigure:ESTOP:TYPE?",
         .callback = SCPI_ReadEstopTypeQ,
+    },
+    {
+        .pattern = "CONFigure:RISK:MODE",
+        .callback = SCPI_ConfigureRiskMode,
+    },
+    {
+        .pattern = "CONFigure:RISK:MODE?",
+        .callback = SCPI_ReadRiskModeQ,
     },
     SCPI_CMD_LIST_END};
 

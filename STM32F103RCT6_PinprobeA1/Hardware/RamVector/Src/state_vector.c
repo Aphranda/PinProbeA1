@@ -108,9 +108,17 @@ void StateVector_Input(void)
         if ((out_01_08 & 0x02) && !(in_01_08 & 0x02)) system_status = V_STATE_RUNNING;
     }
 
-    /* Running → Complete */
+    /* Running → Complete (限位 或 风险模式气压) */
     if (system_status == V_STATE_RUNNING) {
-        if ((out_01_08 & 0x02) && (in_01_08 & 0x02)) {
+        bool limit_ok  = (out_01_08 & 0x02) && (in_01_08 & 0x02);
+        bool risk_ok   = Flash_GetRiskMode()
+                      && (out_01_08 & 0x02)
+                      && (in_01_08 & 0x20)   /* 气压正常 */
+                      && door_close_start_tick
+                      && ((now - door_close_start_tick) > door_close_default_ms);
+        if (limit_ok || risk_ok) {
+            if (risk_ok && !limit_ok)
+                U1_Printf("[RISK] door close confirmed by pressure, limit failed\r\n");
             RamVector_PostCmd(VCMD_LED_GREEN);
             door_close_timing = 0; door_open_confirm_tick = 0;
             if (door_close_from_full) {
@@ -148,6 +156,8 @@ void StateVector_Input(void)
 
     bool estop = (Flash_GetEstopType() == 1)
         ? ((in_09_16 & 0x08) != 0) : ((in_09_16 & 0x08) == 0);
+    bool laser_emergency = false;
+
     if (estop) {
         VEC_EVENT("ESTOP");
         system_status = V_STATE_EMERGENCY;
@@ -155,11 +165,15 @@ void StateVector_Input(void)
         RamVector_PostCmd(VCMD_LOCK);
         door_close_done_tick = 0;
     }
-    else if ((in_01_08 & 0xE0) || (in_09_16 & 0x01)) {
+
+    /* 激光仅在关门中才进入紧急, 否则透传正常流程 */
+    /* 防夹手: 气压(0x20) + 激光2(0x40) + 激光3(0x80) + 激光4(0x0100) */
+    if ((in_01_08 & 0xE0) || (in_09_16 & 0x01)) {
         uint32_t de = door_close_start_tick ? (now - door_close_start_tick) : 0;
         if (door_close_time_learned && door_close_timing && door_close_start_tick &&
             !(in_01_08 & 0x02) && (de > door_close_default_ms * 2 / 3)) {
             VEC_EVENT("LASER");
+            laser_emergency = true;
             system_status = V_STATE_EMERGENCY;
             RamVector_PostCmd(VCMD_CYLINDER_OPEN);
             RamVector_PostCmd(VCMD_LOCK);
@@ -170,7 +184,7 @@ void StateVector_Input(void)
     /* ══════════════════════════════════════════
      *  事件 → PostCmd (状态由 IO 观测驱动)
      * ══════════════════════════════════════════ */
-    if (!estop && !((in_01_08 & 0xE0) || (in_09_16 & 0x01))) {
+    if (!estop && !laser_emergency) {
 
         /* power_button → LOCK / UNLOCK */
         if (in_09_16 & 0x10) {
@@ -238,11 +252,14 @@ void StateVector_Input(void)
             }
         }
 
-        /* 气压检测 */
+        /* 气压检测 (关门完成后 3s 稳定期 → 每 1.5s 检测一次) */
         if ((in_01_08 & 0x02) && door_close_done_tick) {
             uint32_t el = now - door_close_done_tick;
-            if (el >= 3000 && (!air_last_check_tick || ((now - air_last_check_tick) >= 1500)))
+            if (el >= 3000 && (!air_last_check_tick || ((now - air_last_check_tick) >= 1500))) {
+                if (!(in_01_08 & 0x20))
+                    U1_Printf("Intake air pressure too low, elapsed:%u ms\r\n", (unsigned int)el);
                 air_last_check_tick = now;
+            }
         }
     }
 

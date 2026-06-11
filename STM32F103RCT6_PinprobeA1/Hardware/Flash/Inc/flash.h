@@ -104,7 +104,8 @@ typedef struct {
 
     /* ===== 外设配置 ===== */
     uint8_t  estop_type;        /**< 急停输入类型: 0=常闭(NC), 1=常开(NO)                 */
-    uint8_t  reserved[15];      /**< 保留字节，确保未来扩展性，初始化为0                 */
+    uint8_t  risk_mode;         /**< 风险模式: 0=关闭, 1=气压传感器替代限位               */
+    uint8_t  reserved[14];      /**< 保留字节                                          */
 
     /* ===== CRC校验 (必须在结构体末尾) ===== */
     uint32_t crc;               /**< CRC32校验 (从 magic 到 reserved 末尾)              */
@@ -291,6 +292,9 @@ uint32_t Flash_GetBaudrate(void);
 
 Flash_Status_t Flash_SetEstopType(uint8_t type);
 uint8_t Flash_GetEstopType(void);
+
+Flash_Status_t Flash_SetRiskMode(uint8_t mode);
+uint8_t Flash_GetRiskMode(void);
 
 #ifdef __cplusplus
 }
