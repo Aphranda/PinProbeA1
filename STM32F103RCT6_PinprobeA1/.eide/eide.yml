@@ -109,6 +109,7 @@ targets:
         - Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM3
         - MDK-ARM/RTE/_STM32F103RCT6_PinprobeM1I
         - Hardware/BsmRelay/Inc
+        - Hardware/ModBus/Inc
         - Hardware/libscpi/inc
         - Hardware/RFLink/inc
         - Hardware/libscpi/port

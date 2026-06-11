@@ -22,7 +22,7 @@ typedef struct {
     Vector_Cmd_t      cmd;          /* 输出的命令 */
 } EventVectorEntry_t;
 
-#define V_STATE_ANY  0xFF           /* 通配: 任意状态 */
+#define V_STATE_ANY  ((Vector_SysState_t)0xFF)  /* 通配: 任意状态 */
 
 /* 事件表 — 在 event_table.c 中定义 */
 extern const EventVectorEntry_t event_table[];

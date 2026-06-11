@@ -9,18 +9,6 @@
 /* ===== 条件函数 ===== */
 
 /* 门按钮已释放 (release_start_tick已归零) */
-static bool guard_released(const Vector_IOState_t *io)
-{
-    (void)io;
-    return true;  /* 由 StateVectorTask 中的 release_start_tick 计时, 此处透传 */
-}
-
-/* 门不在关门中 */
-static bool guard_not_closing(const Vector_IOState_t *io)
-{
-    return io->cylinder_cmd[0] != 0;  /* cylinder_cmd[0]=1=OPEN, 只要不是CLOSE */
-}
-
 /* ===== 事件向量表 ===== */
 
 /* clang-format off */
@@ -53,7 +41,7 @@ const EventVectorEntry_t event_table[] = {
     { V_STATE_ANY,  EV_LASER_ANY,    NULL,               VCMD_ESTOP },
 
     /* ── 终止 ── */
-    { 0, 0, NULL, VCMD_NONE }
+    { (Vector_SysState_t)0, (EventID_t)0, NULL, VCMD_NONE }
 };
 /* clang-format on */
 

@@ -34,10 +34,8 @@ scpi_choice_def_t Cylinder_Status(uint32_t cylinder_id)
 {
     uint8_t* O_status = OutputIO_Read(CHECK_NUM);
     uint8_t out_01_08 = O_status[0];
-    uint8_t out_09_16 = O_status[1];
     uint8_t* I_status = InputIO_Read(CHECK_NUM);
     uint8_t in_01_08 = I_status[0];
-    uint8_t in_09_16 = I_status[1];
     if(out_01_08&door_open) // 气缸伸出
     {
         if(in_01_08&door_sensor_up) // 触发前限位传感
@@ -78,10 +76,6 @@ uint8_t Lock_Write(scpi_choice_def_t lock_value)
 scpi_choice_def_t Lock_Status(){
     uint8_t* O_status = OutputIO_Read(CHECK_NUM);
     uint8_t out_01_08 = O_status[0];
-    uint8_t out_09_16 = O_status[1];
-    uint8_t* I_status = InputIO_Read(CHECK_NUM);
-    uint8_t in_01_08 = I_status[0];
-    uint8_t in_09_16 = I_status[1];
 
     if(out_01_08&power_out)
     {
@@ -129,10 +123,6 @@ uint8_t LED_Write(scpi_choice_def_t led_value)
 scpi_choice_def_t LED_Status(){
     uint8_t* O_status = OutputIO_Read(CHECK_NUM);
     uint8_t out_01_08 = O_status[0];
-    uint8_t out_09_16 = O_status[1];
-    uint8_t* I_status = InputIO_Read(CHECK_NUM);
-    uint8_t in_01_08 = I_status[0];
-    uint8_t in_09_16 = I_status[1];
 
     if(out_01_08&led_green){
         return led_source[1];
