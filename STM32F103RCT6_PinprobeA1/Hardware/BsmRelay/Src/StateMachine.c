@@ -295,7 +295,8 @@ uint8_t Idle_Action(uint8_t in_01_08, uint8_t in_09_16, uint8_t out_01_08, uint8
             LED_Write(led_source[3]); // 黄灯亮起，表示门动作准备就绪
             system_status = Ready;  // door action ready
             door_ready_tick = 0;
-            poweron_position_ok = 1; // 人为操作过，位置已确认
+            door_close_confirm_tick = 0; // 进入Ready时清零，避免旧tick残留
+            poweron_position_ok = 1;     // 人为操作过，位置已确认
         }
     }
     return 0;
@@ -382,6 +383,7 @@ uint8_t Running_Action(uint8_t in_01_08, uint8_t in_09_16, uint8_t out_01_08, ui
                 system_status = Complete;   // 气缸到达后限位
                 door_status = Door_Closed;  // 门状态更新为关闭
                 door_close_timing = 0;      // 停止关门计时
+                door_open_confirm_tick = 0; // 进入Complete清零，避免旧tick残留跳过防抖
                 // 只有从开门限位开始的关门才更新学习值，避免中间位置误导
                 if (door_close_from_full) {
                     door_close_default_ms = GetTim1Ms() - door_close_start_tick;
