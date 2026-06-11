@@ -42,6 +42,7 @@ virtualFolder:
                 - path: Hardware/RamVector/Src/ram_vector.c
                 - path: Hardware/RamVector/Src/cmd_exec.c
                 - path: Hardware/RamVector/Src/event_table.c
+                - path: Hardware/RamVector/Src/state_vector.c
               folders: []
     - name: Drivers
       files: []

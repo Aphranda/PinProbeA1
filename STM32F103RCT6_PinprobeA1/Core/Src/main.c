@@ -35,6 +35,8 @@
 #include "scpi/scpi.h"
 #include "scpi-def.h"
 #include "flash.h"
+#include "ram_vector.h"
+#include "state_vector.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -251,11 +253,20 @@ void ModBusTask(void *argument)
   for(;;)
   {
     osMutexWait(COMMutexHandle,osWaitForever); // 申请互斥锁，保护共享资源
-    StateMachine_Input();                      // 调用主状态机处理函数
+    // StateMachine_Input();                      // 已迁移到 StateVectorTask (向量表)
     osMutexRelease(COMMutexHandle);            // 释放互斥锁
     osDelay(50);                               // 任务延时50ms
   }
   /* USER CODE END ModBusTask */
+}
+
+/* StateVectorTask — 覆盖 freertos.c 中的 __weak 空壳 */
+void StateVectorTask(void *argument)
+{
+  (void)argument;
+  RamVector_Init(1);
+  osDelay(1000); // 延迟于IO拓展板启动
+  for(;;) { StateVector_Input(); osDelay(50); }
 }
 /* USER CODE END 4 */
 
