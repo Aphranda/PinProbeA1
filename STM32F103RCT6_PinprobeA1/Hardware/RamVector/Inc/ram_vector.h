@@ -53,6 +53,20 @@ typedef enum {
 } Vector_Cmd_t;
 
 /* ========================================================================== */
+/*              节点状态 (每节点 8B)                                           */
+/* ========================================================================== */
+
+typedef struct __attribute__((packed)) {
+    uint8_t  online;            /* 在线标志 */
+    uint8_t  state;             /* 系统状态 */
+    uint8_t  hw_ver;            /* 硬件版本 */
+    uint8_t  fw_ver_minor;      /* 固件次版本 */
+    uint8_t  fw_ver_major;      /* 固件主版本 */
+    uint8_t  error_code;        /* 最后错误码 */
+    uint16_t heartbeat;         /* 心跳计数 */
+} Vector_NodeStatus_t;          /* 8 字节 */
+
+/* ========================================================================== */
 /*              系统状态 (与 MachineState 对齐)                                */
 /* ========================================================================== */
 
@@ -135,21 +149,24 @@ typedef struct __attribute__((packed)) {
     uint8_t  global_state;
     uint8_t  error_code;
 
+    /* 节点状态 (64B) — 心跳+在线+版本 */
+    Vector_NodeStatus_t node_status[RAM_VECTOR_MAX_NODES];
+
     /* IO 状态 (128B) */
     Vector_IOState_t io_state[RAM_VECTOR_MAX_NODES];
 
     /* 扩展参数 (786B) — 预留 */
     uint8_t  ext_params[786];
 
-    /* 帧尾 (4B) — 预留 */
+    /* 帧尾 (4B) */
     uint32_t end_magic;
-
-    /* ── 以下为辅存, 不在主线布局中 ── */
-    /* 事件向量表 (运行时, 不占 SRAM 固定区) */
-    /* 心跳计数 */
-    uint16_t local_heartbeat;
-    uint8_t  initialized;
 } RAM_Vector_t;
+
+/* 编译期校验 */
+#ifndef __CC_ARM
+_Static_assert(sizeof(RAM_Vector_t) == RAM_VECTOR_SIZE,
+               "RAM_Vector_t must be exactly 1024 bytes");
+#endif
 
 /* ===== API ===== */
 

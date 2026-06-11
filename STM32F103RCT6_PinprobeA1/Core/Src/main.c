@@ -288,7 +288,7 @@ void ModBusTask(void *argument)
 void StateVectorTask(void *argument)
 {
   (void)argument;
-  RamVector_Init(1);
+  RamVector_Init(0);  /* 单机出厂模式 */
   osDelay(1000); // 延迟于IO拓展板启动
   for(;;) { StateVector_Input(); osDelay(20); }
 }
