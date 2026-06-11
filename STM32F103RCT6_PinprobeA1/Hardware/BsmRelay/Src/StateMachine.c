@@ -22,7 +22,7 @@
 // #define ACTION_TIMING
 #ifdef ACTION_TIMING
 #define LOG_ACTION_TIME(name, elapsed_ms) \
-    U1_Printf("[%s] %u ms\r\n", name, (unsigned int)(elapsed_ms))
+    Uart1_Printf("[%s] %u ms\r\n", name, (unsigned int)(elapsed_ms))
 #else
 #define LOG_ACTION_TIME(name, elapsed_ms)  do {} while(0)
 #endif
@@ -89,7 +89,7 @@ uint8_t StateMachine_Input()
         static uint8_t rs485_err_cnt = 0;
         if (++rs485_err_cnt >= 40)  // 约2秒报一次，避免刷屏
         {
-            U1_Printf("[RS485] COMM ERROR - 通讯异常\r\n");
+            Uart1_Printf("[RS485] COMM ERROR - 通讯异常\r\n");
             rs485_err_cnt = 0;
         }
         return 0;
@@ -510,7 +510,7 @@ uint8_t Emerge_Action(uint8_t in_01_08, uint8_t in_09_16, uint8_t out_01_08, uin
 
     if(estop_triggered)
     {
-        U1_Printf("E-STOP_Emerge_Action:%u\r\n",(unsigned int)door_elapsed);
+        Uart1_Printf("E-STOP_Emerge_Action:%u\r\n",(unsigned int)door_elapsed);
         system_status = Emergency;                    // 设置系统状态为紧急
         // 门未开到位才输出开门信号，到位后断气
         if(!(in_01_08 & door_sensor_up))
@@ -527,8 +527,8 @@ uint8_t Emerge_Action(uint8_t in_01_08, uint8_t in_09_16, uint8_t out_01_08, uin
         // 激光超时检测仅在关门时间已学习后生效（首次学习值不准+门体可能挡激光）
         if(door_close_time_learned && door_close_timing && (door_close_start_tick != 0) && !(in_01_08&door_sensor_down)&&(door_elapsed > (door_close_default_ms*2/3)))
         {
-            U1_Printf("Door_Emerge_Action1:%u\r\n",(unsigned int)door_elapsed);
-            U1_Printf("Door_Emerge_Action2:%u\r\n",(unsigned int)door_close_default_ms);
+            Uart1_Printf("Door_Emerge_Action1:%u\r\n",(unsigned int)door_elapsed);
+            Uart1_Printf("Door_Emerge_Action2:%u\r\n",(unsigned int)door_close_default_ms);
             system_status = Emergency;
             Cylinder_Write(1,cylinder_source[1]);
             Lock_Write(lock_source[1]);
@@ -553,7 +553,7 @@ uint8_t Emerge_Action(uint8_t in_01_08, uint8_t in_09_16, uint8_t out_01_08, uin
             {
                 if(((in_01_08 & laser_sensor1) != 0x20))
                 {
-                    U1_Printf("Intake air pressure too low, elapsed:%u ms\r\n", (unsigned int)elapsed);
+                    Uart1_Printf("Intake air pressure too low, elapsed:%u ms\r\n", (unsigned int)elapsed);
                 }
                 air_last_check_tick = now;
             }
@@ -614,22 +614,22 @@ uint8_t showStatus()
     switch (system_status)
     {
     case 0:
-        U1_Printf("LOCK\r\n");
+        Uart1_Printf("LOCK\r\n");
         break;
     case 1:
-        U1_Printf("IDLE\r\n");
+        Uart1_Printf("IDLE\r\n");
         break;
     case 2:
-        U1_Printf("READY\r\n"); // READY
+        Uart1_Printf("READY\r\n"); // READY
         break;
     case 3:
-        U1_Printf("RUNNING\r\n");
+        Uart1_Printf("RUNNING\r\n");
         break;
     case 4:
-        U1_Printf("EMERGENCY\r\n");
+        Uart1_Printf("EMERGENCY\r\n");
         break;
     case 5:
-        U1_Printf("COMPLETE\r\n"); //COMPLETE
+        Uart1_Printf("COMPLETE\r\n"); //COMPLETE
         break;
     default:
         break;
@@ -643,13 +643,13 @@ uint8_t showDoorStatus(){
     switch (door_status)
     {
         case 0:
-            U1_Printf("CLOSED\r\n");
+            Uart1_Printf("CLOSED\r\n");
             break;
         case 1:
-            U1_Printf("OPENED\r\n");
+            Uart1_Printf("OPENED\r\n");
             break;
         case 2:
-            U1_Printf("MID\r\n");
+            Uart1_Printf("MID\r\n");
             break;
         default:
             break;

@@ -9,7 +9,7 @@
 #include <string.h>
 
 /* ===== 固定地址向量表 ===== */
-static RAM_Vector_t ram_vector __attribute__((section(".RamVector"), aligned(4)));
+static RAM_Vector_t ram_vector __attribute__((section("RamVector"), aligned(4)));
 
 /* 本节点 ID: 0=单机出厂模式, 1~8=多机模式 */
 static uint8_t local_node = 0;

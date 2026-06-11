@@ -14,9 +14,9 @@
 /* ── 调试 ── */
 #define VECTOR_DEBUG
 #ifdef VECTOR_DEBUG
-#define VEC_ACTION(n,e)  U1_Printf("[%s] %u ms\r\n", n, (unsigned int)(e))
-#define VEC_STATE(s)     U1_Printf("%s\r\n", (s))
-#define VEC_EVENT(e)     U1_Printf("[EVENT] %s\r\n", (e))
+#define VEC_ACTION(n,e)  Uart1_Printf("[%s] %u ms\r\n", n, (unsigned int)(e))
+#define VEC_STATE(s)     Uart1_Printf("%s\r\n", (s))
+#define VEC_EVENT(e)     Uart1_Printf("[EVENT] %s\r\n", (e))
 #else
 #define VEC_ACTION(n,e)  do{}while(0)
 #define VEC_STATE(s)     do{}while(0)
@@ -59,15 +59,15 @@ void StateVector_Input(void)
     bool io_ok = (vio->rs485_ok != 0);
 
     if (!io_ok) {
-        if (++rs485_err_cnt >= 40) { U1_Printf("[RS485] COMM ERROR\r\n"); rs485_err_cnt = 0; }
+        if (++rs485_err_cnt >= 40) { Uart1_Printf("[RS485] COMM ERROR\r\n"); rs485_err_cnt = 0; }
         return;
     }
     rs485_err_cnt = 0;
 
     /* IO 变化时输出 */
     { static uint8_t li0=0xFF,li1=0xFF,lo0=0xFF,lo1=0xFF;
-      if(in_01_08!=li0||in_09_16!=li1){U1_Printf("[IO] IN  0x%02X,0x%02X\r\n",in_01_08,in_09_16);li0=in_01_08;li1=in_09_16;}
-      if(out_01_08!=lo0||out_09_16!=lo1){U1_Printf("[IO] OUT 0x%02X,0x%02X\r\n",out_01_08,out_09_16);lo0=out_01_08;lo1=out_09_16;}
+      if(in_01_08!=li0||in_09_16!=li1){Uart1_Printf("[IO] IN  0x%02X,0x%02X\r\n",in_01_08,in_09_16);li0=in_01_08;li1=in_09_16;}
+      if(out_01_08!=lo0||out_09_16!=lo1){Uart1_Printf("[IO] OUT 0x%02X,0x%02X\r\n",out_01_08,out_09_16);lo0=out_01_08;lo1=out_09_16;}
     }
 
     /* ── 2. 消抖 ── */
@@ -118,7 +118,7 @@ void StateVector_Input(void)
                       && ((now - door_close_start_tick) > door_close_default_ms);
         if (limit_ok || risk_ok) {
             if (risk_ok && !limit_ok)
-                U1_Printf("[RISK] door close confirmed by pressure, limit failed\r\n");
+                Uart1_Printf("[RISK] door close confirmed by pressure, limit failed\r\n");
             RamVector_PostCmd(VCMD_LED_GREEN);
             door_close_timing = 0; door_open_confirm_tick = 0;
             if (door_close_from_full) {
@@ -257,7 +257,7 @@ void StateVector_Input(void)
             uint32_t el = now - door_close_done_tick;
             if (el >= 3000 && (!air_last_check_tick || ((now - air_last_check_tick) >= 1500))) {
                 if (!(in_01_08 & 0x20))
-                    U1_Printf("Intake air pressure too low, elapsed:%u ms\r\n", (unsigned int)el);
+                    Uart1_Printf("Intake air pressure too low, elapsed:%u ms\r\n", (unsigned int)el);
                 air_last_check_tick = now;
             }
         }

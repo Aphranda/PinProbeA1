@@ -40,11 +40,12 @@ extern "C" {
 
 /* Exported constants --------------------------------------------------------*/
 /* USER CODE BEGIN EC */
-extern uint8_t* usart1_buff_IsReady;
-extern uint8_t* usart1_buff_Occupied;
+extern uint8_t* Uart1_BuffIsReady;
+extern uint8_t* Uart1_BuffOccupied;
 
-extern uint8_t* usart3_buff_IsReady;
-extern uint8_t* usart3_buff_Occupied;
+extern uint8_t* Uart3_BuffIsReady;
+extern uint8_t* Uart3_BuffOccupied;
+extern uint32_t Uart3_RxLength;
 /* USER CODE END EC */
 
 /* Exported macro ------------------------------------------------------------*/
@@ -75,14 +76,8 @@ void SPI3_IRQHandler(void);
 void DMA2_Channel1_IRQHandler(void);
 void DMA2_Channel2_IRQHandler(void);
 /* USER CODE BEGIN EFP */
-void DMA_Usart1_Tx_Data(uint8_t *buffer, uint16_t size); // DMA Usart1 Tx Data
-void DMA_Usart3_Tx_Data(uint8_t *buffer, uint16_t size); // DMA Usart3 Tx Data
-
-void U1_Printf(char *format, ...); // Usart1 print
-void U3_Printf(char *format, ...); // Usart3 print
-
-void Usart1_Tx_Wait(void); // Transmit Delay
-void Usart3_Tx_Wait(void); // Transmit Delay
+void Uart1_Printf(char *format, ...);
+void Uart3_Printf(char *format, ...);
 /* USER CODE END EFP */
 
 #ifdef __cplusplus

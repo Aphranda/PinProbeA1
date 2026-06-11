@@ -54,8 +54,8 @@ uint8_t Usart1_RX_BUF1_IsReady = 0;   // double buffer flag, which Cache occupie
 // 0: Usart1_RX_BUF1 Occupied, Usart1_RX_BUF2 Ready
 // 1: Usart1_RX_BUF1 Occupied, Usart1_RX_BUF2 Ready
 
-uint8_t* usart1_buff_IsReady = Usart1_RX_BUF2;  // The pointer points to BUF2
-uint8_t* usart1_buff_Occupied = Usart1_RX_BUF1; // The pointer points to BUF1
+uint8_t* Uart1_BuffIsReady = Usart1_RX_BUF2;  // The pointer points to BUF2
+uint8_t* Uart1_BuffOccupied = Usart1_RX_BUF1; // The pointer points to BUF1
 
 volatile uint8_t Usart3_TX_Flag = 0;
 uint8_t Usart3_TX_BUF[MAX_TX_LEN];
@@ -63,10 +63,10 @@ uint8_t Usart3_RX_BUF1[MAX_RX_LEN];
 uint8_t Usart3_RX_BUF2[MAX_RX_LEN];
 
 uint8_t Usart3_RX_BUF1_IsReady = 0;
-uint32_t usart3_rx_length = 0;           // 最近一次USART3接收帧长度
+uint32_t Uart3_RxLength = 0;           // 最近一次USART3接收帧长度
 
-uint8_t* usart3_buff_IsReady = Usart3_RX_BUF2;
-uint8_t* usart3_buff_Occupied = Usart3_RX_BUF2;
+uint8_t* Uart3_BuffIsReady = Usart3_RX_BUF2;
+uint8_t* Uart3_BuffOccupied = Usart3_RX_BUF2;
 
 /* USER CODE END PV */
 
@@ -202,7 +202,13 @@ void DebugMon_Handler(void)
 void DMA1_Channel2_IRQHandler(void)
 {
   /* USER CODE BEGIN DMA1_Channel2_IRQn 0 */
-
+  if(__HAL_DMA_GET_FLAG(&hdma_usart3_tx, DMA_FLAG_TC2) != RESET)
+  {
+    __HAL_UART_CLEAR_IDLEFLAG(&huart3); // clear uart idle flag
+    Usart3_TX_Flag = 0;                 // reset tx flag
+    huart3.gState = HAL_UART_STATE_READY;
+    hdma_usart3_tx.State = HAL_DMA_STATE_READY;
+  }
   /* USER CODE END DMA1_Channel2_IRQn 0 */
   HAL_DMA_IRQHandler(&hdma_usart3_tx);
   /* USER CODE BEGIN DMA1_Channel2_IRQn 1 */
@@ -352,23 +358,23 @@ void USART1_IRQHandler(void)
     // double cache
     if(Usart1_RX_BUF1_IsReady)
     {
-      usart1_buff_IsReady = Usart1_RX_BUF2;
-      usart1_buff_Occupied = Usart1_RX_BUF1;
+      Uart1_BuffIsReady = Usart1_RX_BUF2;
+      Uart1_BuffOccupied = Usart1_RX_BUF1;
       Usart1_RX_BUF1_IsReady = 0;
     }
     else
     {
-      usart1_buff_IsReady = Usart1_RX_BUF1;
-      usart1_buff_Occupied = Usart1_RX_BUF2;
+      Uart1_BuffIsReady = Usart1_RX_BUF1;
+      Uart1_BuffOccupied = Usart1_RX_BUF2;
       Usart1_RX_BUF1_IsReady = 1;
     }
-    memset((uint8_t *)usart1_buff_Occupied, 0, MAX_RX_LEN);	 // clear receive cache
+    memset((uint8_t *)Uart1_BuffOccupied, 0, MAX_RX_LEN);	 // clear receive cache
   } 
   /* USER CODE END USART1_IRQn 0 */
   HAL_UART_IRQHandler(&huart1);
   /* USER CODE BEGIN USART1_IRQn 1 */
-  // SCPI_Input(&scpi_context, (const char *)usart1_buff_IsReady, data_length);
-  HAL_UART_Receive_DMA(&huart1, usart1_buff_Occupied, MAX_RX_LEN); // restart receive DMA
+  // SCPI_Input(&scpi_context, (const char *)Uart1_BuffIsReady, data_length);
+  HAL_UART_Receive_DMA(&huart1, Uart1_BuffOccupied, MAX_RX_LEN); // restart receive DMA
   /* USER CODE END USART1_IRQn 1 */
 }
 
@@ -383,27 +389,27 @@ void USART3_IRQHandler(void)
     HAL_UART_DMAStop(&huart3); // stop DMA
 
     uint32_t data_length = MAX_RX_LEN - __HAL_DMA_GET_COUNTER(&hdma_usart3_rx);
-    usart3_rx_length = data_length; // 记录接收长度供上层校验
+    Uart3_RxLength = data_length; // 记录接收长度供上层校验
 
   // double cache
     if(Usart3_RX_BUF1_IsReady)
     {
-      usart3_buff_IsReady = Usart3_RX_BUF2;
-      usart3_buff_Occupied = Usart3_RX_BUF1;
+      Uart3_BuffIsReady = Usart3_RX_BUF2;
+      Uart3_BuffOccupied = Usart3_RX_BUF1;
       Usart3_RX_BUF1_IsReady = 0;
     }
     else
     {
-      usart3_buff_IsReady = Usart3_RX_BUF1;
-      usart3_buff_Occupied = Usart3_RX_BUF2;
+      Uart3_BuffIsReady = Usart3_RX_BUF1;
+      Uart3_BuffOccupied = Usart3_RX_BUF2;
       Usart3_RX_BUF1_IsReady = 1;
     }
-    memset((uint8_t *)usart3_buff_Occupied, 0, MAX_RX_LEN);	 // clear receive cache
+    memset((uint8_t *)Uart3_BuffOccupied, 0, MAX_RX_LEN);	 // clear receive cache
   }
   /* USER CODE END USART3_IRQn 0 */
   HAL_UART_IRQHandler(&huart3);
   /* USER CODE BEGIN USART3_IRQn 1 */
-  HAL_UART_Receive_DMA(&huart3, usart3_buff_Occupied, MAX_RX_LEN); // restart receive DMA
+  HAL_UART_Receive_DMA(&huart3, Uart3_BuffOccupied, MAX_RX_LEN); // restart receive DMA
   /* USER CODE END USART3_IRQn 1 */
 }
 
@@ -464,69 +470,29 @@ void DMA2_Channel2_IRQHandler(void)
 }
 
 /* USER CODE BEGIN 1 */
-void DMA_Usart1_Tx_Data(uint8_t *buffer, uint16_t size) // DMA Usart1 Tx Data
+void Uart1_Printf(char *format, ...) // Usart1 print (非阻塞, TX忙时跳过)
 {
-  Usart1_Tx_Wait();
+  if (Usart1_TX_Flag) return;
+
+  va_list arg_ptr;
+  va_start(arg_ptr, format);
+  vsnprintf((char *)Usart1_TX_BUF, MAX_TX_LEN, format, arg_ptr);
+  va_end(arg_ptr);
+
   Usart1_TX_Flag = 1;
-  HAL_UART_Transmit_DMA(&huart1, buffer, size);
+  HAL_UART_Transmit_DMA(&huart1, Usart1_TX_BUF, strlen((const char *)Usart1_TX_BUF));
 }
 
-void DMA_Usart3_Tx_Data(uint8_t *buffer, uint16_t size) // DMA Usart3 Tx Data
+void Uart3_Printf(char *format, ...) // Usart3 print (非阻塞, TX忙时跳过)
 {
-  Usart3_Tx_Wait();
+  if (Usart3_TX_Flag) return;
+
+  va_list arg_ptr;
+  va_start(arg_ptr, format);
+  vsnprintf((char *)Usart3_TX_BUF, MAX_TX_LEN, format, arg_ptr);
+  va_end(arg_ptr);
+
   Usart3_TX_Flag = 1;
-  HAL_UART_Transmit_DMA(&huart3, buffer, size);
-}
-
-void Usart1_Tx_Wait(void) // Transmit Delay
-{
-  uint16_t delay = 20000;
-  while(Usart1_TX_Flag)
-  {
-    delay--;
-    if(delay == 0)
-      return;
-  }
-}
-
-void Usart3_Tx_Wait(void) // Transmit Delay
-{
-  uint16_t delay = 20000;
-  while(Usart3_TX_Flag)
-  {
-    delay--;
-    if(delay == 0)
-      return;
-  }
-}
-
-void U1_Printf(char *format, ...) // Usart1 print
-{
-  va_list arg_ptr;
-
-  Usart1_Tx_Wait(); 
-
-  va_start(arg_ptr, format);
-
-  vsnprintf((char *)Usart1_TX_BUF, MAX_TX_LEN + 1, format, arg_ptr);
-
-  va_end(arg_ptr);
-
-  DMA_Usart1_Tx_Data(Usart1_TX_BUF, strlen((const char *)Usart1_TX_BUF)); 
-}
-
-void U3_Printf(char *format, ...) // Usart3 print
-{
-  va_list arg_ptr;
-
-  Usart3_Tx_Wait(); 
-
-  va_start(arg_ptr, format);
-
-  vsnprintf((char *)Usart3_TX_BUF, MAX_TX_LEN + 1, format, arg_ptr);
-
-  va_end(arg_ptr);
- 
-  DMA_Usart3_Tx_Data(Usart3_TX_BUF, strlen((const char *)Usart3_TX_BUF)); 
+  HAL_UART_Transmit_DMA(&huart3, Usart3_TX_BUF, strlen((const char *)Usart3_TX_BUF));
 }
 /* USER CODE END 1 */

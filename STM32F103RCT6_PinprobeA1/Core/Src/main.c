@@ -50,11 +50,11 @@
 extern DMA_HandleTypeDef hdma_usart1_tx;
 extern DMA_HandleTypeDef hdma_usart3_tx;
 
-extern uint8_t* usart1_buff_IsReady;
-extern uint8_t* usart1_buff_Occupied;
+extern uint8_t* Uart1_BuffIsReady;
+extern uint8_t* Uart1_BuffOccupied;
 
-extern uint8_t* usart3_buff_IsReady;
-extern uint8_t* usart3_buff_Occupied;
+extern uint8_t* Uart3_BuffIsReady;
+extern uint8_t* Uart3_BuffOccupied;
 
 extern osMutexId_t COMMutexHandle;
 /* USER CODE END PD */
@@ -129,8 +129,8 @@ int main(void)
   __HAL_UART_CLEAR_IDLEFLAG(&huart1);
   __HAL_UART_CLEAR_IDLEFLAG(&huart3);
 
-  HAL_UART_Receive_DMA(&huart1, usart1_buff_Occupied, MAX_RX_LEN);
-  HAL_UART_Receive_DMA(&huart3, usart3_buff_Occupied, MAX_RX_LEN);
+  HAL_UART_Receive_DMA(&huart1, Uart1_BuffOccupied, MAX_RX_LEN);
+  HAL_UART_Receive_DMA(&huart3, Uart3_BuffOccupied, MAX_RX_LEN);
 
   /* 初始化 Flash 配置 (从 Flash 加载或使用默认值) */
   Flash_Init();
@@ -214,7 +214,7 @@ void SystemClock_Config(void)
 /**
   * @brief SCPI命令处理任务
   * 
-  * 该任务循环检测串口1接收缓冲区(usart1_buff_IsReady)是否有SCPI命令数据，
+  * 该任务循环检测串口1接收缓冲区(Uart1_BuffIsReady)是否有SCPI命令数据，
   * 如果有，则调用SCPI_Input进行命令解析和处理，处理完成后清空缓冲区。
   * 任务执行期间会申请互斥锁(COMMutexHandle)以保证串口和SCPI资源的线程安全。
   * 每次循环结束后延时10ms，并喂狗防止看门狗复位。
@@ -226,12 +226,12 @@ void SCPITask(void *argument)
   for(;;)
   {
     osMutexWait(COMMutexHandle,osWaitForever); // 申请互斥锁，保护串口和SCPI资源
-    if(strlen((const char *)usart1_buff_IsReady)>3) // 判断是否有有效SCPI命令
+    if(strlen((const char *)Uart1_BuffIsReady)>3) // 判断是否有有效SCPI命令
     {
       // 调用SCPI解析处理函数
-      SCPI_Input(&scpi_context, (const char *)usart1_buff_IsReady, strlen((const char *)usart1_buff_IsReady)-1);
+      SCPI_Input(&scpi_context, (const char *)Uart1_BuffIsReady, strlen((const char *)Uart1_BuffIsReady)-1);
       // 处理完成后清空缓冲区
-      memset((uint8_t *)usart1_buff_IsReady, 0, MAX_RX_LEN);
+      memset((uint8_t *)Uart1_BuffIsReady, 0, MAX_RX_LEN);
     }
     osMutexRelease(COMMutexHandle); // 释放互斥锁
     osDelay(10);                   // 任务延时10ms

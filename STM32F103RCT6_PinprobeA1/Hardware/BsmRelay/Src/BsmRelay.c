@@ -163,7 +163,7 @@ bool IO_Read(uint8_t checkNum, uint8_t direction, uint8_t* trueData){
         }
 
         // 校验接收帧长度（至少6字节：地址+功能码+字节数+1数据+2CRC）
-        if (usart3_rx_length < 6)
+        if (Uart3_RxLength < 6)
         {
             State_count++;
             continue;
@@ -172,9 +172,9 @@ bool IO_Read(uint8_t checkNum, uint8_t direction, uint8_t* trueData){
         uint8_t crcData[2];
         uint8_t IOData[5];
 
-        memcpy(IOData, usart3_buff_IsReady, 5);
-        crcData[0] = usart3_buff_IsReady[5];
-        crcData[1] = usart3_buff_IsReady[6];
+        memcpy(IOData, Uart3_BuffIsReady, 5);
+        crcData[0] = Uart3_BuffIsReady[5];
+        crcData[1] = Uart3_BuffIsReady[6];
 
         if(modbus_crc_compare(5, IOData, crcData))
         {

@@ -13,7 +13,7 @@
 #define RS485_TX_TIMEOUT_MS  100
 
 // USART3 接收帧长度（在 stm32f1xx_it.c 的 IDLE 中断中更新）
-extern uint32_t usart3_rx_length;
+extern uint32_t Uart3_RxLength;
 
 bool WriteIO(uint8_t index, uint8_t status);
 // 需要在 stm32f1xx_it.c 中定义

@@ -13,10 +13,10 @@
 
 #define CHECK_NUM 5
 
-extern uint8_t* usart1_buff_IsReady;
-extern uint8_t* usart1_buff_Occupied;
-extern uint8_t* usart3_buff_IsReady;
-extern uint8_t* usart3_buff_Occupied;
+extern uint8_t* Uart1_BuffIsReady;
+extern uint8_t* Uart1_BuffOccupied;
+extern uint8_t* Uart3_BuffIsReady;
+extern uint8_t* Uart3_BuffOccupied;
 
 typedef enum {
     door_sensor_up      = 0x0001,
