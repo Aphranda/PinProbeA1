@@ -51,8 +51,9 @@ uint8_t door_old_status;              // 门上一次状态
 uint32_t door_close_start_tick = 0;   // 关门开始时刻(ms)，0=未开始关门
 uint32_t door_close_done_tick = 0;    // 关门完成时刻(ms)，气压稳定延时起点
 uint32_t door_open_start_tick = 0;    // 开门开始时刻(ms)，0=未开始开门
-uint32_t door_close_default_ms = 2000;// 关门默认时间(ms)，运行时由实际关门时间更新
+uint32_t door_close_default_ms = 2500;// 关门默认时间(ms)，运行时由实际关门时间更新
 uint8_t door_close_timing = 0;        // 关门计时标志
+uint8_t door_close_from_full = 0;     // 本次关门是否从开门限位开始（=1 → 可学习时间）
 
 uint32_t air_last_check_tick = 0;     // 上次气压检测时刻(ms)
 uint8_t  poweron_position_ok = 0;     // 上电后位置确认标志：0=待确认, 1=已确认
@@ -359,6 +360,7 @@ uint8_t Ready_Action(uint8_t in_01_08, uint8_t in_09_16, uint8_t out_01_08, uint
 
                 door_close_start_tick = now;           // 记录关门开始时刻
                 door_close_timing = 1;                 // 开始关门计时
+                door_close_from_full = (in_01_08 & door_sensor_up) ? 1 : 0; // 记录是否从开门限位开始
                 air_last_check_tick = 0;               // 复位气压检测
                 LOG_ACTION_TIME("CLOSE_START", 0);
             }
@@ -380,9 +382,13 @@ uint8_t Running_Action(uint8_t in_01_08, uint8_t in_09_16, uint8_t out_01_08, ui
                 system_status = Complete;   // 气缸到达后限位
                 door_status = Door_Closed;  // 门状态更新为关闭
                 door_close_timing = 0;      // 停止关门计时
-                door_close_default_ms = GetTim1Ms() - door_close_start_tick; // 记录关门实际耗时(ms)
+                // 只有从开门限位开始的关门才更新学习值，避免中间位置误导
+                if (door_close_from_full) {
+                    door_close_default_ms = GetTim1Ms() - door_close_start_tick;
+                }
                 door_close_done_tick = GetTim1Ms(); // 记录关门完成时刻，气压稳定延时起点
-                LOG_ACTION_TIME("CLOSE_DONE", door_close_default_ms);
+                door_close_from_full = 0;
+                LOG_ACTION_TIME("CLOSE_DONE", GetTim1Ms() - door_close_start_tick);
             }
             else{
                 system_status = Running;    // 气缸回缩中
