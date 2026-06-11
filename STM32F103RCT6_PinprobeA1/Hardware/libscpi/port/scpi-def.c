@@ -564,6 +564,38 @@ static scpi_result_t SCPI_ReadSystemState(scpi_t *context)
     return SCPI_RES_OK;
 }
 
+/* ===== 急停输入类型配置 ===== */
+
+scpi_choice_def_t estop_type_source[] = {
+    {"NC", 0},   // 常闭 (Normally Closed) — 默认
+    {"NO", 1},   // 常开 (Normally Open)
+    SCPI_CHOICE_LIST_END
+};
+
+static scpi_result_t SCPI_ConfigureEstopType(scpi_t *context)
+{
+    int32_t param;
+    if (!SCPI_ParamChoice(context, estop_type_source, &param, TRUE))
+        return SCPI_RES_ERR;
+    if (Flash_SetEstopType((uint8_t)param) != FLASH_OK)
+        return SCPI_RES_ERR;
+    if (Flash_Save() != FLASH_OK)
+        return SCPI_RES_ERR;
+    const char *name;
+    SCPI_ChoiceToName(estop_type_source, param, &name);
+    SCPI_ResultCharacters(context, name, strlen(name));
+    return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_ReadEstopTypeQ(scpi_t *context)
+{
+    uint8_t type = Flash_GetEstopType();
+    const char *name;
+    SCPI_ChoiceToName(estop_type_source, type, &name);
+    SCPI_ResultCharacters(context, name, strlen(name));
+    return SCPI_RES_OK;
+}
+
 /// @brief 查询所有IO状态（输入+输出）
 /// @note 命令: READ:IO:ALL?
 ///       返回: IN:0xHH,0xHH OUT:0xHH,0xHH（16进制原始值）
@@ -698,6 +730,14 @@ const scpi_command_t scpi_commands[] = {
     {
         .pattern = "READ:IO:ALL?",
         .callback = SCPI_ReadIOAll,
+    },
+    {
+        .pattern = "CONFigure:ESTOP:TYPE",
+        .callback = SCPI_ConfigureEstopType,
+    },
+    {
+        .pattern = "CONFigure:ESTOP:TYPE?",
+        .callback = SCPI_ReadEstopTypeQ,
     },
     SCPI_CMD_LIST_END};
 

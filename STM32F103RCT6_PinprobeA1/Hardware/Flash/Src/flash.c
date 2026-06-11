@@ -529,3 +529,17 @@ uint32_t Flash_GetBaudrate(void)
 {
     return config_cache.rs485_baudrate;
 }
+
+/* ===== 急停类型访问函数 ===== */
+
+Flash_Status_t Flash_SetEstopType(uint8_t type)
+{
+    if (type > 1) return FLASH_ERR_PARAM;
+    config_cache.estop_type = type;
+    return FLASH_OK;
+}
+
+uint8_t Flash_GetEstopType(void)
+{
+    return config_cache.estop_type;
+}

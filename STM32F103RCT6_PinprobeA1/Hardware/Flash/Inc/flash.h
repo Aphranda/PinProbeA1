@@ -102,8 +102,9 @@ typedef struct {
     char     scpi_idn3[FLASH_SCPI_IDN3_LEN]; /**< SCPI序列号/日期 (如 "20250626")        */
     char     scpi_idn4[FLASH_SCPI_IDN4_LEN]; /**< SCPI固件版本 (如 "V0.0.1")             */
 
-    /* ===== 保留字段 (用于未来扩展) ===== */
-    uint8_t  reserved[16];      /**< 保留字节，确保未来扩展性，初始化为0                 */
+    /* ===== 外设配置 ===== */
+    uint8_t  estop_type;        /**< 急停输入类型: 0=常闭(NC), 1=常开(NO)                 */
+    uint8_t  reserved[15];      /**< 保留字节，确保未来扩展性，初始化为0                 */
 
     /* ===== CRC校验 (必须在结构体末尾) ===== */
     uint32_t crc;               /**< CRC32校验 (从 magic 到 reserved 末尾)              */
@@ -285,6 +286,11 @@ Flash_Status_t Flash_SetBaudrate(uint32_t baud);
  * @retval uint32_t 波特率值
  */
 uint32_t Flash_GetBaudrate(void);
+
+/* ===== 急停类型访问函数 ===== */
+
+Flash_Status_t Flash_SetEstopType(uint8_t type);
+uint8_t Flash_GetEstopType(void);
 
 #ifdef __cplusplus
 }

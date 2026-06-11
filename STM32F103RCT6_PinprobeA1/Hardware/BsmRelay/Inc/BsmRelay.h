@@ -67,5 +67,6 @@ uint8_t* InputIO_Read(uint8_t checkNum);
 uint8_t* OutputIO_Read(uint8_t checkNum);
 
 bool IsRS485_Ok(void);
+void SetRS485_Ok(bool ok);
 
 #endif // !__BSMRELAY_H

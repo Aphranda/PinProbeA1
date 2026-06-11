@@ -2,6 +2,7 @@
 #include "BsmRelay.h"
 #include "cmsis_os.h"
 #include "tim.h"
+#include "flash.h"
 
 // 基于TIM1(1ms)的精确延时定义，替代原有的循环计数
 #define LOCK_PRESS_MS        300   // 锁定按钮按下确认时间
@@ -65,16 +66,22 @@ static uint8_t door_down_db = 0;  // 消抖后的 door_sensor_down
 // 状态机主入口，周期性调用
 uint8_t StateMachine_Input()
 {
-    // 读取输入输出状态
-    uint8_t* I_status = InputIO_Read(CHECK_NUM);
-    uint8_t in_01_08 = I_status[0];
-    uint8_t in_09_16 = I_status[1];
-    uint8_t* O_status = OutputIO_Read(CHECK_NUM);
-    uint8_t out_01_08 = O_status[0];
-    uint8_t out_09_16 = O_status[1];
+    // 读取输入输出状态，并记录通讯结果
+    static uint8_t sm_in_buf[2] = {0, 0};
+    static uint8_t sm_out_buf[2] = {0, 0};
+    bool io_ok;
+
+    io_ok  = IO_Read(CHECK_NUM, 2, sm_in_buf);
+    io_ok  = IO_Read(CHECK_NUM, 1, sm_out_buf) && io_ok;
+    SetRS485_Ok(io_ok);  // 仅状态机路径更新，SCPI查询不影响
+
+    uint8_t in_01_08  = sm_in_buf[0];
+    uint8_t in_09_16  = sm_in_buf[1];
+    uint8_t out_01_08 = sm_out_buf[0];
+    uint8_t out_09_16 = sm_out_buf[1];
 
     // RS485通信失败时跳过本轮，避免使用过期/零值IO数据
-    if (!IsRS485_Ok())
+    if (!io_ok)
     {
         static uint8_t rs485_err_cnt = 0;
         if (++rs485_err_cnt >= 40)  // 约2秒报一次，避免刷屏
@@ -460,13 +467,25 @@ uint8_t Emerge_Action(uint8_t in_01_08, uint8_t in_09_16, uint8_t out_01_08, uin
         }
     }
 
-    // 检查急停按钮是否被按下（stop_button），如果被按下则立即进入紧急状态
-    if((in_09_16&(stop_button>>8))!=0x08)
+    // 检查急停按钮（支持常开/常闭配置，Flash持久化）
+    // estop_type=0(NC常闭): 按钮按下→触点断开→bit=0 → 触发
+    // estop_type=1(NO常开): 按钮按下→触点闭合→bit=1 → 触发
+    bool estop_triggered;
+    if (Flash_GetEstopType() == 1)  // NO 常开
+        estop_triggered = ((in_09_16 & (stop_button>>8)) != 0);
+    else                            // NC 常闭（默认）
+        estop_triggered = ((in_09_16 & (stop_button>>8)) == 0);
+
+    if(estop_triggered)
     {
         U1_Printf("E-STOP_Emerge_Action:%u\r\n",(unsigned int)door_elapsed);
         system_status = Emergency;                    // 设置系统状态为紧急
-        Cylinder_Write(1,cylinder_source[1]);         // 执行气缸紧急动作（通常为开门）
-        Lock_Write(lock_source[1]);                   // 执行锁紧急动作（通常为解锁）
+        // 门未开到位才输出开门信号，到位后断气
+        if(!(in_01_08 & door_sensor_up))
+        {
+            Cylinder_Write(1,cylinder_source[1]);     // 执行开门动作
+        }
+        Lock_Write(lock_source[1]);                   // 执行锁紧急动作
         LED_Write(led_source[2]);                     // 点亮红灯表示紧急状态
         door_close_done_tick = 0;                     // 复位气压检测计时
     }
@@ -478,13 +497,13 @@ uint8_t Emerge_Action(uint8_t in_01_08, uint8_t in_09_16, uint8_t out_01_08, uin
         {
             U1_Printf("Door_Emerge_Action1:%u\r\n",(unsigned int)door_elapsed);
             U1_Printf("Door_Emerge_Action2:%u\r\n",(unsigned int)door_close_default_ms);
-            system_status = Emergency;                // 设置系统状态为紧急
-            Cylinder_Write(1,cylinder_source[1]);     // 执行气缸紧急动作（通常为开门）
-            Lock_Write(lock_source[1]);               // 执行锁紧急动作（通常为解锁）
-            LED_Write(led_source[2]);                 // 点亮红灯表示紧急状态
-            door_close_start_tick = 0;                // 重置关门计时
-            door_close_timing = 0;                    // 停止关门计时
-            door_close_done_tick = 0;                 // 复位气压检测计时
+            system_status = Emergency;
+            Cylinder_Write(1,cylinder_source[1]);
+            Lock_Write(lock_source[1]);
+            LED_Write(led_source[2]);
+            door_close_start_tick = 0;
+            door_close_timing = 0;
+            door_close_done_tick = 0;
         }
     }
 
@@ -589,7 +608,6 @@ uint8_t showStatus()
 
 // 门状态打印（调试用）
 uint8_t showDoorStatus(){
-    osDelay(50);
     switch (door_status)
     {
         case 0:

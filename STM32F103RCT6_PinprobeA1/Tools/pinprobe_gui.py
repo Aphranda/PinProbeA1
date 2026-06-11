@@ -66,6 +66,11 @@ SCPI_COMMANDS = {
         ("读系统状态", "READ:SYSTem:STATe?"),
         ("读全部IO", "READ:IO:ALL?"),
     ],
+    "急停": [
+        ("常闭 NC (默认)", "CONFigure:ESTOP:TYPE NC"),
+        ("常开 NO", "CONFigure:ESTOP:TYPE NO"),
+        ("读急停类型", "CONFigure:ESTOP:TYPE?"),
+    ],
 }
 
 # 自动轮询的状态查询命令组

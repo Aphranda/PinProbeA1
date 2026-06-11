@@ -197,13 +197,14 @@ bool IO_Read(uint8_t checkNum, uint8_t direction, uint8_t* trueData){
 }
 
 bool IsRS485_Ok(void) { return rs485_io_ok; }
+void SetRS485_Ok(bool ok) { rs485_io_ok = ok; }
 
 uint8_t* InputIO_Read(uint8_t checkNum){
-    rs485_io_ok = IO_Read(checkNum, 2, input_io_cache);
+    IO_Read(checkNum, 2, input_io_cache);
     return input_io_cache;
 }
 
 uint8_t* OutputIO_Read(uint8_t checkNum){
-    rs485_io_ok = IO_Read(checkNum, 1, output_io_cache);
+    IO_Read(checkNum, 1, output_io_cache);
     return output_io_cache;
 }
