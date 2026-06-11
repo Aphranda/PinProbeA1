@@ -37,6 +37,7 @@
 #include "flash.h"
 #include "ram_vector.h"
 #include "state_vector.h"
+#include "cmd_exec.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -248,14 +249,37 @@ void SCPITask(void *argument)
 void ModBusTask(void *argument)
 {
   /* USER CODE BEGIN ModBusTask */
-  /* 无限循环 */
+  (void)argument;
   osDelay(1000); // 延迟于IO拓展板启动
+
   for(;;)
   {
-    osMutexWait(COMMutexHandle,osWaitForever); // 申请互斥锁，保护共享资源
-    // StateMachine_Input();                      // 已迁移到 StateVectorTask (向量表)
-    osMutexRelease(COMMutexHandle);            // 释放互斥锁
-    osDelay(50);                               // 任务延时50ms
+    uint8_t in_buf[2] = {0}, out_buf[2] = {0};
+    bool ok = IO_Read(5, 2, in_buf);
+    ok = IO_Read(5, 1, out_buf) && ok;
+    SetRS485_Ok(ok);
+
+    /* 更新向量表 IO 镜像 */
+    Vector_IOState_t io;
+    const Vector_IOState_t* old_io = RamVector_GetLocalIO();
+    memcpy(&io, old_io, sizeof(io));
+    io.raw_in_lo  = in_buf[0];
+    io.raw_in_hi  = in_buf[1];
+    io.raw_out_lo = out_buf[0];
+    io.raw_out_hi = out_buf[1];
+    io.rs485_ok   = ok ? 1 : 0;
+    RamVector_UpdateLocalIO(&io);
+
+    /* 执行待处理命令 */
+    Vector_Cmd_t cmd = RamVector_GetCmd();
+    if (cmd != VCMD_NONE) {
+        osMutexWait(COMMutexHandle, osWaitForever);
+        CmdExec_Execute(cmd);
+        RamVector_ClearCmd();
+        osMutexRelease(COMMutexHandle);
+    }
+
+    osDelay(30);  /* ~30ms 周期, IO 板响应 ~15ms */
   }
   /* USER CODE END ModBusTask */
 }
@@ -266,7 +290,7 @@ void StateVectorTask(void *argument)
   (void)argument;
   RamVector_Init(1);
   osDelay(1000); // 延迟于IO拓展板启动
-  for(;;) { StateVector_Input(); osDelay(50); }
+  for(;;) { StateVector_Input(); osDelay(20); }
 }
 /* USER CODE END 4 */
 

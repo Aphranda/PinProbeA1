@@ -26,12 +26,6 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "iwdg.h"
-#include "ram_vector.h"
-#include "event_table.h"
-#include "cmd_exec.h"
-#include "BsmRelay.h"
-#include "tim.h"
-#include "flash.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/

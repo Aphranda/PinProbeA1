@@ -101,7 +101,11 @@ typedef struct __attribute__((packed)) {
     uint8_t  door_state;            /* 门状态 */
     uint8_t  door_moving;           /* 门运动中 */
     uint8_t  sensor_summary;        /* 传感器摘要 */
-    uint8_t  reserved_io[5];        /* 预留, 填充至 16B */
+    uint8_t  raw_in_lo;             /* 输入低字节 (IN[0]) */
+    uint8_t  raw_in_hi;             /* 输入高字节 (IN[1]) */
+    uint8_t  raw_out_lo;            /* 输出低字节 (OUT[0]) */
+    uint8_t  raw_out_hi;            /* 输出高字节 (OUT[1]) */
+    uint8_t  rs485_ok;              /* RS485 通讯状态 */
 } Vector_IOState_t;
 
 /* ========================================================================== */
