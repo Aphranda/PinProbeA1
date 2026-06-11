@@ -281,7 +281,10 @@ class SerialWorker:
                         if (decoded.startswith("[STATE]") or
                             decoded.startswith("[DOOR]") or
                             decoded.startswith("[IO]") or
-                            decoded.startswith("[RAMVEC]")):
+                            decoded.startswith("[RAMVEC]") or
+                            decoded.startswith("[RS485]") or
+                            decoded.startswith("E-STOP") or
+                            decoded.startswith("Door_Emerge")):
                             self.rx_queue.put(("debug", "", decoded, 0))
                             continue
                         if decoded.startswith("**ERROR") or decoded.startswith("**SRQ"):
@@ -1017,6 +1020,9 @@ class PinProbeApp:
         self.log_text.tag_config("DOOR", foreground="#DCDCAA")
         self.log_text.tag_config("IO", foreground="#569CD6")
         self.log_text.tag_config("RAMVEC", foreground="#C586C0")
+        self.log_text.tag_config("RS485", foreground="#FF6B6B")      # RS485通讯异常
+        self.log_text.tag_config("EMERGENCY", foreground="#FF4444")  # 急停/紧急状态
+        self.log_text.tag_config("E-STOP", foreground="#FF4444")     # 急停按钮
 
     # ── 串口连接管理 ──────────────────────────────────────────────────
     def _refresh_com_list(self):
@@ -1389,7 +1395,10 @@ class PinProbeApp:
                         if (decoded.startswith("[STATE]") or
                             decoded.startswith("[DOOR]") or
                             decoded.startswith("[IO]") or
-                            decoded.startswith("[RAMVEC]")):
+                            decoded.startswith("[RAMVEC]") or
+                            decoded.startswith("[RS485]") or
+                            decoded.startswith("E-STOP") or
+                            decoded.startswith("Door_Emerge")):
                             continue
                         scpi_resp = decoded
                         break

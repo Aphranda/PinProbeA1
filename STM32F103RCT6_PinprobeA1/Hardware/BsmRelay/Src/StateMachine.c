@@ -76,6 +76,12 @@ uint8_t StateMachine_Input()
     // RS485通信失败时跳过本轮，避免使用过期/零值IO数据
     if (!IsRS485_Ok())
     {
+        static uint8_t rs485_err_cnt = 0;
+        if (++rs485_err_cnt >= 40)  // 约2秒报一次，避免刷屏
+        {
+            U1_Printf("[RS485] COMM ERROR - 通讯异常\r\n");
+            rs485_err_cnt = 0;
+        }
         return 0;
     }
 
