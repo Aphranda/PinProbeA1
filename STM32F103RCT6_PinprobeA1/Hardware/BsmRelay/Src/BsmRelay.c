@@ -8,18 +8,20 @@ extern scpi_choice_def_t led_source[];
 extern scpi_choice_def_t sys_source[];
 extern uint8_t system_status;
 
+// RS485通信状态标志：读/写操作失败时置false，禁止状态机使用不可靠数据
+static bool rs485_io_ok = true;
 
 uint8_t Cylinder_Write(uint32_t cylinder_id, scpi_choice_def_t cylinder_value)
 {
     switch (cylinder_id)
     {
     case 1:
-        WriteIO(1,cylinder_value.tag);
-        WriteIO(2,!cylinder_value.tag);
+        rs485_io_ok = WriteIO(1,cylinder_value.tag) && rs485_io_ok;
+        rs485_io_ok = WriteIO(2,!cylinder_value.tag) && rs485_io_ok;
         break;
     case 2:
-        WriteIO(3,cylinder_value.tag);
-        WriteIO(4,!cylinder_value.tag);
+        rs485_io_ok = WriteIO(3,cylinder_value.tag) && rs485_io_ok;
+        rs485_io_ok = WriteIO(4,!cylinder_value.tag) && rs485_io_ok;
         break;
     default:
         break;
@@ -59,12 +61,12 @@ uint8_t Lock_Write(scpi_choice_def_t lock_value)
     switch (lock_value.tag)
     {
     case 0:
-        WriteIO(8,1);
-        WriteIO(9,1);
+        rs485_io_ok = WriteIO(8,1) && rs485_io_ok;
+        rs485_io_ok = WriteIO(9,1) && rs485_io_ok;
         break;
     case 1:
-        WriteIO(8,0);
-        WriteIO(9,0);
+        rs485_io_ok = WriteIO(8,0) && rs485_io_ok;
+        rs485_io_ok = WriteIO(9,0) && rs485_io_ok;
         break;
     default:
         break;
@@ -93,31 +95,33 @@ scpi_choice_def_t Lock_Status(){
 
 uint8_t LED_Write(scpi_choice_def_t led_value)
 {
+    bool ok = true;
     switch (led_value.tag)
     {
     case 0: // led OFF
-        WriteIO(5,0);
-        WriteIO(6,0);
-        WriteIO(7,0);
+        ok = WriteIO(5,0) && ok;
+        ok = WriteIO(6,0) && ok;
+        ok = WriteIO(7,0) && ok;
         break;
     case 1: // led G
-        WriteIO(5,1);
-        WriteIO(6,0);
-        WriteIO(7,0);
+        ok = WriteIO(5,1) && ok;
+        ok = WriteIO(6,0) && ok;
+        ok = WriteIO(7,0) && ok;
         break;
     case 2: // led R
-        WriteIO(5, 0);
-        WriteIO(6, 1);
-        WriteIO(7, 0);
+        ok = WriteIO(5,0) && ok;
+        ok = WriteIO(6,1) && ok;
+        ok = WriteIO(7,0) && ok;
         break;
     case 3: // led Y
-        WriteIO(5, 0);
-        WriteIO(6, 0);
-        WriteIO(7, 1);
+        ok = WriteIO(5,0) && ok;
+        ok = WriteIO(6,0) && ok;
+        ok = WriteIO(7,1) && ok;
         break;
     default:
         break;
     }
+    rs485_io_ok = ok && rs485_io_ok;
     return 0;
 }
 
@@ -153,13 +157,26 @@ scpi_choice_def_t SYS_Status(){
 static uint8_t input_io_cache[2] = {0, 0};
 static uint8_t output_io_cache[2] = {0, 0};
 
-uint8_t IO_Read(uint8_t checkNum, uint8_t direction, uint8_t* trueData){
+bool IO_Read(uint8_t checkNum, uint8_t direction, uint8_t* trueData){
     uint8_t State_count = 0;
     while (State_count < checkNum)
     {
         // Read bsm input IO status
-        uint8_t* data;
-        ReadIO(direction, data);
+        ReadIO(direction);
+
+        // 等待从机响应（50ms超时，替代原来的盲等HAL_Delay）
+        if (!RS485_WaitRx(50))
+        {
+            State_count++;
+            continue;
+        }
+
+        // 校验接收帧长度（至少6字节：地址+功能码+字节数+1数据+2CRC）
+        if (usart3_rx_length < 6)
+        {
+            State_count++;
+            continue;
+        }
 
         uint8_t crcData[2];
         uint8_t IOData[5];
@@ -172,19 +189,21 @@ uint8_t IO_Read(uint8_t checkNum, uint8_t direction, uint8_t* trueData){
         {
             trueData[0] = IOData[3];
             trueData[1] = IOData[4];
-            return 0;
+            return true;
         }
         State_count++;
     }
-    return 0;
+    return false;
 }
 
+bool IsRS485_Ok(void) { return rs485_io_ok; }
+
 uint8_t* InputIO_Read(uint8_t checkNum){
-    IO_Read(checkNum, 2, input_io_cache);
+    rs485_io_ok = IO_Read(checkNum, 2, input_io_cache);
     return input_io_cache;
 }
 
 uint8_t* OutputIO_Read(uint8_t checkNum){
-    IO_Read(checkNum, 1, output_io_cache);
+    rs485_io_ok = IO_Read(checkNum, 1, output_io_cache);
     return output_io_cache;
 }

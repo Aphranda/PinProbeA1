@@ -564,6 +564,21 @@ static scpi_result_t SCPI_ReadSystemState(scpi_t *context)
     return SCPI_RES_OK;
 }
 
+/// @brief 查询所有IO状态（输入+输出）
+/// @note 命令: READ:IO:ALL?
+///       返回: IN:0xHH,0xHH OUT:0xHH,0xHH（16进制原始值）
+static scpi_result_t SCPI_ReadIOAll(scpi_t *context)
+{
+    uint8_t* I_status = InputIO_Read(CHECK_NUM);
+    uint8_t* O_status = OutputIO_Read(CHECK_NUM);
+
+    char buf[64];
+    snprintf(buf, sizeof(buf), "IN:0x%02X,0x%02X OUT:0x%02X,0x%02X",
+             I_status[0], I_status[1], O_status[0], O_status[1]);
+    SCPI_ResultCharacters(context, buf, strlen(buf));
+    return SCPI_RES_OK;
+}
+
 const scpi_command_t scpi_commands[] = {
     /* IEEE Mandated Commands (SCPI std V1999.0 4.1.1) */
     {
@@ -679,6 +694,10 @@ const scpi_command_t scpi_commands[] = {
     {
         .pattern = "READ:SYSTem:STATe?",
         .callback = SCPI_ReadSystemState,
+    },
+    {
+        .pattern = "READ:IO:ALL?",
+        .callback = SCPI_ReadIOAll,
     },
     SCPI_CMD_LIST_END};
 

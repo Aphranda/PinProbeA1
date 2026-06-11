@@ -1,21 +1,12 @@
 #!/usr/bin/env python3
 """
-PinProbeA1 - 单机调试/压力测试 GUI 工具
-========================================
-通过串口 (USART1, 115200 8N1) 发送 SCPI 命令控制 PinProbeA1 设备。
+PinProbeA1 ─ 单机调试/压力测试 GUI 工具
+=========================================
+串口直连 → SCPI 命令 → 控制 PinProbeA1 设备
+支持状态监控、循环压力测试、延迟统计
 
-功能:
-  - 串口连接管理 (自动枚举 COM 口)
-  - 全部 SCPI 命令的图形化操作
-  - 实时状态轮询监控
-  - 压力测试(循环发送命令, 统计成功率/延迟)
-  - 命令日志与响应记录
-
-依赖: pyserial (pip install pyserial)
-      tkinter (Python 自带)
-
-作者: Dong Li
-日期: 2026/06/11
+依赖: pyserial
+  pip install pyserial
 """
 
 import tkinter as tk
@@ -25,69 +16,131 @@ import serial.tools.list_ports
 import threading
 import time
 import queue
-import json
-import os
 from datetime import datetime
 from collections import deque
 
-# ============================================================================
+# ══════════════════════════════════════════════════════════════════════
 # 常量
-# ============================================================================
+# ══════════════════════════════════════════════════════════════════════
 APP_TITLE = "PinProbeA1 调试工具 v1.0"
 DEFAULT_BAUD = 115200
 SCPI_TERMINATOR = "\r\n"
-SERIAL_TIMEOUT = 0.5  # 串口读取超时 (秒)
+SERIAL_TIMEOUT = 0.5
 MAX_LOG_LINES = 2000
-STATS_HISTORY = 1000  # 压力测试统计历史保留条数
+STATS_HISTORY = 1000
 
-# 串口配置
 BAUD_RATES = [9600, 19200, 38400, 57600, 115200, 230400, 460800]
 
-# SCPI 命令预设 (按钮标签, 命令字符串)
+# ── SCPI 命令面板定义 ────────────────────────────────────────────────
 SCPI_COMMANDS = {
     "系统": [
         ("*IDN?", "*IDN?"),
-        ("*RST (复位)", "*RST"),
-        ("*CLS (清状态)", "*CLS"),
+        ("*RST 复位", "*RST"),
+        ("*CLS 清状态", "*CLS"),
         ("*STB?", "*STB?"),
         ("*OPC?", "*OPC?"),
-        ("*WAI", "*WAI"),
         ("读错误", "SYSTem:ERRor:NEXT?"),
         ("错误计数", "SYSTem:ERRor:COUNt?"),
     ],
     "门/气缸": [
-        ("开门 (Cyl1)", "CONFigure:CYLInder1 OPEN"),
-        ("关门 (Cyl1)", "CONFigure:CYLInder1 CLOSE"),
+        ("开门", "CONFigure:CYLInder1 OPEN"),
+        ("关门", "CONFigure:CYLInder1 CLOSE"),
         ("读门状态", "READ:CYLInder1:STATe?"),
-        ("USB插入 (Cyl2)", "CONFigure:CYLInder2 OPEN"),
-        ("USB拔出 (Cyl2)", "CONFigure:CYLInder2 CLOSE"),
-        ("读USB状态", "READ:CYLInder2:STATe?"),
+        ("USB 插入", "CONFigure:CYLInder2 OPEN"),
+        ("USB 拔出", "CONFigure:CYLInder2 CLOSE"),
+        ("读 USB 状态", "READ:CYLInder2:STATe?"),
     ],
     "门锁": [
-        ("解锁", "CONFigure:LOCK UNLOCK"),
-        ("锁定", "CONFigure:LOCK LOCKED"),
+        ("🔓 解锁", "CONFigure:LOCK UNLOCK"),
+        ("🔒 锁定", "CONFigure:LOCK LOCKED"),
         ("读锁状态", "READ:LOCK:STATe?"),
     ],
     "LED": [
-        ("绿灯", "CONFigure:LED GREEN"),
-        ("红灯", "CONFigure:LED RED"),
-        ("黄灯", "CONFigure:LED YELLOW"),
-        ("关灯", "CONFigure:LED OFF"),
-        ("读LED状态", "READ:LED:STATe?"),
+        ("🟢 绿灯", "CONFigure:LED GREEN"),
+        ("🔴 红灯", "CONFigure:LED RED"),
+        ("🟡 黄灯", "CONFigure:LED YELLOW"),
+        ("⚫ 关灯", "CONFigure:LED OFF"),
+        ("读 LED 状态", "READ:LED:STATe?"),
     ],
     "系统状态": [
         ("读系统状态", "READ:SYSTem:STATe?"),
+        ("读全部IO", "READ:IO:ALL?"),
     ],
 }
 
 # 自动轮询的状态查询命令组
 AUTO_POLL_COMMANDS = [
     ("系统状态", "READ:SYSTem:STATe?"),
+    ("全部IO", "READ:IO:ALL?"),
     ("门状态", "READ:CYLInder1:STATe?"),
     ("USB状态", "READ:CYLInder2:STATe?"),
     ("锁状态", "READ:LOCK:STATe?"),
     ("LED状态", "READ:LED:STATe?"),
 ]
+
+# IO信号位定义（用于 READ:IO:ALL? 响应解析）
+IO_BIT_MAP = {
+    # 输入 IN[0]
+    ("IN", 0, 0x01): "门上限位(up)",
+    ("IN", 0, 0x02): "门下限位(down)",
+    ("IN", 0, 0x04): "门中位(mid)",
+    ("IN", 0, 0x08): "USB上位",
+    ("IN", 0, 0x10): "USB下位",
+    ("IN", 0, 0x20): "激光1",
+    ("IN", 0, 0x40): "激光2",
+    ("IN", 0, 0x80): "激光3",
+    # 输入 IN[1]
+    ("IN", 1, 0x01): "激光4",
+    ("IN", 1, 0x02): "关门按钮1",
+    ("IN", 1, 0x04): "关门按钮2",
+    ("IN", 1, 0x08): "急停按钮(stop)",
+    ("IN", 1, 0x10): "电源按钮(power)",
+    # 输出 OUT[0]
+    ("OUT", 0, 0x01): "开门(open)",
+    ("OUT", 0, 0x02): "关门(close)",
+    ("OUT", 0, 0x04): "USB进气",
+    ("OUT", 0, 0x08): "USB出气",
+    ("OUT", 0, 0x10): "绿灯(G)",
+    ("OUT", 0, 0x20): "红灯(R)",
+    ("OUT", 0, 0x40): "黄灯(Y)",
+    ("OUT", 0, 0x80): "电源输出(power)",
+}
+
+def parse_io_response(response: str) -> dict:
+    """解析 READ:IO:ALL? 响应，返回 {('IN',0): val, ...} 和原始字节"""
+    result = {}
+    try:
+        # 格式: "IN:0xHH,0xHH OUT:0xHH,0xHH"
+        parts = response.split()
+        for part in parts:
+            if ':' not in part:
+                continue
+            label, hexpair = part.split(':', 1)
+            bytes_str = hexpair.split(',')
+            for i, bs in enumerate(bytes_str):
+                if bs.startswith('0x') or bs.startswith('0X'):
+                    val = int(bs, 16)
+                else:
+                    val = int(bs, 16) if all(c in '0123456789ABCDEFabcdef' for c in bs) else 0
+                result[(label, i)] = val
+    except (ValueError, IndexError):
+        pass
+    return result
+
+def format_io_status(response: str) -> list[str]:
+    """将 READ:IO:ALL? 响应格式化为形象化文本行列表"""
+    data = parse_io_response(response)
+    if not data:
+        return [response]  # 解析失败返回原始文本
+
+    lines = []
+    for (io_type, byte_idx), val in sorted(data.items()):
+        lines.append(f"══ {io_type}[{byte_idx}] = 0x{val:02X} ══")
+        for (t, b, mask), name in sorted(IO_BIT_MAP.items(), key=lambda x: x[0][2], reverse=True):
+            if t == io_type and b == byte_idx:
+                state = "● ON " if (val & mask) else "○ off"
+                lines.append(f"  {state}  {name}")
+    return lines
 
 # 压力测试预设
 PRESSURE_PRESETS = {
@@ -141,11 +194,12 @@ PRESSURE_PRESETS = {
     },
 }
 
-# ============================================================================
-# 串口通信线程
-# ============================================================================
+# ══════════════════════════════════════════════════════════════════════
+# 串口通信层
+# ══════════════════════════════════════════════════════════════════════
+
 class SerialWorker:
-    """后台串口通信工作线程"""
+    """后台串口通信 — 发送 SCPI 命令并读取响应"""
 
     def __init__(self):
         self.serial_port: serial.Serial | None = None
@@ -173,6 +227,9 @@ class SerialWorker:
                 stopbits=serial.STOPBITS_ONE,
                 timeout=SERIAL_TIMEOUT,
             )
+            # RS485 半双工: 拉低 RTS 使能接收, 否则收不到响应
+            self.serial_port.rts = False
+            self.serial_port.dtr = False
             self._running = True
             self._thread = threading.Thread(target=self._worker_loop, daemon=True)
             self._thread.start()
@@ -192,9 +249,8 @@ class SerialWorker:
         self.cmd_queue.put((cmd, expect_response))
 
     def _worker_loop(self) -> None:
-        """后台工作循环: 发送命令 + 读取响应"""
+        """后台工作循环: 发送 SCPI 命令 → 读取响应 (过滤固件调试输出)"""
         while self._running:
-            # 处理待发送命令
             try:
                 cmd, expect_response = self.cmd_queue.get(timeout=0.05)
             except queue.Empty:
@@ -203,64 +259,53 @@ class SerialWorker:
             try:
                 with self._lock:
                     if not self.is_connected:
-                        self.rx_queue.put(("error", cmd, "串口未连接"))
+                        self.rx_queue.put(("ERROR", cmd, "串口未连接"))
                         continue
 
-                    # 发送命令
-                    full_cmd = cmd + SCPI_TERMINATOR
+                    full_cmd = cmd.strip() + SCPI_TERMINATOR
                     send_time = time.perf_counter()
                     self.serial_port.write(full_cmd.encode("utf-8"))
-                    self.serial_port.flush()
+                    time.sleep(0.03)
 
                 if expect_response:
-                    # 等待收集响应
-                    response_lines = []
-                    deadline = time.perf_counter() + SERIAL_TIMEOUT * 4
-                    while time.perf_counter() < deadline:
-                        with self._lock:
-                            if not self.is_connected:
-                                break
-                            try:
-                                line = self.serial_port.readline()
-                            except serial.SerialException:
-                                break
-                        if line:
-                            decoded = line.decode("utf-8", errors="replace").strip()
-                            if decoded:
-                                response_lines.append(decoded)
-                            # SCPI 通常单行响应, 读到就退出; 多行则继续读直到超时小间隙
-                            if len(response_lines) >= 1:
-                                # 再等一个短超时确认没有后续数据
-                                extra_deadline = time.perf_counter() + 0.1
-                                while time.perf_counter() < extra_deadline:
-                                    with self._lock:
-                                        try:
-                                            extra = self.serial_port.readline()
-                                        except serial.SerialException:
-                                            break
-                                    if extra:
-                                        d = extra.decode("utf-8", errors="replace").strip()
-                                        if d:
-                                            response_lines.append(d)
-                                    else:
-                                        break
-                                break
+                    deadline = time.time() + SERIAL_TIMEOUT
+                    scpi_resp = ""
+                    while time.time() < deadline:
+                        line = self.serial_port.read_until(b'\n', size=512)
+                        if not line:
+                            break
+                        decoded = line.decode("utf-8", errors="replace").strip()
+                        if not decoded:
+                            continue
+                        # 跳过固件调试输出
+                        if (decoded.startswith("[STATE]") or
+                            decoded.startswith("[DOOR]") or
+                            decoded.startswith("[IO]") or
+                            decoded.startswith("[RAMVEC]")):
+                            self.rx_queue.put(("debug", "", decoded, 0))
+                            continue
+                        if decoded.startswith("**ERROR") or decoded.startswith("**SRQ"):
+                            scpi_resp = decoded
+                            break
+                        scpi_resp = decoded
+                        break
+
                     elapsed_us = int((time.perf_counter() - send_time) * 1_000_000)
-                    resp_text = "\n".join(response_lines) if response_lines else "(无响应)"
+                    resp_text = scpi_resp if scpi_resp else "(无响应)"
                     self.rx_queue.put(("response", cmd, resp_text, elapsed_us))
                 else:
                     elapsed_us = int((time.perf_counter() - send_time) * 1_000_000)
                     self.rx_queue.put(("sent", cmd, "(无需响应)", elapsed_us))
 
             except serial.SerialException as e:
-                self.rx_queue.put(("error", cmd, str(e)))
+                self.rx_queue.put(("ERROR", cmd, str(e)))
             except Exception as e:
-                self.rx_queue.put(("error", cmd, f"未知错误: {e}"))
+                self.rx_queue.put(("ERROR", cmd, f"未知错误: {e}"))
 
 
-# ============================================================================
-# 主 GUI 应用
-# ============================================================================
+# ══════════════════════════════════════════════════════════════════════
+# GUI 主窗口
+# ══════════════════════════════════════════════════════════════════════
 class PinProbeApp:
     def __init__(self, root: tk.Tk):
         self.root = root
@@ -300,9 +345,7 @@ class PinProbeApp:
         # 定时器: 刷新串口列表
         self._refresh_com_list()
 
-    # ========================================================================
-    # 样式设置
-    # ========================================================================
+    # ── 样式设置 ──────────────────────────────────────────────────────
     def _setup_styles(self):
         """配置扁平清新风格"""
         style = ttk.Style()
@@ -699,8 +742,120 @@ class PinProbeApp:
 
         # 颜色标签
         self.monitor_tree.tag_configure("updated", foreground="#007700")
-        self.monitor_tree.tag_configure("error", foreground="#cc0000")
+        self.monitor_tree.tag_configure("ERROR", foreground="#cc0000")
         self.monitor_tree.tag_configure("stale", foreground="#999999")
+
+        # ---- LED 指示灯面板 ----
+        self._build_led_panel(parent)
+
+    def _build_led_panel(self, parent: ttk.Frame):
+        """IO状态 LED 指示灯 (两排: 输入/输出)"""
+        led_frame = ttk.LabelFrame(parent, text="IO 指示灯")
+        led_frame.pack(fill=tk.X, padx=5, pady=3)
+
+        # LED 定义: (类型, 字节索引, 位掩码, 标签名) — 全部16位
+        self.led_defs_input = [
+            ("IN", 0, 0x01, "门上限"),
+            ("IN", 0, 0x02, "门下限"),
+            ("IN", 0, 0x04, "门中位"),
+            ("IN", 0, 0x08, "USB上位"),
+            ("IN", 0, 0x10, "USB下位"),
+            ("IN", 0, 0x20, "激光1"),
+            ("IN", 0, 0x40, "激光2"),
+            ("IN", 0, 0x80, "激光3"),
+            ("IN", 1, 0x01, "激光4"),
+            ("IN", 1, 0x02, "关门钮1"),
+            ("IN", 1, 0x04, "关门钮2"),
+            ("IN", 1, 0x08, "急停"),
+            ("IN", 1, 0x10, "电源钮"),
+            ("IN", 1, 0x20, "IN14"),
+            ("IN", 1, 0x40, "IN15"),
+            ("IN", 1, 0x80, "IN16"),
+        ]
+        self.led_defs_output = [
+            ("OUT", 0, 0x01, "开门"),
+            ("OUT", 0, 0x02, "关门"),
+            ("OUT", 0, 0x04, "USB进气"),
+            ("OUT", 0, 0x08, "USB出气"),
+            ("OUT", 0, 0x10, "绿灯"),
+            ("OUT", 0, 0x20, "红灯"),
+            ("OUT", 0, 0x40, "黄灯"),
+            ("OUT", 0, 0x80, "电源"),
+            ("OUT", 1, 0x01, "启动LED"),
+            ("OUT", 1, 0x02, "OUT10"),
+            ("OUT", 1, 0x04, "OUT11"),
+            ("OUT", 1, 0x08, "OUT12"),
+            ("OUT", 1, 0x10, "OUT13"),
+            ("OUT", 1, 0x20, "OUT14"),
+            ("OUT", 1, 0x40, "OUT15"),
+            ("OUT", 1, 0x80, "OUT16"),
+        ]
+
+        LED_R = 10           # 灯半径
+        LED_GAP = 20          # 灯间距
+        LABEL_H = 18          # 标签高度
+        ROW_H = LED_R * 2 + LABEL_H + 8
+
+        # 输入行
+        in_label = ttk.Label(led_frame, text="输入", font=("", 9, "bold"))
+        in_label.pack(anchor=tk.W, padx=5, pady=(3, 0))
+        in_count = len(self.led_defs_input)
+        in_width = in_count * (LED_R * 2 + LED_GAP) + LED_GAP
+        self.canvas_in = tk.Canvas(led_frame, width=in_width, height=ROW_H,
+                                    bg="#ffffff", highlightthickness=0)
+        self.canvas_in.pack(padx=5, pady=2)
+
+        # 输出行
+        out_label = ttk.Label(led_frame, text="输出", font=("", 9, "bold"))
+        out_label.pack(anchor=tk.W, padx=5, pady=(5, 0))
+        out_count = len(self.led_defs_output)
+        out_width = out_count * (LED_R * 2 + LED_GAP) + LED_GAP
+        self.canvas_out = tk.Canvas(led_frame, width=out_width, height=ROW_H,
+                                     bg="#ffffff", highlightthickness=0)
+        self.canvas_out.pack(padx=5, pady=2)
+
+        # 绘制 LED 灯
+        self._draw_leds(self.canvas_in, self.led_defs_input, LED_R, LED_GAP, LABEL_H)
+        self._draw_leds(self.canvas_out, self.led_defs_output, LED_R, LED_GAP, LABEL_H)
+
+    def _draw_leds(self, canvas: tk.Canvas, defs: list, r: int, gap: int, lh: int):
+        """在 Canvas 上绘制 LED 灯（圆+标签），返回 circle ID 列表"""
+        ids = []
+        x = gap + r
+        y_center = r + 4
+        y_label = y_center + r + 2
+
+        for io_type, byte_idx, mask, label in defs:
+            # LED 圆（初始灰色=off）
+            cid = canvas.create_oval(x - r, y_center - r, x + r, y_center + r,
+                                     fill="#cccccc", outline="#999999", width=1)
+            # 标签
+            tid = canvas.create_text(x, y_label, text=label,
+                                     font=("Microsoft YaHei UI", 7), fill="#666666")
+            ids.append((cid, tid, io_type, byte_idx, mask))
+            x += r * 2 + gap
+
+        # 保存 ID 引用
+        if not hasattr(self, '_led_canvas_ids'):
+            self._led_canvas_ids = {}
+        self._led_canvas_ids[canvas] = ids
+
+    def _update_leds_from_response(self, response: str):
+        """根据 READ:IO:ALL? 响应更新所有 LED 指示灯"""
+        data = parse_io_response(response)
+        if not data:
+            return
+
+        ON_COLOR = "#00CC00"   # 绿色=激活
+        OFF_COLOR = "#cccccc"  # 灰色=未激活
+
+        for canvas, ids in getattr(self, '_led_canvas_ids', {}).items():
+            for cid, tid, io_type, byte_idx, mask in ids:
+                val = data.get((io_type, byte_idx), 0)
+                active = (val & mask) != 0
+                color = ON_COLOR if active else OFF_COLOR
+                outline = "#00AA00" if active else "#999999"
+                canvas.itemconfigure(cid, fill=color, outline=outline)
 
     def _build_pressure_panel(self, parent: ttk.Frame):
         """压力测试面板"""
@@ -844,22 +999,26 @@ class PinProbeApp:
         ttk.Button(toolbar, text="导出日志", command=self._export_log).pack(
             side=tk.RIGHT, padx=2)
 
-        self.log_text = scrolledtext.ScrolledText(parent, height=12,
-                                                   font=("Consolas", 9),
-                                                   wrap=tk.WORD)
+        self.log_text = scrolledtext.ScrolledText(
+            parent, height=12, wrap=tk.WORD,
+            font=("Cascadia Code", 9), bg="#1E1E1E", fg="#D4D4D4",
+            insertbackground="#ffffff",
+        )
         self.log_text.pack(fill=tk.BOTH, expand=True, padx=3, pady=2)
 
-        # 配置日志标签颜色
-        self.log_text.tag_configure("send", foreground="#0000AA")
-        self.log_text.tag_configure("recv", foreground="#007700")
-        self.log_text.tag_configure("error", foreground="#CC0000")
-        self.log_text.tag_configure("info", foreground="#666666")
-        self.log_text.tag_configure("pressure", foreground="#AA6600")
-        self.log_text.tag_configure("timestamp", foreground="#999999")
+        # VS Code 风格日志着色
+        self.log_text.tag_config("TIME", foreground="#808080")
+        self.log_text.tag_config("CMD", foreground="#569CD6")
+        self.log_text.tag_config("OK", foreground="#6A9955")
+        self.log_text.tag_config("ERROR", foreground="#F44747")
+        self.log_text.tag_config("WARN", foreground="#CE9178")
+        self.log_text.tag_config("INFO", foreground="#4FC1FF")
+        self.log_text.tag_config("STATE", foreground="#CE9178")
+        self.log_text.tag_config("DOOR", foreground="#DCDCAA")
+        self.log_text.tag_config("IO", foreground="#569CD6")
+        self.log_text.tag_config("RAMVEC", foreground="#C586C0")
 
-    # ========================================================================
-    # 串口连接管理
-    # ========================================================================
+    # ── 串口连接管理 ──────────────────────────────────────────────────
     def _refresh_com_list(self):
         """刷新可用串口列表"""
         ports = [p.device for p in serial.tools.list_ports.comports()]
@@ -867,7 +1026,7 @@ class PinProbeApp:
         if ports and not self.com_combo.get():
             self.com_combo.current(0)
         self._log(f"检测到 {len(ports)} 个串口: {', '.join(ports) if ports else '无'}",
-                  "info")
+                  "INFO")
 
     def _toggle_connection(self):
         """切换连接状态"""
@@ -896,12 +1055,12 @@ class PinProbeApp:
             self.btn_disconnect.configure(state=tk.NORMAL)
             self.btn_idn.configure(state=tk.NORMAL)
             self.status_label.configure(text=f"已连接 {port} @ {baud} bps")
-            self._log(f"串口已连接: {port} @ {baud} bps", "info")
+            self._log(f"串口已连接: {port} @ {baud} bps", "INFO")
             # 连接后自动查询设备
             self.root.after(300, self._query_device_id)
         except Exception as e:
             messagebox.showerror("连接失败", str(e))
-            self._log(f"连接失败: {e}", "error")
+            self._log(f"连接失败: {e}", "ERROR")
 
     def _disconnect(self):
         """断开串口"""
@@ -916,24 +1075,17 @@ class PinProbeApp:
         self.btn_idn.configure(state=tk.DISABLED)
         self.device_info_label.configure(text="设备: ---", foreground="gray")
         self.status_label.configure(text="已断开连接")
-        self._log("串口已断开", "info")
+        self._log("串口已断开", "INFO")
 
-    # ========================================================================
-    # 日志系统
-    # ========================================================================
-    def _log(self, message: str, tag: str = "info"):
-        """写入日志"""
-        timestamp = datetime.now().strftime("%H:%M:%S.%f")[:-3]
-        line = f"[{timestamp}] {message}\n"
-
-        self.log_text.insert(tk.END, timestamp + " ", "timestamp")
-        self.log_text.insert(tk.END, message + "\n", tag)
-
-        # 限制日志行数
+    # ── 日志系统 ──────────────────────────────────────────────────────
+    def _log(self, message: str, tag: str = "INFO"):
+        """写入日志 (VS Code 风格着色)"""
+        ts = datetime.now().strftime("%H:%M:%S")
+        self.log_text.insert(tk.END, f"[{ts}] ", "TIME")
+        self.log_text.insert(tk.END, f"{message}\n", tag)
         line_count = int(self.log_text.index("end-1c").split(".")[0])
         if line_count > MAX_LOG_LINES:
             self.log_text.delete("1.0", f"{line_count - MAX_LOG_LINES}.0")
-
         if self.auto_scroll.get():
             self.log_text.see(tk.END)
 
@@ -950,17 +1102,15 @@ class PinProbeApp:
         if filename:
             with open(filename, "w", encoding="utf-8") as f:
                 f.write(self.log_text.get("1.0", tk.END))
-            self._log(f"日志已导出到: {filename}", "info")
+            self._log(f"日志已导出到: {filename}", "INFO")
 
-    # ========================================================================
-    # SCPI 命令发送
-    # ========================================================================
+    # ── SCPI 命令发送 ────────────────────────────────────────────────
     def _send_scpi(self, cmd: str):
         """发送 SCPI 命令"""
         if not self.serial_worker.is_connected:
             messagebox.showwarning("未连接", "请先连接串口")
             return
-        self._log(f">>> {cmd}", "send")
+        self._log(f">>> {cmd}", "CMD")
         self.serial_worker.send_command(cmd, expect_response=cmd.endswith("?"))
         self._add_to_history(cmd)
 
@@ -1013,16 +1163,12 @@ class PinProbeApp:
         self.cmd_history.clear()
         self._refresh_history_listbox()
 
-    # ========================================================================
-    # 设备查询
-    # ========================================================================
+    # ── 设备查询 ──────────────────────────────────────────────────────
     def _query_device_id(self):
         """查询设备 ID"""
         self._send_scpi("*IDN?")
 
-    # ========================================================================
-    # 响应处理 (定时器回调)
-    # ========================================================================
+    # ── 响应处理 ──────────────────────────────────────────────────────
     def _process_responses(self):
         """定时处理串口响应队列"""
         try:
@@ -1033,21 +1179,31 @@ class PinProbeApp:
                 if msg_type == "response":
                     _, cmd, resp, elapsed_us = msg
                     elapsed_ms = elapsed_us / 1000
-                    self._log(f"<<< [{elapsed_ms:.1f}ms] {resp}", "recv")
-                    # 更新状态监控
+                    tag = "OK" if "ERR" not in resp.upper() else "ERROR"
+                    self._log(f"← [{elapsed_ms:.1f}ms] {resp}", tag)
                     self._update_monitor_row(cmd, resp)
-                    # 如果是 *IDN?, 更新设备信息
                     if cmd.strip() == "*IDN?":
                         self.device_info_label.configure(
-                            text=f"设备: {resp}", foreground="#007700")
+                            text=f"设备: {resp}", foreground="#4FC1FF")
+                    # IO状态形象化显示
+                    if cmd.strip() == "READ:IO:ALL?":
+                        self._update_leds_from_response(resp)
+                        io_lines = format_io_status(resp)
+                        for line in io_lines:
+                            self._log(line, "IO")
+
+                elif msg_type == "debug":
+                    _, _, decoded, _ = msg
+                    tag = decoded.split()[0].strip("[]")
+                    self._log(decoded, tag)
 
                 elif msg_type == "sent":
                     _, cmd, _, elapsed_us = msg
-                    self._log(f"--- [{elapsed_us/1000:.1f}ms] 已发送: {cmd}", "info")
+                    self._log(f"→ [{elapsed_us/1000:.1f}ms] {cmd}", "CMD")
 
-                elif msg_type == "error":
+                elif msg_type == "ERROR":
                     _, cmd, err = msg
-                    self._log(f"!!! [{cmd}] 错误: {err}", "error")
+                    self._log(f"✗ [{cmd}] {err}", "ERROR")
                     self._update_monitor_row(cmd, f"ERROR: {err}")
 
         except queue.Empty:
@@ -1063,14 +1219,12 @@ class PinProbeApp:
             values = self.monitor_tree.item(item_id, "values")
             if values[2].strip() == cmd_stripped:
                 ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                tag = "error" if "ERROR" in response or "ERR" in response else "updated"
+                tag = "ERROR" if "ERROR" in response or "ERR" in response else "updated"
                 self.monitor_tree.item(item_id, values=(values[0], response, values[2], ts),
                                        tags=(tag,))
                 break
 
-    # ========================================================================
-    # 自动轮询
-    # ========================================================================
+    # ── 自动轮询 ──────────────────────────────────────────────────────
     _poll_job_id = None
 
     def _poll_timer(self):
@@ -1101,9 +1255,7 @@ class PinProbeApp:
         self.polling_enabled.set(False)
         self.poll_status_label.configure(text="轮询已停止", foreground="gray")
 
-    # ========================================================================
-    # 压力测试
-    # ========================================================================
+    # ── 压力测试 ──────────────────────────────────────────────────────
     def _on_preset_selected(self, event=None):
         """预设选择时显示描述"""
         preset_name = self.preset_var.get()
@@ -1122,7 +1274,7 @@ class PinProbeApp:
         self.pressure_cmd_text.insert("1.0", "\n".join(preset["commands"]))
         # 设置间隔
         self.pressure_interval.set(preset.get("interval_ms", 200))
-        self._log(f"已加载预设: {preset_name}", "info")
+        self._log(f"已加载预设: {preset_name}", "INFO")
 
     def _pressure_add_cmd(self):
         """手动添加压力测试命令"""
@@ -1194,7 +1346,7 @@ class PinProbeApp:
         self._log(f"压力测试开始: {len(commands)} 条命令, "
                   f"间隔 {self.pressure_interval.get()}ms, "
                   f"循环 {self.pressure_loops.get() if self.pressure_loops.get() > 0 else '无限'} 次",
-                  "pressure")
+                  "WARN")
 
         # 定时更新统计显示
         self._update_pressure_stats()
@@ -1205,12 +1357,13 @@ class PinProbeApp:
         self.btn_pressure_start.configure(state=tk.NORMAL)
         self.btn_pressure_stop.configure(state=tk.DISABLED)
         self.pressure_status_label.configure(text="已停止", foreground="#cc0000")
-        self._log("压力测试已停止", "pressure")
+        self._log("压力测试已停止", "WARN")
 
     def _pressure_loop(self, commands: list[str]):
-        """压力测试工作循环 (后台线程)"""
+        """压力测试工作循环 (后台线程, 直接操作串口以降低延迟)"""
         interval_s = self.pressure_interval.get() / 1000.0
         max_loops = self.pressure_loops.get()
+        timeout_s = self.pressure_timeout.get() / 1000.0
         loop_count = 0
         cmd_idx = 0
 
@@ -1219,45 +1372,30 @@ class PinProbeApp:
             send_time = time.perf_counter()
 
             try:
-                # 通过串口直接发送 (绕过队列以减少延迟)
-                full_cmd = cmd + SCPI_TERMINATOR
+                full_cmd = cmd.strip() + SCPI_TERMINATOR
                 self.serial_worker.serial_port.write(full_cmd.encode("utf-8"))
-                self.serial_worker.serial_port.flush()
+                time.sleep(0.03)
 
                 if cmd.endswith("?"):
-                    # 等待响应
-                    response_lines = []
-                    deadline = time.perf_counter() + (self.pressure_timeout.get() / 1000.0)
-                    while time.perf_counter() < deadline:
-                        try:
-                            line = self.serial_worker.serial_port.readline()
-                        except Exception:
+                    deadline = time.time() + timeout_s
+                    scpi_resp = ""
+                    while time.time() < deadline:
+                        line = self.serial_worker.serial_port.read_until(b'\n', size=512)
+                        if not line:
                             break
-                        if line:
-                            d = line.decode("utf-8", errors="replace").strip()
-                            if d:
-                                response_lines.append(d)
-                            if response_lines:
-                                # 短间隙等后续
-                                extra = time.perf_counter() + 0.05
-                                while time.perf_counter() < extra:
-                                    try:
-                                        extra_line = self.serial_worker.serial_port.readline()
-                                    except Exception:
-                                        break
-                                    if extra_line:
-                                        ed = extra_line.decode("utf-8", errors="replace").strip()
-                                        if ed:
-                                            response_lines.append(ed)
-                                    else:
-                                        break
-                                break
-                        else:
-                            break
+                        decoded = line.decode("utf-8", errors="replace").strip()
+                        if not decoded:
+                            continue
+                        if (decoded.startswith("[STATE]") or
+                            decoded.startswith("[DOOR]") or
+                            decoded.startswith("[IO]") or
+                            decoded.startswith("[RAMVEC]")):
+                            continue
+                        scpi_resp = decoded
+                        break
 
                     elapsed_us = int((time.perf_counter() - send_time) * 1_000_000)
-                    resp = "\n".join(response_lines) if response_lines else ""
-                    if resp:
+                    if scpi_resp:
                         self.pressure_stats["success"] += 1
                     else:
                         self.pressure_stats["timeout"] += 1
@@ -1331,9 +1469,7 @@ class PinProbeApp:
         # 继续定时更新
         self.root.after(200, self._update_pressure_stats)
 
-    # ========================================================================
-    # 应用退出
-    # ========================================================================
+    # ── 应用退出 ──────────────────────────────────────────────────────
     def on_close(self):
         """窗口关闭处理"""
         self._stop_pressure()
@@ -1343,9 +1479,9 @@ class PinProbeApp:
         self.root.destroy()
 
 
-# ============================================================================
+# ══════════════════════════════════════════════════════════════════════
 # 入口
-# ============================================================================
+# ══════════════════════════════════════════════════════════════════════
 def main():
     root = tk.Tk()
     app = PinProbeApp(root)

@@ -7,11 +7,11 @@
 #define LOCK_PRESS_MS        300   // 锁定按钮按下确认时间
 #define LOCK_IDLE_MS         1000  // 锁定按钮松开冷却时间
 
-#define DOOR_BUTTON_MS       300   // 门按钮按下确认时间
-#define DOOR_READY_MS        300   // 关门准备确认时间
-#define DOOR_CLOSE_CONFIRM_MS 700  // 关门动作确认时间（需同时按两个按钮）
+#define DOOR_BUTTON_MS       200   // 门按钮按下确认时间
+#define DOOR_READY_MS        200   // 关门准备确认时间
+#define DOOR_CLOSE_CONFIRM_MS 500  // 关门动作确认时间（需同时按两个按钮）
 
-#define DOOR_OPEN_CONFIRM_MS 300   // 开门动作确认时间
+#define DOOR_OPEN_CONFIRM_MS 200   // 开门动作确认时间
 #define RELEASE_DELAY_MS     200   // 按钮释放防抖时间
 #define AIR_STABILIZE_MS     3000  // 气压稳定延时：关门后气压需约2秒才能达到最大值
 #define AIR_CHECK_INTERVAL_MS 1500 // 气压检测间隔
@@ -55,6 +55,13 @@ uint8_t door_close_timing = 0;        // 关门计时标志
 
 uint32_t air_last_check_tick = 0;     // 上次气压检测时刻(ms)
 
+// 门限位传感器消抖（连续N次同值才确认，避免瞬断误报）
+#define DOOR_DEBOUNCE_CNT  3  // 3次 × 50ms周期 = 150ms消抖
+static uint8_t door_up_cnt = 0;
+static uint8_t door_down_cnt = 0;
+static uint8_t door_up_db = 0;    // 消抖后的 door_sensor_up
+static uint8_t door_down_db = 0;  // 消抖后的 door_sensor_down
+
 // 状态机主入口，周期性调用
 uint8_t StateMachine_Input()
 {
@@ -65,6 +72,39 @@ uint8_t StateMachine_Input()
     uint8_t* O_status = OutputIO_Read(CHECK_NUM);
     uint8_t out_01_08 = O_status[0];
     uint8_t out_09_16 = O_status[1];
+
+    // RS485通信失败时跳过本轮，避免使用过期/零值IO数据
+    if (!IsRS485_Ok())
+    {
+        return 0;
+    }
+
+    // 门限位传感器消抖处理
+    if (in_01_08 & door_sensor_up)
+    {
+        if (++door_up_cnt >= DOOR_DEBOUNCE_CNT) door_up_db = 1;
+        door_down_cnt = 0;
+    }
+    else
+    {
+        door_up_cnt = 0;
+        door_up_db = 0;
+    }
+
+    if (in_01_08 & door_sensor_down)
+    {
+        if (++door_down_cnt >= DOOR_DEBOUNCE_CNT) door_down_db = 1;
+        door_up_cnt = 0;
+    }
+    else
+    {
+        door_down_cnt = 0;
+        door_down_db = 0;
+    }
+
+    // 用消抖后的值替换原始传感器位
+    if (door_up_db)   in_01_08 |= door_sensor_up;   else in_01_08 &= ~door_sensor_up;
+    if (door_down_db) in_01_08 |= door_sensor_down; else in_01_08 &= ~door_sensor_down;
 
     system_old_status = system_status;
     door_old_status = door_status;
@@ -406,6 +446,7 @@ uint8_t Emerge_Action(uint8_t in_01_08, uint8_t in_09_16, uint8_t out_01_08, uin
         if(((in_01_08&laser_sensor1) != 0x20)||((in_01_08&laser_sensor2) != 0x40)||((in_01_08&laser_sensor3) != 0x80)||((in_09_16&(laser_sensor4>>8) != 0x01)))
         {
             system_status = Lock; // 恢复到锁定状态
+            door_close_done_tick = 0;  // 复位气压检测，下次关门重新计时
             if(in_01_08&door_sensor_up)
             {
                 LED_Write(led_source[0]); // 关灯，表示门已打开
@@ -421,6 +462,7 @@ uint8_t Emerge_Action(uint8_t in_01_08, uint8_t in_09_16, uint8_t out_01_08, uin
         Cylinder_Write(1,cylinder_source[1]);         // 执行气缸紧急动作（通常为开门）
         Lock_Write(lock_source[1]);                   // 执行锁紧急动作（通常为解锁）
         LED_Write(led_source[2]);                     // 点亮红灯表示紧急状态
+        door_close_done_tick = 0;                     // 复位气压检测计时
     }
     // 检查激光传感器（laser_sensor1~4）是否有异常触发
     else if(((in_01_08&laser_sensor1)==0x20)||((in_01_08&laser_sensor2)==0x40)||((in_01_08&laser_sensor3)==0x80)||((in_09_16&(laser_sensor4>>8) == 0x01)))
@@ -436,6 +478,7 @@ uint8_t Emerge_Action(uint8_t in_01_08, uint8_t in_09_16, uint8_t out_01_08, uin
             LED_Write(led_source[2]);                 // 点亮红灯表示紧急状态
             door_close_start_tick = 0;                // 重置关门计时
             door_close_timing = 0;                    // 停止关门计时
+            door_close_done_tick = 0;                 // 复位气压检测计时
         }
     }
 

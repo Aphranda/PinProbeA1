@@ -1,27 +1,46 @@
 #include "RS485.h"
+#include "tim.h"
 
-/// @brief Write BSM IO status
-/// @param index IO index
-/// @param status IO status
-/// @return IO status
-uint8_t WriteIO(uint8_t index, uint8_t status){
-    HAL_Delay(10);
+/// @brief 写 BSM IO 状态（Modbus 05 功能码）
+/// @param index  IO 索引 (1-based)
+/// @param status 0=OFF, 1=ON
+/// @return true=发送成功
+bool WriteIO(uint8_t index, uint8_t status){
+    HAL_Delay(2);
     uint8_t *data = IOWriteOrder(index-1,status);
-    HAL_UART_Transmit(&huart3,data,8,RS485_TX_TIMEOUT_MS);
-    HAL_Delay(10);
-    return status;
+    HAL_StatusTypeDef ret = HAL_UART_Transmit(&huart3,data,8,RS485_TX_TIMEOUT_MS);
+    HAL_Delay(2);
+    return (ret == HAL_OK);
 }
 
 /// @brief Read BSM IO status
 /// @param index IO index
 /// @param status IO status
 /// @return IO status
-uint8_t* ReadIO(uint8_t index, uint8_t*status){
-    HAL_Delay(10);
-    uint8_t *data = IOReadOrder(index,16);
+void ReadIO(uint8_t func){
+    HAL_Delay(2);  // 总线保护间隔
+    uint8_t *data = IOReadOrder(func,16);
     HAL_UART_Transmit(&huart3,data,8,RS485_TX_TIMEOUT_MS);
-    HAL_Delay(10);
-    return status;
+    HAL_Delay(2);  // 总线释放
+}
+
+/// @brief 等待RS485从机响应（轮询双缓冲就绪标志）
+/// @param timeout_ms 超时(ms)
+/// @return true=收到响应, false=超时
+bool RS485_WaitRx(uint32_t timeout_ms)
+{
+    uint32_t start = GetTim1Ms();
+    uint8_t prev_ready = Usart3_RX_BUF1_IsReady;
+
+    while ((GetTim1Ms() - start) < timeout_ms)
+    {
+        if (Usart3_RX_BUF1_IsReady != prev_ready)
+        {
+            return true; // 缓冲区切换，新数据到达
+        }
+        HAL_Delay(1); // 1ms 忙等，不切换RTOS任务
+    }
+    return false;
 }
 
 
@@ -134,24 +153,26 @@ static const uint16_t crc16_table[256] = {
     0x8201, 0x42C0, 0x4380, 0x8341, 0x4100, 0x81C1, 0x8081, 0x4040
 };
 
-uint16_t modbus_crc16(uint16_t length, uint8_t *data)
+/// @brief Modbus CRC16 查表计算（data_len 为数据字节数，不含 CRC）
+uint16_t modbus_crc16(uint16_t data_len, uint8_t *data)
 {
     uint16_t crc = 0xFFFF;
-    while (length--)
+    while (data_len--)
     {
         crc = (crc >> 8) ^ crc16_table[(crc ^ *data++) & 0xFF];
     }
     return crc;
 }
 
-bool modbus_crc_compare(uint16_t length, uint8_t *data, uint8_t *compareData)
+/// @brief 校验接收帧 CRC（compareData 为帧中 CRC 字段，低字节在前）
+bool modbus_crc_compare(uint16_t data_len, uint8_t *data, uint8_t *compareData)
 {
     uint16_t crc;
     uint8_t crc_data[2];
 
-    crc = modbus_crc16(length, data);
-    crc_data[1] = crc >>8;
-    crc_data[0] = (crc & 0x00FF);
+    crc = modbus_crc16(data_len, data);
+    crc_data[1] = crc >>8;           // CRC 高字节
+    crc_data[0] = (crc & 0x00FF);   // CRC 低字节
 
     if(crc_data[0]== compareData[0] && crc_data[1] == compareData[1])
     {

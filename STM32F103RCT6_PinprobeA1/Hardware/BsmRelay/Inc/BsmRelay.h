@@ -60,10 +60,12 @@ scpi_choice_def_t LED_Status();
 
 scpi_choice_def_t SYS_Status();
 
-uint8_t IO_Read(uint8_t checkNum, uint8_t direction, uint8_t* trueData);
+bool IO_Read(uint8_t checkNum, uint8_t direction, uint8_t* trueData);
 
 uint8_t* InputIO_Read(uint8_t checkNum);
 
 uint8_t* OutputIO_Read(uint8_t checkNum);
+
+bool IsRS485_Ok(void);
 
 #endif // !__BSMRELAY_H
