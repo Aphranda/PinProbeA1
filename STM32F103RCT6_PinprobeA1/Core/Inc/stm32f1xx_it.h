@@ -42,6 +42,7 @@ extern "C" {
 /* USER CODE BEGIN EC */
 extern uint8_t* Uart1_BuffIsReady;
 extern uint8_t* Uart1_BuffOccupied;
+extern uint32_t Uart1_RxLength;
 
 extern uint8_t* Uart3_BuffIsReady;
 extern uint8_t* Uart3_BuffOccupied;

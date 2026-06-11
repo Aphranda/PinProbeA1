@@ -225,13 +225,12 @@ void SCPITask(void *argument)
   /* 无限循环 */
   for(;;)
   {
-    osMutexWait(COMMutexHandle,osWaitForever); // 申请互斥锁，保护串口和SCPI资源
-    if(strlen((const char *)Uart1_BuffIsReady)>3) // 判断是否有有效SCPI命令
+    osMutexWait(COMMutexHandle,osWaitForever);
+    if (Uart1_RxLength > 3)  // 至少4字节（如 *IDN? + 换行）
     {
-      // 调用SCPI解析处理函数
-      SCPI_Input(&scpi_context, (const char *)Uart1_BuffIsReady, strlen((const char *)Uart1_BuffIsReady)-1);
-      // 处理完成后清空缓冲区
-      memset((uint8_t *)Uart1_BuffIsReady, 0, MAX_RX_LEN);
+      Uart1_BuffIsReady[Uart1_RxLength] = '\0';  // 确保零结尾
+      SCPI_Input(&scpi_context, (const char *)Uart1_BuffIsReady, Uart1_RxLength);
+      Uart1_RxLength = 0;  // 消费完毕
     }
     osMutexRelease(COMMutexHandle); // 释放互斥锁
     osDelay(10);                   // 任务延时10ms

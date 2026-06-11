@@ -50,12 +50,11 @@ uint8_t Usart1_TX_BUF[MAX_TX_LEN];    // uart1 printf TX buff
 uint8_t Usart1_RX_BUF1[MAX_RX_LEN];   // uart1 DMA RX buff1
 uint8_t Usart1_RX_BUF2[MAX_RX_LEN];   // uart1 DMA RX buff2
 
-uint8_t Usart1_RX_BUF1_IsReady = 0;   // double buffer flag, which Cache occupied
-// 0: Usart1_RX_BUF1 Occupied, Usart1_RX_BUF2 Ready
-// 1: Usart1_RX_BUF1 Occupied, Usart1_RX_BUF2 Ready
+uint8_t Usart1_RX_BUF1_IsReady = 0;   // double buffer flag
+uint32_t Uart1_RxLength = 0;           // USART1 最近接收帧长度
 
-uint8_t* Uart1_BuffIsReady = Usart1_RX_BUF2;  // The pointer points to BUF2
-uint8_t* Uart1_BuffOccupied = Usart1_RX_BUF1; // The pointer points to BUF1
+uint8_t* Uart1_BuffIsReady = Usart1_RX_BUF2;
+uint8_t* Uart1_BuffOccupied = Usart1_RX_BUF1;
 
 volatile uint8_t Usart3_TX_Flag = 0;
 uint8_t Usart3_TX_BUF[MAX_TX_LEN];
@@ -354,6 +353,8 @@ void USART1_IRQHandler(void)
   {
     HAL_UART_DMAStop(&huart1); // stop DMA
 
+    uint32_t data_length = MAX_RX_LEN - __HAL_DMA_GET_COUNTER(&hdma_usart1_rx);
+    Uart1_RxLength = data_length;
 
     // double cache
     if(Usart1_RX_BUF1_IsReady)
