@@ -43,6 +43,7 @@
 #include "scpi_switch.h"
 #include "BsmRelay.h"
 #include "flash.h"
+#include "ram_vector.h"
 
 /* ========================================================================== */
 /*            SCPI *IDN? 运行时缓冲区                                         */
@@ -445,25 +446,18 @@ static scpi_result_t SCPI_ConfigureCylinder(scpi_t *context)
         return SCPI_RES_ERR;
     }
     SCPI_ChoiceToName(cylinder_source, param, &name);
-    if(Cylinder_Write(cylinder_id, cylinder_source[param]))
-    {
-        return SCPI_RES_ERR;
-    }
-
-
-    const char *name_read = "CYL ERR";
-    scpi_choice_def_t status =Cylinder_Status(1);
-    name_read = status.name;
-    SCPI_ResultCharacters(context, name_read, strlen(name_read));
-    context->first_output = 0;
+    RamVector_PostCmd((param == 0) ? VCMD_CYLINDER_CLOSE : VCMD_CYLINDER_OPEN);
+    SCPI_ResultCharacters(context, name, strlen(name));
     return SCPI_RES_OK;
 }
 
 static scpi_result_t SCPI_ReadCylinderState(scpi_t *context)
 {
+    const Vector_IOState_t* io = RamVector_GetLocalIO();
     const char *name = "CYL ERR";
-    scpi_choice_def_t status =Cylinder_Status(1);
-    name = status.name;
+    if (io->door_state == 1) name = "OPENED";
+    else if (io->door_state == 0) name = "CLOSED";
+    else if (io->door_moving) name = (io->cylinder_cmd[0] ? "OPENING" : "CLOSING");
     SCPI_ResultCharacters(context, name, strlen(name));
     return SCPI_RES_OK;
 }
@@ -483,25 +477,16 @@ static scpi_result_t SCPI_ConfigureLOCK(scpi_t *context)
         return SCPI_RES_ERR;
     }
     SCPI_ChoiceToName(lock_source, param, &name);
-    if(Lock_Write(lock_source[param]))
-    {
-        return SCPI_RES_ERR;
-    }
-
-    const char *name_read = "LOCK ERR";
-    scpi_choice_def_t status =Lock_Status();
-    name_read = status.name;
-    SCPI_ResultCharacters(context, name_read, strlen(name_read));
-    context->first_output = 0;
+    RamVector_PostCmd((param == 0) ? VCMD_UNLOCK : VCMD_LOCK);
+    SCPI_ResultCharacters(context, name, strlen(name));
     return SCPI_RES_OK;
 }
 
 static scpi_result_t SCPI_ReadLOCKState(scpi_t *context)
 {
-    const char *name = "LOCK ERR";
-    scpi_choice_def_t status =Lock_Status();
-    name = status.name;
-    SCPI_ResultCharacters(context, name, strlen(name));
+    const Vector_IOState_t* io = RamVector_GetLocalIO();
+    SCPI_ResultCharacters(context, io->lock_state ? "UNLOCK" : "LOCKED",
+                          io->lock_state ? 6 : 6);
     return SCPI_RES_OK;
 }
 
@@ -522,25 +507,21 @@ static scpi_result_t SCPI_ConfigureLED(scpi_t *context)
         return SCPI_RES_ERR;
     }
     SCPI_ChoiceToName(led_source, param, &name);
-    if(LED_Write(led_source[param]))
-    {
-        return SCPI_RES_ERR;
-    }
-
-    const char *name_read = "LED ERR";
-    scpi_choice_def_t status =LED_Status();
-    name_read = status.name;
-
-    SCPI_ResultCharacters(context, name_read, strlen(name_read));
-    context->first_output = 0;
+    RamVector_PostCmd((Vector_Cmd_t)(VCMD_LED_OFF + param));
+    SCPI_ResultCharacters(context, name, strlen(name));
     return SCPI_RES_OK;
 }
 
 static scpi_result_t SCPI_ReadLEDState(scpi_t *context)
 {
-    const char *name = "LED ERR";
-    scpi_choice_def_t status =LED_Status();
-    name = status.name;
+    const Vector_IOState_t* io = RamVector_GetLocalIO();
+    const char *name;
+    switch (io->led_state) {
+        case 1: name = "GREEN"; break;
+        case 2: name = "RED"; break;
+        case 4: name = "YELLOW"; break;
+        default: name = "OFF"; break;
+    }
     SCPI_ResultCharacters(context, name, strlen(name));
     return SCPI_RES_OK;
 }
@@ -633,12 +614,11 @@ static scpi_result_t SCPI_ReadRiskModeQ(scpi_t *context)
 ///       返回: IN:0xHH,0xHH OUT:0xHH,0xHH（16进制原始值）
 static scpi_result_t SCPI_ReadIOAll(scpi_t *context)
 {
-    uint8_t* I_status = InputIO_Read(CHECK_NUM);
-    uint8_t* O_status = OutputIO_Read(CHECK_NUM);
-
+    /* 从向量表读缓存, 不走 RS485 (避免和 ModBusTask 冲突) */
+    const Vector_IOState_t* io = RamVector_GetLocalIO();
     char buf[64];
     snprintf(buf, sizeof(buf), "IN:0x%02X,0x%02X OUT:0x%02X,0x%02X",
-             I_status[0], I_status[1], O_status[0], O_status[1]);
+             io->raw_in_lo, io->raw_in_hi, io->raw_out_lo, io->raw_out_hi);
     SCPI_ResultCharacters(context, buf, strlen(buf));
     return SCPI_RES_OK;
 }
