@@ -84,7 +84,7 @@ scpi_choice_def_t Lock_Status(){
     {
         return lock_source[0];
     }
-    else if(!out_01_08&power_out)
+    else if(!(out_01_08&power_out))
     {
         return lock_source[1];
     }
@@ -138,7 +138,7 @@ scpi_choice_def_t LED_Status(){
     else if(out_01_08&led_yellow){
         return led_source[3];
     }
-    else if((!out_01_08&led_green)&&(!out_01_08&led_red)&&(!out_01_08&led_yellow))
+    else if((!(out_01_08&led_green))&&(!(out_01_08&led_red))&&(!(out_01_08&led_yellow)))
     {
         return led_source[0];
     }

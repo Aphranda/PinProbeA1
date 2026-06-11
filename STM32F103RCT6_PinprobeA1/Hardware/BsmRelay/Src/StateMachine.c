@@ -117,7 +117,7 @@ uint8_t Lock_Action(uint8_t in_01_08, uint8_t in_09_16, uint8_t out_01_08, uint8
         {
             system_status = Idle; // 锁定状态中，长按解锁按钮，触发上电开关，进入空闲状态。
         }
-        else if(!out_01_08&power_out)
+        else if(!(out_01_08&power_out))
         {
             system_status = Lock; // 锁定状态中，解锁未触发，进入锁定状态
         }
