@@ -75,6 +75,13 @@ const osThreadAttr_t WatchDog_attributes = {
   .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityLow,
 };
+/* Definitions for StateVector */
+osThreadId_t StateVectorHandle;
+const osThreadAttr_t StateVector_attributes = {
+  .name = "StateVector",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityNormal,
+};
 /* Definitions for SCPITimer */
 osTimerId_t SCPITimerHandle;
 const osTimerAttr_t SCPITimer_attributes = {
@@ -95,6 +102,7 @@ void StartDefaultTask(void *argument);
 void SCPITask(void *argument);
 void ModBusTask(void *argument);
 void WatchDogTask(void *argument);
+void StateVectorTask(void *argument);
 void SCPITimerCallback(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
@@ -144,6 +152,9 @@ void MX_FREERTOS_Init(void) {
 
   /* creation of WatchDog */
   WatchDogHandle = osThreadNew(WatchDogTask, NULL, &WatchDog_attributes);
+
+  /* creation of StateVector */
+  StateVectorHandle = osThreadNew(StateVectorTask, NULL, &StateVector_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -226,6 +237,24 @@ __weak void WatchDogTask(void *argument)
     osDelay(500);             // 每500ms喂一次，留足余量
   }
   /* USER CODE END WatchDogTask */
+}
+
+/* USER CODE BEGIN Header_StateVectorTask */
+/**
+* @brief Function implementing the StateVector thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StateVectorTask */
+__weak void StateVectorTask(void *argument)
+{
+  /* USER CODE BEGIN StateVectorTask */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END StateVectorTask */
 }
 
 /* SCPITimerCallback function */
