@@ -1,4 +1,5 @@
 #include "BsmRelay.h"
+#include "ram_vector.h"
 #include <math.h>
 
 
@@ -150,7 +151,7 @@ scpi_choice_def_t LED_Status(){
 }
 
 scpi_choice_def_t SYS_Status(){
-    return sys_source[system_status];
+    return sys_source[RamVector_GetState()];
 }
 
 // IO状态缓存，避免返回局部变量指针
