@@ -120,7 +120,8 @@ void StateVector_Input(void)
 
     /* Idle 观测 */
     if (system_status == V_STATE_IDLE) {
-        if (in_01_08 & 0x01)
+        /* 上限位 或 人为确认(中间位置按按钮) → 允许进 READY */
+        if ((in_01_08 & 0x01) || poweron_position_ok)
             system_status = (out_01_08 & 0x40) ? V_STATE_READY : V_STATE_IDLE;
         else if (in_01_08 & 0x02)
             system_status = V_STATE_COMPLETE;
@@ -157,7 +158,7 @@ void StateVector_Input(void)
 
     /* Complete → Idle */
     if (system_status == V_STATE_COMPLETE) {
-        if ((out_01_08 & 0x01) && (in_01_08 & 0x01)) {
+        if ((out_01_08 & 0x01) && ((in_01_08 & 0x01) || Flash_GetRiskMode())) {
             RamVector_PostCmd(VCMD_LED_OFF);
             VEC_ACTION("OPEN_DONE", now - door_open_start_tick);
             door_open_start_tick = 0;
@@ -261,9 +262,10 @@ void StateVector_Input(void)
         }
 
         /* 按钮 → CYLINDER_OPEN (Complete) */
+        /* COMPLETE 状态本身已验证关门完毕, 不重复校验下极限 */
         if (system_status == V_STATE_COMPLETE) {
             uint8_t dcs = 0;
-            if ((in_09_16 & 0x06) && !(out_01_08 & 0x01) && (in_01_08 & 0x02)) {
+            if ((in_09_16 & 0x06) && !(out_01_08 & 0x01)) {
                 if (!door_open_confirm_tick) door_open_confirm_tick = now;
             } else { door_open_confirm_tick = 0; }
             if (door_open_confirm_tick && ((now - door_open_confirm_tick) >= DOOR_OPEN_CONFIRM_MS)) dcs = 1;
