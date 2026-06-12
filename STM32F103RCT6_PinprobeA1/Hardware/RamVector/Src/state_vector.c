@@ -12,7 +12,7 @@
 #include <string.h>
 
 /* ── 调试 ── */
-#define VECTOR_DEBUG
+/* #define VECTOR_DEBUG */  /* 关闭调试输出 */
 #ifdef VECTOR_DEBUG
 #define VEC_ACTION(n,e)  Uart1_Printf("[%s] %u ms\r\n", n, (unsigned int)(e))
 #define VEC_STATE(s)     Uart1_Printf("%s\r\n", (s))
