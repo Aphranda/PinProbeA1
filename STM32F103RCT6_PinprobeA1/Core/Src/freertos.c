@@ -65,8 +65,8 @@ const osThreadAttr_t SCPI_attributes = {
 osThreadId_t ModBusHandle;
 const osThreadAttr_t ModBus_attributes = {
   .name = "ModBus",
-  .stack_size = 1024 * 4,
-  .priority = (osPriority_t) osPriorityLow,
+  .stack_size = 512 * 4,
+  .priority = (osPriority_t) osPriorityNormal1,
 };
 /* Definitions for WatchDog */
 osThreadId_t WatchDogHandle;
@@ -79,18 +79,13 @@ const osThreadAttr_t WatchDog_attributes = {
 osThreadId_t StateVectorHandle;
 const osThreadAttr_t StateVector_attributes = {
   .name = "StateVector",
-  .stack_size = 128 * 4,
+  .stack_size = 512 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
-/* Definitions for SCPITimer */
-osTimerId_t SCPITimerHandle;
-const osTimerAttr_t SCPITimer_attributes = {
-  .name = "SCPITimer"
-};
-/* Definitions for COMMutex */
-osMutexId_t COMMutexHandle;
-const osMutexAttr_t COMMutex_attributes = {
-  .name = "COMMutex"
+/* Definitions for SysTimer */
+osTimerId_t SysTimerHandle;
+const osTimerAttr_t SysTimer_attributes = {
+  .name = "SysTimer"
 };
 
 /* Private function prototypes -----------------------------------------------*/
@@ -103,7 +98,7 @@ void SCPITask(void *argument);
 void ModBusTask(void *argument);
 void WatchDogTask(void *argument);
 void StateVectorTask(void *argument);
-void SCPITimerCallback(void *argument);
+void SysTimerCallback(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
@@ -116,9 +111,6 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN Init */
 
   /* USER CODE END Init */
-  /* Create the mutex(es) */
-  /* creation of COMMutex */
-  COMMutexHandle = osMutexNew(&COMMutex_attributes);
 
   /* USER CODE BEGIN RTOS_MUTEX */
   /* add mutexes, ... */
@@ -129,11 +121,11 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE END RTOS_SEMAPHORES */
 
   /* Create the timer(s) */
-  /* creation of SCPITimer */
-  SCPITimerHandle = osTimerNew(SCPITimerCallback, osTimerPeriodic, NULL, &SCPITimer_attributes);
+  /* creation of SysTimer */
+  SysTimerHandle = osTimerNew(SysTimerCallback, osTimerPeriodic, NULL, &SysTimer_attributes);
 
   /* USER CODE BEGIN RTOS_TIMERS */
-  /* start timers, add new ones, ... */
+  osTimerStart(SysTimerHandle, 25);  /* 25ms 系统节拍 */
   /* USER CODE END RTOS_TIMERS */
 
   /* USER CODE BEGIN RTOS_QUEUES */
@@ -176,10 +168,12 @@ void MX_FREERTOS_Init(void) {
 void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN StartDefaultTask */
-  /* Infinite loop */
+  /* 集群健康监控 — 单机为占位, 多机时扫描 node_status[1..7] */
+  osDelay(2000);
   for(;;)
   {
-    osDelay(1);
+    // TODO: 多机模式时检查 ram_vector.node_status[i].heartbeat/online
+    osDelay(1000); /* 1s 周期 */
   }
   /* USER CODE END StartDefaultTask */
 }
@@ -257,12 +251,13 @@ __weak void StateVectorTask(void *argument)
   /* USER CODE END StateVectorTask */
 }
 
-/* SCPITimerCallback function */
-void SCPITimerCallback(void *argument)
+/* SysTimerCallback function */
+__weak void SysTimerCallback(void *argument)
 {
-  /* USER CODE BEGIN SCPITimerCallback */
-
-  /* USER CODE END SCPITimerCallback */
+  /* USER CODE BEGIN SysTimerCallback */
+  osThreadFlagsSet(ModBusHandle, 0x01);
+  osThreadFlagsSet(StateVectorHandle, 0x01);
+  /* USER CODE END SysTimerCallback */
 }
 
 /* Private application code --------------------------------------------------*/

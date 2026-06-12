@@ -56,7 +56,6 @@ extern uint8_t* Uart1_BuffOccupied;
 extern uint8_t* Uart3_BuffIsReady;
 extern uint8_t* Uart3_BuffOccupied;
 
-extern osMutexId_t COMMutexHandle;
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -147,7 +146,7 @@ int main(void)
   /* 从 Flash 同步 IDN 字符串到运行时缓冲区 (覆盖默认值) */
   SCPI_SyncIdnFromFlash();
 
- 
+
   /* USER CODE END 2 */
 
   /* Init scheduler */
@@ -216,8 +215,7 @@ void SystemClock_Config(void)
   * 
   * 该任务循环检测串口1接收缓冲区(Uart1_BuffIsReady)是否有SCPI命令数据，
   * 如果有，则调用SCPI_Input进行命令解析和处理，处理完成后清空缓冲区。
-  * 任务执行期间会申请互斥锁(COMMutexHandle)以保证串口和SCPI资源的线程安全。
-  * 每次循环结束后延时10ms，并喂狗防止看门狗复位。
+  * 每次循环结束后延时10ms。
   */
 void SCPITask(void *argument)
 {
@@ -225,14 +223,12 @@ void SCPITask(void *argument)
   /* 无限循环 */
   for(;;)
   {
-    osMutexWait(COMMutexHandle,osWaitForever);
     if (Uart1_RxLength > 3)  // 至少4字节（如 *IDN? + 换行）
     {
       Uart1_BuffIsReady[Uart1_RxLength] = '\0';  // 确保零结尾
       SCPI_Input(&scpi_context, (const char *)Uart1_BuffIsReady, Uart1_RxLength);
       Uart1_RxLength = 0;  // 消费完毕
     }
-    osMutexRelease(COMMutexHandle); // 释放互斥锁
     osDelay(10);                   // 任务延时10ms
   }
   /* USER CODE END SCPITask */
@@ -242,8 +238,7 @@ void SCPITask(void *argument)
   * @brief ModBus及主状态机处理任务
   * 
   * 该任务循环调用StateMachine_Input()，用于处理系统主状态机逻辑（如门控、继电器等）。
-  * 任务执行期间会申请互斥锁(COMMutexHandle)以保证与其它任务的数据访问安全。
-  * 每次循环结束后延时50ms，并喂狗防止看门狗复位。
+  * RS485 IO 读取 + 向量表命令执行, SysTimer 控制周期。
   */
 void ModBusTask(void *argument)
 {
@@ -253,6 +248,8 @@ void ModBusTask(void *argument)
 
   for(;;)
   {
+    osThreadFlagsWait(0x01, osFlagsWaitAny, osWaitForever);
+
     uint8_t in_buf[2] = {0}, out_buf[2] = {0};
     bool ok = IO_Read(5, 2, in_buf);
     ok = IO_Read(5, 1, out_buf) && ok;
@@ -272,13 +269,11 @@ void ModBusTask(void *argument)
     /* 执行待处理命令 */
     Vector_Cmd_t cmd = RamVector_GetCmd();
     if (cmd != VCMD_NONE) {
-        osMutexWait(COMMutexHandle, osWaitForever);
         CmdExec_Execute(cmd);
         RamVector_ClearCmd();
-        osMutexRelease(COMMutexHandle);
     }
 
-    osDelay(30);  /* ~30ms 周期, IO 板响应 ~15ms */
+    /* 周期由 SysTimer 控制 */
   }
   /* USER CODE END ModBusTask */
 }
@@ -288,8 +283,11 @@ void StateVectorTask(void *argument)
 {
   (void)argument;
   RamVector_Init(0);  /* 单机出厂模式 */
-  osDelay(1000); // 延迟于IO拓展板启动
-  for(;;) { StateVector_Input(); osDelay(20); }
+  osDelay(500); // 等 ModBusTask 就绪
+  for(;;) {
+    osThreadFlagsWait(0x01, osFlagsWaitAny, osWaitForever);
+    StateVector_Input();
+  }
 }
 /* USER CODE END 4 */
 
