@@ -50,6 +50,7 @@ void StateVector_Input(void)
     static uint8_t  door_close_timing, door_close_from_full, door_close_time_learned;
     static uint8_t  poweron_position_ok;
     static uint8_t  door_up_cnt, door_down_cnt, door_up_db, door_down_db;
+    static uint8_t  btn1_cnt, btn2_cnt, btn1_db, btn2_db;  /* 按钮消抖 */
     static uint8_t  system_status = V_STATE_INIT;
     static uint8_t  rs485_err_cnt;
     static bool     rs485_fault;       /* true=连续失败超阈值, 禁自动操作 */
@@ -102,6 +103,14 @@ void StateVector_Input(void)
     if (door_up_db)   in_01_08 |= 0x01; else in_01_08 &= ~0x01;
     if (door_down_db) in_01_08 |= 0x02; else in_01_08 &= ~0x02;
 
+    /* 门按钮消抖 (in_09_16 bit1=btn1, bit2=btn2) */
+    if (in_09_16 & 0x02) { if (++btn1_cnt >= DOOR_DEBOUNCE_CNT) btn1_db = 1; }
+    else { btn1_cnt = 0; btn1_db = 0; }
+    if (in_09_16 & 0x04) { if (++btn2_cnt >= DOOR_DEBOUNCE_CNT) btn2_db = 1; }
+    else { btn2_cnt = 0; btn2_db = 0; }
+    if (btn1_db) in_09_16 |= 0x02; else in_09_16 &= ~0x02;
+    if (btn2_db) in_09_16 |= 0x04; else in_09_16 &= ~0x04;
+
     uint32_t now = GetTim1Ms();
 
     /* ══════════════════════════════════════════
@@ -146,8 +155,11 @@ void StateVector_Input(void)
             RamVector_PostLED(VCMD_LED_GREEN, CMD_PRIO_USER);
             door_close_timing = 0; door_open_confirm_tick = 0;
             if (door_close_from_full) {
-                door_close_default_ms = now - door_close_start_tick;
-                door_close_time_learned = 1;
+                uint32_t t = now - door_close_start_tick;
+                if (t >= 1000) {  /* < 1s 不学 */
+                    door_close_default_ms = t;
+                    door_close_time_learned = 1;
+                }
             }
             door_close_done_tick = now; door_close_from_full = 0;
             VEC_ACTION("CLOSE_DONE", door_close_default_ms);
@@ -196,7 +208,7 @@ void StateVector_Input(void)
     /* 防夹手: 气压(0x20) + 激光2(0x40) + 激光3(0x80) + 激光4(0x0100) */
     if ((in_01_08 & 0xE0) || (in_09_16 & 0x01)) {
         uint32_t de = door_close_start_tick ? (now - door_close_start_tick) : 0;
-        if (door_close_time_learned && door_close_timing && door_close_start_tick &&
+        if (door_close_timing && door_close_start_tick &&
             !(in_01_08 & 0x02) && (de > door_close_default_ms * 2 / 3)) {
             VEC_EVENT("LASER");
             laser_emergency = true;
