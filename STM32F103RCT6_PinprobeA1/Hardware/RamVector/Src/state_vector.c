@@ -53,6 +53,7 @@ void StateVector_Input(void)
     static uint8_t  system_status = V_STATE_INIT;
     static uint8_t  rs485_err_cnt;
     static bool     rs485_fault;       /* true=连续失败超阈值, 禁自动操作 */
+    static bool     close_slow_warned; /* 关门超预期告警, 防止重复 */
 
     /* ── 1. 从向量表读 IO (ModBusTask 异步更新) ── */
     const Vector_IOState_t* vio = RamVector_GetLocalIO();
@@ -151,8 +152,30 @@ void StateVector_Input(void)
                 door_close_time_learned = 1;
             }
             door_close_done_tick = now; door_close_from_full = 0;
+            close_slow_warned = false;
             VEC_ACTION("CLOSE_DONE", door_close_default_ms);
             system_status = V_STATE_COMPLETE;
+        }
+        /* 超时告警: 正常关门时间已过但未到限位 → 预警 */
+        else if (door_close_start_tick) {
+            if (!close_slow_warned
+                && ((now - door_close_start_tick) > door_close_default_ms)) {
+                Uart1_Printf("[WARN] Close slower than expected, limit sensor fail\r\n");
+                RamVector_PostCmd(VCMD_LOCK);       /* 松气停气缸 */
+                RamVector_PostCmd(VCMD_LED_YELLOW);
+                close_slow_warned = true;
+            }
+            /* 硬超时: max(10s, 3×正常时间) → 故障 */
+            uint32_t timeout = door_close_default_ms * 3;
+            if (timeout < 10000) timeout = 10000;
+            if ((now - door_close_start_tick) > timeout) {
+                Uart1_Printf("[FAULT] Close timeout, limit sensor failure\r\n");
+                RamVector_PostCmd(VCMD_LOCK);       /* 切断动力, 松气 */
+                RamVector_PostCmd(VCMD_LED_RED);
+                door_close_start_tick = 0; door_close_timing = 0;
+                close_slow_warned = false;
+                system_status = V_STATE_EMERGENCY;
+            }
         }
     }
 
@@ -162,6 +185,8 @@ void StateVector_Input(void)
             RamVector_PostCmd(VCMD_LED_OFF);
             VEC_ACTION("OPEN_DONE", now - door_open_start_tick);
             door_open_start_tick = 0;
+            door_close_done_tick  = 0;  /* 开门后停止气压监控 */
+            poweron_position_ok   = 0;  /* 一个完整周期完成, 复位人工确认 */
             system_status = V_STATE_IDLE;
         }
     }
@@ -187,21 +212,20 @@ void StateVector_Input(void)
         VEC_EVENT("ESTOP");
         system_status = V_STATE_EMERGENCY;
         if (!(in_01_08 & 0x01)) RamVector_PostCmd(VCMD_CYLINDER_OPEN);
-        RamVector_PostCmd(VCMD_LOCK);
         door_close_done_tick = 0;
     }
 
     /* 激光仅在关门中才进入紧急, 否则透传正常流程 */
     /* 防夹手: 气压(0x20) + 激光2(0x40) + 激光3(0x80) + 激光4(0x0100) */
+    /* 首次关门用默认 2500ms 算阈值, 学习后用实际时间 */
     if ((in_01_08 & 0xE0) || (in_09_16 & 0x01)) {
         uint32_t de = door_close_start_tick ? (now - door_close_start_tick) : 0;
-        if (door_close_time_learned && door_close_timing && door_close_start_tick &&
+        if (door_close_timing && door_close_start_tick &&
             !(in_01_08 & 0x02) && (de > door_close_default_ms * 2 / 3)) {
             VEC_EVENT("LASER");
             laser_emergency = true;
             system_status = V_STATE_EMERGENCY;
             RamVector_PostCmd(VCMD_CYLINDER_OPEN);
-            RamVector_PostCmd(VCMD_LOCK);
             door_close_start_tick = 0; door_close_timing = 0; door_close_done_tick = 0;
         }
     }
@@ -256,6 +280,7 @@ void StateVector_Input(void)
                     door_close_start_tick = now; door_close_timing = 1;
                     door_close_from_full = (in_01_08 & 0x01) ? 1 : 0;
                     air_last_check_tick = 0;
+                    close_slow_warned = false;
                     VEC_ACTION("CLOSE_START", 0);
                 }
             }
