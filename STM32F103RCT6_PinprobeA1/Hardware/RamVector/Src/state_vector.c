@@ -156,9 +156,9 @@ void StateVector_Input(void)
         }
     }
 
-    /* Complete → Idle */
+    /* Complete → Idle (COMPLETE 已验证关门, 开门完成不重复验上限位) */
     if (system_status == V_STATE_COMPLETE) {
-        if ((out_01_08 & 0x01) && ((in_01_08 & 0x01) || Flash_GetRiskMode())) {
+        if (out_01_08 & 0x01) {
             RamVector_PostCmd(VCMD_LED_OFF);
             VEC_ACTION("OPEN_DONE", now - door_open_start_tick);
             door_open_start_tick = 0;
