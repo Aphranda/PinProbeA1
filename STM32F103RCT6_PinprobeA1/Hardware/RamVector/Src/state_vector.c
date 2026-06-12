@@ -35,6 +35,7 @@ static const char* state_name(uint8_t s) {
 #define DOOR_OPEN_CONFIRM_MS 200
 #define RELEASE_DELAY_MS     200
 #define DOOR_DEBOUNCE_CNT    3
+#define RS485_FAIL_THRESHOLD 10   /* 连续失败 10 次 (~250ms) 触发告警 */
 
 void StateVector_Input(void)
 {
@@ -49,6 +50,7 @@ void StateVector_Input(void)
     static uint8_t  door_up_cnt, door_down_cnt, door_up_db, door_down_db;
     static uint8_t  system_status = V_STATE_INIT;
     static uint8_t  rs485_err_cnt;
+    static bool     rs485_fault;       /* true=连续失败超阈值, 禁自动操作 */
 
     /* ── 1. 从向量表读 IO (ModBusTask 异步更新) ── */
     const Vector_IOState_t* vio = RamVector_GetLocalIO();
@@ -58,9 +60,23 @@ void StateVector_Input(void)
     uint8_t out_09_16 = vio->raw_out_hi;
     bool io_ok = (vio->rs485_ok != 0);
 
+    /* RS485 故障保护: 连续失败 > 阈值 → 停自动操作 + 黄灯告警 */
     if (!io_ok) {
-        if (++rs485_err_cnt >= 40) { Uart1_Printf("[RS485] COMM ERROR\r\n"); rs485_err_cnt = 0; }
+        if (++rs485_err_cnt >= RS485_FAIL_THRESHOLD) {
+            if (!rs485_fault) {
+                Uart1_Printf("[RS485] FAULT\r\n");
+                RamVector_PostCmd(VCMD_LED_YELLOW);
+                rs485_fault = true;
+                rs485_err_cnt = 0;     /* 防溢出, 保持故障态 */
+            }
+        }
         return;
+    }
+    /* RS485 恢复 */
+    if (rs485_fault) {
+        Uart1_Printf("[RS485] RECOVERED\r\n");
+        RamVector_PostCmd(VCMD_LED_OFF);
+        rs485_fault = false;
     }
     rs485_err_cnt = 0;
 
