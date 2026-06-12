@@ -15,6 +15,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "flash.h"
 #include "stm32f1xx_hal.h"
+#include "iwdg.h"
 #include <string.h>
 
 /* Private define ------------------------------------------------------------*/
@@ -136,6 +137,9 @@ static Flash_Status_t Flash_ErasePage(void)
     FLASH_EraseInitTypeDef erase_init;
     uint32_t page_error = 0;
 
+    /* Flash 操作期间 CPU 暂停, 提前喂狗防复位 */
+    HAL_IWDG_Refresh(&hiwdg);
+
     /* 解锁Flash */
     HAL_FLASH_Unlock();
 
@@ -145,7 +149,7 @@ static Flash_Status_t Flash_ErasePage(void)
     erase_init.PageAddress = FLASH_CONFIG_ADDR;
     erase_init.NbPages     = 1;
 
-    /* 执行擦除 */
+    /* 执行擦除 (约40ms, CPU暂停取指) */
     hal_status = HAL_FLASHEx_Erase(&erase_init, &page_error);
 
     /* 锁定Flash */

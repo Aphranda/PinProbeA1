@@ -7,7 +7,7 @@ extern scpi_choice_def_t cylinder_source[];
 extern scpi_choice_def_t lock_source[];
 extern scpi_choice_def_t led_source[];
 extern scpi_choice_def_t sys_source[];
-extern uint8_t system_status;
+// extern uint8_t system_status;  /* [DEPRECATED] 旧 StateMachine.c 全局变量, 已改用 RamVector_GetState() */
 
 // RS485通信状态标志：读/写操作失败时置false，禁止状态机使用不可靠数据
 static bool rs485_io_ok = true;

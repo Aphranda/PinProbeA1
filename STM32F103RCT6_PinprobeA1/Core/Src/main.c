@@ -29,7 +29,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "StateMachine.h"
+// #include "StateMachine.h"   /* [DEPRECATED] 旧状态机, 已被 RamVector/state_vector 替代 */
 #include "BsmRelay.h"
 #include "RS485.h"
 #include "scpi/scpi.h"
@@ -320,11 +320,26 @@ void SCPITask(void *argument)
   /* 无限循环 */
   for(;;)
   {
-    if (Uart1_RxLength > 3)  // 至少4字节（如 *IDN? + 换行）
+    uint32_t len;
+    const char *buf;
+
+    taskENTER_CRITICAL();           // 关中断, 原子快照长度+指针
+    if (Uart1_RxLength > 3)        // 至少4字节（如 *IDN? + 换行）
     {
-      Uart1_BuffIsReady[Uart1_RxLength] = '\0';  // 确保零结尾
-      SCPI_Input(&scpi_context, (const char *)Uart1_BuffIsReady, Uart1_RxLength);
-      Uart1_RxLength = 0;  // 消费完毕
+      len = Uart1_RxLength;
+      buf = (const char *)Uart1_BuffIsReady;
+      Uart1_RxLength = 0;          // 立即消费, 防ISR覆盖
+    }
+    else
+    {
+      len = 0;
+      buf = NULL;
+    }
+    taskEXIT_CRITICAL();
+
+    if (buf && len > 0)
+    {
+      SCPI_Input(&scpi_context, buf, len);
     }
     osDelay(10);                   // 任务延时10ms
   }
@@ -333,8 +348,9 @@ void SCPITask(void *argument)
 
 /**
   * @brief ModBus及主状态机处理任务
-  * 
-  * 该任务循环调用StateMachine_Input()，用于处理系统主状态机逻辑（如门控、继电器等）。
+  *
+  * IO 读取 + RamVector 命令执行 + 向量表同步, SysTimer 控制周期。
+  * (旧 StateMachine_Input 已废弃, 现由 StateVectorTask 驱动 state_vector.c)
   * RS485 IO 读取 + 向量表命令执行, SysTimer 控制周期。
   */
 void ModBusTask(void *argument)

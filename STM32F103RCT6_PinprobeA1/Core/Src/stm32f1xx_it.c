@@ -65,7 +65,7 @@ uint8_t Usart3_RX_BUF1_IsReady = 0;
 uint32_t Uart3_RxLength = 0;           // 最近一次USART3接收帧长度
 
 uint8_t* Uart3_BuffIsReady = Usart3_RX_BUF2;
-uint8_t* Uart3_BuffOccupied = Usart3_RX_BUF2;
+uint8_t* Uart3_BuffOccupied = Usart3_RX_BUF1;
 
 /* USER CODE END PV */
 
