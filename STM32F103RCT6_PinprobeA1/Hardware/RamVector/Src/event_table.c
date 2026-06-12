@@ -52,6 +52,7 @@ const uint8_t event_table_size = sizeof(event_table) / sizeof(event_table[0]) - 
 Vector_Cmd_t EventTable_Lookup(Vector_SysState_t state, EventID_t event,
                                const Vector_IOState_t *io)
 {
+    (void)io;  /* 预留, 未来 guard 条件使用 */
     for (int i = 0; event_table[i].cmd != VCMD_NONE; i++) {
         const EventVectorEntry_t *e = &event_table[i];
 

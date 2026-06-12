@@ -12,7 +12,9 @@ extern scpi_choice_def_t led_source[];
 
 void CmdExec_Init(void)
 {
-    /* nothing yet */
+    /* 引用 event_table_size 消除未使用警告 (预留给事件驱动架构) */
+    extern const uint8_t event_table_size;
+    (void)event_table_size;
 }
 
 void CmdExec_Execute(Vector_Cmd_t cmd)

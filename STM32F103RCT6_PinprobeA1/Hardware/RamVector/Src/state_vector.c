@@ -12,21 +12,23 @@
 #include <string.h>
 
 /* ── 调试 ── */
-/* #define VECTOR_DEBUG */  /* 关闭调试输出 */
+#define VECTOR_DEBUG  /* 开启调试输出 */
 #ifdef VECTOR_DEBUG
 #define VEC_ACTION(n,e)  Uart1_Printf("[%s] %u ms\r\n", n, (unsigned int)(e))
 #define VEC_STATE(s)     Uart1_Printf("%s\r\n", (s))
 #define VEC_EVENT(e)     Uart1_Printf("[EVENT] %s\r\n", (e))
 #else
-#define VEC_ACTION(n,e)  do{}while(0)
-#define VEC_STATE(s)     do{}while(0)
-#define VEC_EVENT(e)     do{}while(0)
+#define VEC_ACTION(n,e)  ((void)(n),(void)(e))
+#define VEC_STATE(s)     ((void)(s))
+#define VEC_EVENT(e)     ((void)(e))
 #endif
 
+#ifdef VECTOR_DEBUG
 static const char* state_name(uint8_t s) {
     switch(s){case 0:return"LOCK";case 1:return"IDLE";case 2:return"READY";
     case 3:return"RUNNING";case 4:return"EMERGENCY";case 5:return"COMPLETE";default:return"INIT";}
 }
+#endif
 
 #define LOCK_PRESS_MS        300
 #define LOCK_IDLE_MS         1000
@@ -58,6 +60,7 @@ void StateVector_Input(void)
     uint8_t in_09_16  = vio->raw_in_hi;
     uint8_t out_01_08 = vio->raw_out_lo;
     uint8_t out_09_16 = vio->raw_out_hi;
+    (void)out_09_16;  /* 仅在 VECTOR_DEBUG 的 IO 日志中使用 */
     bool io_ok = (vio->rs485_ok != 0);
 
     /* RS485 故障保护: 连续失败 > 阈值 → 停自动操作 + 黄灯告警 */
@@ -290,9 +293,11 @@ void StateVector_Input(void)
             release_start_tick = 0;
     } else { if (release_start_tick) release_start_tick = now; }
 
-    /* 状态变化输出 */
+    /* 状态变化输出 (仅调试) */
+#ifdef VECTOR_DEBUG
     { static uint8_t last = 0xFF;
       if (system_status != last) { VEC_STATE(state_name(system_status)); last = system_status; } }
+#endif
 
     RamVector_SetState((Vector_SysState_t)system_status);
     RamVector_Heartbeat();

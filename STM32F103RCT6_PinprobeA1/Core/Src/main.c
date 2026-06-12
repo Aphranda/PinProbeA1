@@ -341,7 +341,7 @@ void ModBusTask(void *argument)
 {
   /* USER CODE BEGIN ModBusTask */
   (void)argument;
-  osDelay(1000); // 延迟于IO拓展板启动
+  osDelay(500);  /* 等 IO 拓展板启动 */
 
   for(;;)
   {
@@ -380,7 +380,7 @@ void StateVectorTask(void *argument)
 {
   (void)argument;
   RamVector_Init(0);  /* 单机出厂模式 */
-  osDelay(500); // 等 ModBusTask 就绪
+  osDelay(700);        /* 晚于 ModBusTask(500ms), 确保首帧 IO 已就绪 */
   for(;;) {
     osThreadFlagsWait(0x01, osFlagsWaitAny, osWaitForever);
     StateVector_Input();
