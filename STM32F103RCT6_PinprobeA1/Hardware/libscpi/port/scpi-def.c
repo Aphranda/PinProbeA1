@@ -44,6 +44,7 @@
 #include "BsmRelay.h"
 #include "flash.h"
 #include "ram_vector.h"
+#include "state_vector.h"
 #include "tim.h"
 
 /* 辅助: 推送 SCPI 错误并返回 ERR (附带描述信息) */
@@ -620,6 +621,94 @@ static scpi_result_t SCPI_SystemUpTimeQ(scpi_t *context)
     return SCPI_RES_OK;
 }
 
+/* ===== 调试开关 (运行时控制, 替代编译期宏) ===== */
+
+scpi_choice_def_t debug_on_off[] = {
+    {"OFF", 0},
+    {"ON",  1},
+    SCPI_CHOICE_LIST_END
+};
+
+static scpi_result_t SCPI_ConfigureDebugState(scpi_t *context)
+{
+    int32_t param;
+    if (!SCPI_ParamChoice(context, debug_on_off, &param, TRUE))
+        return SCPI_RES_ERR;
+    vector_debug_flags.state = (param != 0);
+    const char *name;
+    SCPI_ChoiceToName(debug_on_off, param, &name);
+    SCPI_ResultCharacters(context, name, strlen(name));
+    return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_ReadDebugStateQ(scpi_t *context)
+{
+    const char *name;
+    SCPI_ChoiceToName(debug_on_off, vector_debug_flags.state ? 1 : 0, &name);
+    SCPI_ResultCharacters(context, name, strlen(name));
+    return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_ConfigureDebugAction(scpi_t *context)
+{
+    int32_t param;
+    if (!SCPI_ParamChoice(context, debug_on_off, &param, TRUE))
+        return SCPI_RES_ERR;
+    vector_debug_flags.action = (param != 0);
+    const char *name;
+    SCPI_ChoiceToName(debug_on_off, param, &name);
+    SCPI_ResultCharacters(context, name, strlen(name));
+    return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_ReadDebugActionQ(scpi_t *context)
+{
+    const char *name;
+    SCPI_ChoiceToName(debug_on_off, vector_debug_flags.action ? 1 : 0, &name);
+    SCPI_ResultCharacters(context, name, strlen(name));
+    return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_ConfigureDebugEvent(scpi_t *context)
+{
+    int32_t param;
+    if (!SCPI_ParamChoice(context, debug_on_off, &param, TRUE))
+        return SCPI_RES_ERR;
+    vector_debug_flags.event = (param != 0);
+    const char *name;
+    SCPI_ChoiceToName(debug_on_off, param, &name);
+    SCPI_ResultCharacters(context, name, strlen(name));
+    return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_ReadDebugEventQ(scpi_t *context)
+{
+    const char *name;
+    SCPI_ChoiceToName(debug_on_off, vector_debug_flags.event ? 1 : 0, &name);
+    SCPI_ResultCharacters(context, name, strlen(name));
+    return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_ConfigureDebugIO(scpi_t *context)
+{
+    int32_t param;
+    if (!SCPI_ParamChoice(context, debug_on_off, &param, TRUE))
+        return SCPI_RES_ERR;
+    vector_debug_flags.io = (param != 0);
+    const char *name;
+    SCPI_ChoiceToName(debug_on_off, param, &name);
+    SCPI_ResultCharacters(context, name, strlen(name));
+    return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_ReadDebugIOQ(scpi_t *context)
+{
+    const char *name;
+    SCPI_ChoiceToName(debug_on_off, vector_debug_flags.io ? 1 : 0, &name);
+    SCPI_ResultCharacters(context, name, strlen(name));
+    return SCPI_RES_OK;
+}
+
 const scpi_command_t scpi_commands[] = {
     /* IEEE Mandated Commands (SCPI std V1999.0 4.1.1) */
     {
@@ -765,6 +854,39 @@ const scpi_command_t scpi_commands[] = {
     {
         .pattern = "CONFigure:RISK:MODE?",
         .callback = SCPI_ReadRiskModeQ,
+    },
+    /* 调试开关 (运行时控制, 默认 OFF) */
+    {
+        .pattern = "CONFigure:DEBUg:STATe",
+        .callback = SCPI_ConfigureDebugState,
+    },
+    {
+        .pattern = "READ:DEBUg:STATe?",
+        .callback = SCPI_ReadDebugStateQ,
+    },
+    {
+        .pattern = "CONFigure:DEBUg:ACTion",
+        .callback = SCPI_ConfigureDebugAction,
+    },
+    {
+        .pattern = "READ:DEBUg:ACTion?",
+        .callback = SCPI_ReadDebugActionQ,
+    },
+    {
+        .pattern = "CONFigure:DEBUg:EVENt",
+        .callback = SCPI_ConfigureDebugEvent,
+    },
+    {
+        .pattern = "READ:DEBUg:EVENt?",
+        .callback = SCPI_ReadDebugEventQ,
+    },
+    {
+        .pattern = "CONFigure:DEBUg:IO",
+        .callback = SCPI_ConfigureDebugIO,
+    },
+    {
+        .pattern = "READ:DEBUg:IO?",
+        .callback = SCPI_ReadDebugIOQ,
     },
     SCPI_CMD_LIST_END};
 
