@@ -79,6 +79,30 @@ void MX_FREERTOS_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
+/* ── P0.2: 复位原因 ── */
+static uint8_t reset_reason;  /* 0=未知, 1=POR, 2=IWDG, 3=NRST, 4=Soft */
+
+static void ResetReason_Capture(void)
+{
+    uint32_t csr = RCC->CSR;
+    if (csr & RCC_CSR_IWDGRSTF)      reset_reason = 2;
+    else if (csr & RCC_CSR_SFTRSTF)  reset_reason = 4;
+    else if (csr & RCC_CSR_PINRSTF)  reset_reason = 3;
+    else if (csr & RCC_CSR_PORRSTF)  reset_reason = 1;
+    __HAL_RCC_CLEAR_RESET_FLAGS();   /* 清除标志, 下次才能正确识别 */
+}
+
+static const char* ResetReason_Str(void)
+{
+    switch (reset_reason) {
+        case 1: return "POR";
+        case 2: return "IWDG";
+        case 3: return "NRST";
+        case 4: return "Soft";
+        default: return "?";
+    }
+}
+
 /**
   * @brief 上电自检 (Power-On Self Test)
   * @note  检查 RCC 时钟、Flash 配置 CRC、RS485 从机响应。
@@ -104,6 +128,10 @@ static uint8_t PowerOnSelfTest(void)
                      (fault & 0x01) ? "FAIL" : "OK", sysclk);
         HAL_Delay(5);
     }
+
+    /* 1b. 复位原因 */
+    Uart1_Printf("[POST] Reset reason: %s\r\n", ResetReason_Str());
+    HAL_Delay(5);
 
     /* 2. Flash 配置 CRC */
     {
@@ -160,7 +188,7 @@ int main(void)
   SystemClock_Config();
 
   /* USER CODE BEGIN SysInit */
-
+  ResetReason_Capture();   /* 尽早读 RCC->CSR, 在 HAL 清除前 */
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
