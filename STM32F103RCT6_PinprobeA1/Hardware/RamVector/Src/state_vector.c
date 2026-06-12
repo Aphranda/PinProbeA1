@@ -11,19 +11,25 @@
 #include "flash.h"
 #include <string.h>
 
-/* ── 调试 ── */
-#define VECTOR_DEBUG  /* 开启调试输出 */
-#ifdef VECTOR_DEBUG
+/* ── 调试开关 (独立控制) ── */
+// #define VECTOR_DEBUG_STATE        /* 状态切换 + 耗时 */
+// #define VECTOR_DEBUG_ACTION       /* 动作: CLOSE_START/DONE, OPEN_START/DONE, LOCK/UNLOCK */
+// #define VECTOR_DEBUG_EVENT        /* 事件: ESTOP, LASER */
+/* #define VECTOR_DEBUG_IO */    /* IO 原始值 (刷屏, 按需开) */
+
+#ifdef VECTOR_DEBUG_ACTION
 #define VEC_ACTION(n,e)  Uart1_Printf("[%s] %u ms\r\n", n, (unsigned int)(e))
-#define VEC_STATE(s)     Uart1_Printf("%s\r\n", (s))
-#define VEC_EVENT(e)     Uart1_Printf("[EVENT] %s\r\n", (e))
 #else
 #define VEC_ACTION(n,e)  ((void)(n),(void)(e))
-#define VEC_STATE(s)     ((void)(s))
+#endif
+
+#ifdef VECTOR_DEBUG_EVENT
+#define VEC_EVENT(e)     Uart1_Printf("[EVENT] %s\r\n", (e))
+#else
 #define VEC_EVENT(e)     ((void)(e))
 #endif
 
-#ifdef VECTOR_DEBUG
+#ifdef VECTOR_DEBUG_STATE
 static const char* state_name(uint8_t s) {
     switch(s){case 0:return"LOCK";case 1:return"IDLE";case 2:return"READY";
     case 3:return"RUNNING";case 4:return"EMERGENCY";case 5:return"COMPLETE";default:return"INIT";}
@@ -54,6 +60,7 @@ void StateVector_Input(void)
     static uint8_t  system_status = V_STATE_INIT;
     static uint8_t  rs485_err_cnt;
     static bool     rs485_fault;       /* true=连续失败超阈值, 禁自动操作 */
+    static bool     m_23, m_100, m_300; /* 关门时间里程碑 (调试) */
 
     /* ── 1. 从向量表读 IO (ModBusTask 异步更新) ── */
     const Vector_IOState_t* vio = RamVector_GetLocalIO();
@@ -61,7 +68,8 @@ void StateVector_Input(void)
     uint8_t in_09_16  = vio->raw_in_hi;
     uint8_t out_01_08 = vio->raw_out_lo;
     uint8_t out_09_16 = vio->raw_out_hi;
-    (void)out_09_16;  /* 仅在 VECTOR_DEBUG 的 IO 日志中使用 */
+    (void)out_09_16;              /* 仅在 VECTOR_DEBUG_IO 中使用 */
+    (void)door_close_time_learned; /* 调试/风险模式引用 */
     bool io_ok = (vio->rs485_ok != 0);
 
     /* RS485 故障保护: 连续失败 > 阈值 → 停自动操作 + 黄灯告警 */
@@ -85,7 +93,7 @@ void StateVector_Input(void)
     rs485_err_cnt = 0;
 
     /* IO 变化时输出 (合并为一次 printf 避免非阻塞丢帧) */
-#ifdef VECTOR_DEBUG
+#ifdef VECTOR_DEBUG_IO
     { static uint8_t li0=0xFF,li1=0xFF,lo0=0xFF,lo1=0xFF;
       if(in_01_08!=li0||in_09_16!=li1||out_01_08!=lo0||out_09_16!=lo1){
           Uart1_Printf("[IO] IN:0x%02X,0x%02X OUT:0x%02X,0x%02X\r\n",
@@ -144,6 +152,31 @@ void StateVector_Input(void)
 
     /* Running → Complete (限位 或 风险模式气压) */
     if (system_status == V_STATE_RUNNING) {
+#ifdef VECTOR_DEBUG_ACTION
+        {   /* 关门阶段追踪 */
+            static uint8_t close_phase = 0; /* 0=TOP, 1=MID, 2=BOTTOM */
+            uint8_t new_phase;
+            if (in_01_08 & 0x01)      new_phase = 0;
+            else if (in_01_08 & 0x02) new_phase = 2;
+            else                      new_phase = 1;
+            if (new_phase != close_phase) {
+                Uart1_Printf("[CLOSE] phase %d @ %u ms\r\n",
+                    new_phase, (unsigned int)(now - door_close_start_tick));
+                close_phase = new_phase;
+            }
+        }
+#endif
+#ifdef VECTOR_DEBUG_ACTION
+        {   /* 关门时间里程碑 (各只印一次) */
+            uint32_t el = now - door_close_start_tick;
+            if (!m_23 && el > door_close_default_ms * 2 / 3)
+                { Uart1_Printf("[CLOSE] 2/3 @ %u ms, laser active\r\n", (unsigned int)el); m_23 = true; }
+            if (!m_100 && el > door_close_default_ms)
+                { Uart1_Printf("[CLOSE] 100%% @ %u ms, expected done\r\n", (unsigned int)el); m_100 = true; }
+            if (!m_300 && el > door_close_default_ms * 3)
+                { Uart1_Printf("[CLOSE] 300%% @ %u ms, TIMEOUT\r\n", (unsigned int)el); m_300 = true; }
+        }
+#endif
         bool limit_ok  = (out_01_08 & 0x02) && (in_01_08 & 0x02);
         bool risk_ok   = Flash_GetRiskMode()
                       && (out_01_08 & 0x02)
@@ -198,7 +231,10 @@ void StateVector_Input(void)
     bool laser_emergency = false;
 
     if (estop) {
-        VEC_EVENT("ESTOP");
+        uint32_t et = door_close_start_tick ? (now - door_close_start_tick) : 0;
+#ifdef VECTOR_DEBUG_EVENT
+        Uart1_Printf("[EVENT] ESTOP @ %u ms (close el:%u)\r\n", (unsigned int)now, (unsigned int)et);
+#endif
         system_status = V_STATE_EMERGENCY;
         RamVector_PostLED(VCMD_LED_RED, CMD_PRIO_SAFETY);
         RamVector_PostLock(VCMD_LOCK, CMD_PRIO_SAFETY);
@@ -213,7 +249,9 @@ void StateVector_Input(void)
         uint32_t de = door_close_start_tick ? (now - door_close_start_tick) : 0;
         if (door_close_timing && door_close_start_tick &&
             !(in_01_08 & 0x02) && (de > door_close_default_ms * 2 / 3)) {
-            VEC_EVENT("LASER");
+#ifdef VECTOR_DEBUG_EVENT
+            Uart1_Printf("[EVENT] LASER @ %u ms\r\n", (unsigned int)de);
+#endif
             laser_emergency = true;
             system_status = V_STATE_EMERGENCY;
             RamVector_PostLED(VCMD_LED_RED, CMD_PRIO_SAFETY);
@@ -275,6 +313,7 @@ void StateVector_Input(void)
                     door_close_start_tick = now; door_close_timing = 1;
                     door_close_from_full = (in_01_08 & 0x01) ? 1 : 0;
                     air_last_check_tick = 0;
+                    m_23 = m_100 = m_300 = false;
                     VEC_ACTION("CLOSE_START", 0);
                 }
             }
@@ -314,9 +353,20 @@ void StateVector_Input(void)
     } else { if (release_start_tick) release_start_tick = now; }
 
     /* 状态变化输出 (仅调试) */
-#ifdef VECTOR_DEBUG
-    { static uint8_t last = 0xFF;
-      if (system_status != last) { VEC_STATE(state_name(system_status)); last = system_status; } }
+#ifdef VECTOR_DEBUG_STATE
+    { static uint8_t  last_state = 0xFF;
+      static uint32_t state_enter_tick;
+      if (system_status != last_state) {
+          if (last_state != 0xFF)
+              Uart1_Printf("[STATE] %s -> %s (%u ms)\r\n",
+                  state_name(last_state), state_name(system_status),
+                  (unsigned int)(now - state_enter_tick));
+          else
+              Uart1_Printf("[STATE] %s\r\n", state_name(system_status));
+          last_state = system_status;
+          state_enter_tick = now;
+      }
+    }
 #endif
 
     RamVector_SetState((Vector_SysState_t)system_status);
