@@ -222,7 +222,9 @@ void StateVector_Input(void)
             if (out_01_08 & 0x80) {
                 RamVector_PostLock(VCMD_LOCK, CMD_PRIO_USER); VEC_ACTION("LOCK", now - lock_press_tick);
             } else {
-                RamVector_PostLock(VCMD_UNLOCK, CMD_PRIO_USER); VEC_ACTION("UNLOCK", now - lock_press_tick);
+                RamVector_PostLock(VCMD_UNLOCK, CMD_PRIO_USER);
+                RamVector_PostLED(VCMD_LED_OFF, CMD_PRIO_USER);
+                VEC_ACTION("UNLOCK", now - lock_press_tick);
             }
             lock_press_tick = 0; lock_released = 0; lock_release_tick = now;
         }
