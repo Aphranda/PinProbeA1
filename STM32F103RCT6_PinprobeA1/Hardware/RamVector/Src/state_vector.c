@@ -129,7 +129,8 @@ void StateVector_Input(void)
 
     /* Idle 观测 */
     if (system_status == V_STATE_IDLE) {
-        if (in_01_08 & 0x01)
+        /* 上限位 或 按钮人工确认(中间位置) → 允许进 READY */
+        if ((in_01_08 & 0x01) || poweron_position_ok)
             system_status = (out_01_08 & 0x40) ? V_STATE_READY : V_STATE_IDLE;
         else if (in_01_08 & 0x02)
             system_status = V_STATE_COMPLETE;
@@ -173,6 +174,8 @@ void StateVector_Input(void)
             RamVector_PostLED(VCMD_LED_OFF, CMD_PRIO_USER);
             VEC_ACTION("OPEN_DONE", now - door_open_start_tick);
             door_open_start_tick = 0;
+            door_close_done_tick  = 0;
+            poweron_position_ok   = 0;  /* 一周期完, 复位人工确认 */
             system_status = V_STATE_IDLE;
         }
     }
