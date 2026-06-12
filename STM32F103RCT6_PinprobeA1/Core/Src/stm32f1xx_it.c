@@ -69,7 +69,7 @@ uint8_t* Uart3_BuffOccupied = Usart3_RX_BUF1;
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN PFP */
-
+static void Fault_Dump(const char *name);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -119,7 +119,7 @@ void NMI_Handler(void)
 void HardFault_Handler(void)
 {
   /* USER CODE BEGIN HardFault_IRQn 0 */
-
+  Fault_Dump("HARDFAULT");
   /* USER CODE END HardFault_IRQn 0 */
   while (1)
   {
@@ -134,7 +134,7 @@ void HardFault_Handler(void)
 void MemManage_Handler(void)
 {
   /* USER CODE BEGIN MemoryManagement_IRQn 0 */
-
+  Fault_Dump("MEMMANAGE");
   /* USER CODE END MemoryManagement_IRQn 0 */
   while (1)
   {
@@ -149,7 +149,7 @@ void MemManage_Handler(void)
 void BusFault_Handler(void)
 {
   /* USER CODE BEGIN BusFault_IRQn 0 */
-
+  Fault_Dump("BUSFAULT");
   /* USER CODE END BusFault_IRQn 0 */
   while (1)
   {
@@ -164,7 +164,7 @@ void BusFault_Handler(void)
 void UsageFault_Handler(void)
 {
   /* USER CODE BEGIN UsageFault_IRQn 0 */
-
+  Fault_Dump("USAGEFAULT");
   /* USER CODE END UsageFault_IRQn 0 */
   while (1)
   {
@@ -199,12 +199,7 @@ void DebugMon_Handler(void)
 void DMA1_Channel2_IRQHandler(void)
 {
   /* USER CODE BEGIN DMA1_Channel2_IRQn 0 */
-  if(__HAL_DMA_GET_FLAG(&hdma_usart3_tx, DMA_FLAG_TC2) != RESET)
-  {
-    __HAL_UART_CLEAR_IDLEFLAG(&huart3); // clear uart idle flag
-    huart3.gState = HAL_UART_STATE_READY;
-    hdma_usart3_tx.State = HAL_DMA_STATE_READY;
-  }
+  /* (USART3 TX DMA — 当前未使用, HAL_DMA_IRQHandler 自行管理状态) */
   /* USER CODE END DMA1_Channel2_IRQn 0 */
   HAL_DMA_IRQHandler(&hdma_usart3_tx);
   /* USER CODE BEGIN DMA1_Channel2_IRQn 1 */
@@ -232,15 +227,7 @@ void DMA1_Channel3_IRQHandler(void)
 void DMA1_Channel4_IRQHandler(void)
 {
   /* USER CODE BEGIN DMA1_Channel4_IRQn 0 */
-  if(__HAL_DMA_GET_FLAG(&hdma_usart1_tx, DMA_FLAG_TC4) != RESET)
-  {
-    __HAL_UART_CLEAR_IDLEFLAG(&huart1); // clear uart idle flag
-
-    Usart1_TX_Flag = 0; // reset tx flag
-
-    huart1.gState = HAL_UART_STATE_READY;
-    hdma_usart1_tx.State = HAL_DMA_STATE_READY;
-  }
+  /* (USART1 TX DMA — HAL_DMA_IRQHandler → HAL_UART_TxCpltCallback 管理状态) */
   /* USER CODE END DMA1_Channel4_IRQn 0 */
   HAL_DMA_IRQHandler(&hdma_usart1_tx);
   /* USER CODE BEGIN DMA1_Channel4_IRQn 1 */
@@ -254,12 +241,7 @@ void DMA1_Channel4_IRQHandler(void)
 void DMA1_Channel5_IRQHandler(void)
 {
   /* USER CODE BEGIN DMA1_Channel5_IRQn 0 */
-  if(__HAL_DMA_GET_FLAG(&hdma_usart3_tx, DMA_FLAG_TC5) != RESET)
-  {
-    __HAL_UART_CLEAR_IDLEFLAG(&huart3); // clear uart idle flag
-    huart3.gState = HAL_UART_STATE_READY;
-    hdma_usart3_tx.State = HAL_DMA_STATE_READY;
-  }
+  /* (USART3 TX DMA — 当前未使用, HAL_DMA_IRQHandler 自行管理状态) */
   /* USER CODE END DMA1_Channel5_IRQn 0 */
   HAL_DMA_IRQHandler(&hdma_usart1_rx);
   /* USER CODE BEGIN DMA1_Channel5_IRQn 1 */
@@ -465,6 +447,58 @@ void DMA2_Channel2_IRQHandler(void)
 }
 
 /* USER CODE BEGIN 1 */
+
+/* ── Fault 诊断: 裸机 UART 输出 (DMA 在 fault 上下文中不可靠) ── */
+static void Fault_UartPutc(char c)
+{
+    while (!(USART1->SR & USART_SR_TXE)) {}
+    USART1->DR = c;
+}
+
+static void Fault_UartPuts(const char *s)
+{
+    while (*s) Fault_UartPutc(*s++);
+}
+
+static void Fault_UartHex(uint32_t v)
+{
+    for (int i = 28; i >= 0; i -= 4) {
+        uint8_t nibble = (v >> i) & 0xF;
+        Fault_UartPutc(nibble < 10 ? '0' + nibble : 'A' + nibble - 10);
+    }
+}
+
+static void Fault_Dump(const char *name)
+{
+    Fault_UartPuts("\r\n[");
+    Fault_UartPuts(name);
+    Fault_UartPuts("]\r\n");
+
+    /* SCB 故障状态寄存器 */
+    Fault_UartPuts("  CFSR=0x"); Fault_UartHex(SCB->CFSR);  Fault_UartPuts("\r\n");
+    Fault_UartPuts("  HFSR=0x"); Fault_UartHex(SCB->HFSR);  Fault_UartPuts("\r\n");
+    Fault_UartPuts("  BFAR=0x"); Fault_UartHex(SCB->BFAR);  Fault_UartPuts("\r\n");
+    Fault_UartPuts("  MMFAR=0x"); Fault_UartHex(SCB->MMFAR); Fault_UartPuts("\r\n");
+
+    /* 从栈帧提取 PC / LR (硬件自动压栈的顺序: R0-R3, R12, LR, PC, xPSR) */
+    uint32_t *sp = (uint32_t *)__get_MSP();
+    Fault_UartPuts("  SP=0x");  Fault_UartHex((uint32_t)sp); Fault_UartPuts("\r\n");
+    Fault_UartPuts("  PC=0x");  Fault_UartHex(sp[6]);        Fault_UartPuts("\r\n");
+    Fault_UartPuts("  LR=0x");  Fault_UartHex(sp[5]);        Fault_UartPuts("\r\n");
+}
+
+/**
+  * @brief UART TX 完成回调 (HAL 标准接口)
+  * @note HAL_DMA_IRQHandler 检测到 DMA TC 后会自动调用此回调,
+  *       替代之前在 DMA ISR 中手动操作 HAL 状态的方式
+  */
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
+{
+  if (huart->Instance == USART1) {
+    Usart1_TX_Flag = 0;
+  }
+}
+
 void Uart1_Printf(char *format, ...) // Usart1 print (非阻塞, TX忙时跳过)
 {
   if (Usart1_TX_Flag) return;

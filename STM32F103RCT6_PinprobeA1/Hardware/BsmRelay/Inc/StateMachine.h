@@ -1,6 +1,16 @@
 #ifndef __STATEMACHINE_H
 #define __STATEMACHINE_H
 
+/* ════════════════════════════════════════════════════════════════════════════
+ * [DEPRECATED] 本模块已废止 — 2026-06-12
+ *
+ * 替代方案: Hardware/RamVector/ (ram_vector.c + state_vector.c + cmd_exec.c)
+ *
+ * 旧状态机 StateMachine_Input() 不再被任何外部代码调用,
+ * SCPI 读写已全部通过 RamVector 向量表隔离, IO 操作由 CmdExec 统一执行。
+ * 本模块保留仅作历史参考, 请勿添加新依赖。
+ * ════════════════════════════════════════════════════════════════════════════ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>

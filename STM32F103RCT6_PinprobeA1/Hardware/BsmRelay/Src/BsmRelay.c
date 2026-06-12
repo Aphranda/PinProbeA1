@@ -30,6 +30,8 @@ uint8_t Cylinder_Write(uint32_t cylinder_id, scpi_choice_def_t cylinder_value)
     return 0;
 }
 
+/* ── [DEPRECATED] 以下函数仅被旧 StateMachine.c 调用, 已随旧状态机废止 ── */
+
 scpi_choice_def_t Cylinder_Status(uint32_t cylinder_id)
 {
     uint8_t* O_status = OutputIO_Read(CHECK_NUM);
@@ -189,3 +191,4 @@ uint8_t* OutputIO_Read(uint8_t checkNum){
     IO_Read(checkNum, 1, output_io_cache);
     return output_io_cache;
 }
+/* ── [DEPRECATED END] ── */

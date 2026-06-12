@@ -1,3 +1,11 @@
+/* ════════════════════════════════════════════════════════════════════════════
+ * [DEPRECATED] 本模块已废止 — 2026-06-12
+ *
+ * 替代: Hardware/RamVector/state_vector.c (新状态机)
+ *        Hardware/RamVector/cmd_exec.c     (命令执行, 通过 RamVector 向量表)
+ *
+ * StateMachine_Input() 无外部调用者, 保留仅作历史参考。
+ * ════════════════════════════════════════════════════════════════════════════ */
 #include "StateMachine.h"
 #include "BsmRelay.h"
 #include "cmsis_os.h"

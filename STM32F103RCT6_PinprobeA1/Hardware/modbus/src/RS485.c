@@ -1,26 +1,30 @@
 #include "RS485.h"
 #include "tim.h"
 
+/* 前向声明 */
+static void IOWriteOrder(uint8_t index, uint8_t status, uint8_t *out_buf);
+static void IOReadOrder(uint8_t index, uint16_t num, uint8_t *out_buf);
+
 /// @brief 写 BSM IO 状态（Modbus 05 功能码）
 /// @param index  IO 索引 (1-based)
 /// @param status 0=OFF, 1=ON
 /// @return true=发送成功
 bool WriteIO(uint8_t index, uint8_t status){
     HAL_Delay(2);
-    uint8_t *data = IOWriteOrder(index-1,status);
-    HAL_StatusTypeDef ret = HAL_UART_Transmit(&huart3,data,8,RS485_TX_TIMEOUT_MS);
+    uint8_t frame[8];
+    IOWriteOrder(index-1, status, frame);
+    HAL_StatusTypeDef ret = HAL_UART_Transmit(&huart3, frame, 8, RS485_TX_TIMEOUT_MS);
     HAL_Delay(2);
     return (ret == HAL_OK);
 }
 
 /// @brief Read BSM IO status
-/// @param index IO index
-/// @param status IO status
-/// @return IO status
+/// @param func 功能码 (1=读输出, 2=读输入)
 void ReadIO(uint8_t func){
     HAL_Delay(2);  // 总线保护间隔
-    uint8_t *data = IOReadOrder(func,16);
-    HAL_UART_Transmit(&huart3,data,8,RS485_TX_TIMEOUT_MS);
+    uint8_t frame[8];
+    IOReadOrder(func, 16, frame);
+    HAL_UART_Transmit(&huart3, frame, 8, RS485_TX_TIMEOUT_MS);
     HAL_Delay(2);  // 总线释放
 }
 
@@ -44,76 +48,58 @@ bool RS485_WaitRx(uint32_t timeout_ms)
 }
 
 
-/// @brief product Order
-/// @param index IO index
-/// @param status IO status
-/// @return Order
-uint8_t* IOWriteOrder(uint8_t index, uint8_t status){
-    static uint8_t stress_send[9];
+/// @brief 构造 Modbus 05 (写单线圈) 帧
+/// @param index   IO 索引 (0-based)
+/// @param status  0=OFF, 1=ON
+/// @param out_buf  输出缓冲区 (8 字节, 调用方提供)
+static void IOWriteOrder(uint8_t index, uint8_t status, uint8_t *out_buf){
     uint8_t buffer[6];
     uint16_t crc;
-    uint8_t crc_data[2];
+
     buffer[0] = 0x01;
     buffer[1] = 0x05;
-    buffer[2] = index>>8;
-    buffer[3] = index&0xff;
-    if(status == 0){
-        buffer[4] = 0x00;
-        buffer[5] = 0x00;
-    }else if(status == 1){
-        buffer[4] = 0xff;
-        buffer[5] = 0x00;
-    }
+    buffer[2] = index >> 8;
+    buffer[3] = index & 0xFF;
+    buffer[4] = (status == 1) ? 0xFF : 0x00;
+    buffer[5] = 0x00;
+
     crc = modbus_crc16(6, buffer);
 
-    crc_data[1] = crc >>8;
-    crc_data[0] = (crc & 0x00FF);
-
-    stress_send[0] = buffer[0];
-    stress_send[1] = buffer[1];
-    stress_send[2] = buffer[2];
-    stress_send[3] = buffer[3];
-    stress_send[4] = buffer[4];
-    stress_send[5] = buffer[5];
-    stress_send[6] = crc_data[0];
-    stress_send[7] = crc_data[1];
-    stress_send[8] = 0;
-
-    return stress_send;
-
+    out_buf[0] = buffer[0];
+    out_buf[1] = buffer[1];
+    out_buf[2] = buffer[2];
+    out_buf[3] = buffer[3];
+    out_buf[4] = buffer[4];
+    out_buf[5] = buffer[5];
+    out_buf[6] = crc & 0xFF;
+    out_buf[7] = crc >> 8;
 }
 
-/// @brief product Order
-/// @param index IO Index
-/// @param num IO num
-/// @return
-uint8_t* IOReadOrder(uint8_t index, uint16_t num){
-    static uint8_t stress_send[9];
+/// @brief 构造 Modbus 读 IO 帧 (功能码 01 或 02)
+/// @param index   功能码 (1=读线圈, 2=读离散输入)
+/// @param num     读取数量
+/// @param out_buf 输出缓冲区 (8 字节, 调用方提供)
+static void IOReadOrder(uint8_t index, uint16_t num, uint8_t *out_buf){
     uint8_t buffer[6];
     uint16_t crc;
-    uint8_t crc_data[2];
+
     buffer[0] = 0x01;
     buffer[1] = index;
     buffer[2] = 0x00;
     buffer[3] = 0x00;
-    buffer[4] = (num>>8);
-    buffer[5] = (num&0xff);
+    buffer[4] = (num >> 8) & 0xFF;
+    buffer[5] = num & 0xFF;
 
     crc = modbus_crc16(6, buffer);
 
-    crc_data[1] = crc >>8;
-    crc_data[0] = (crc & 0x00FF);
-
-    stress_send[0] = buffer[0];
-    stress_send[1] = buffer[1];
-    stress_send[2] = buffer[2];
-    stress_send[3] = buffer[3];
-    stress_send[4] = buffer[4];
-    stress_send[5] = buffer[5];
-    stress_send[6] = crc_data[0];
-    stress_send[7] = crc_data[1];
-    stress_send[8] = 0;
-    return stress_send;
+    out_buf[0] = buffer[0];
+    out_buf[1] = buffer[1];
+    out_buf[2] = buffer[2];
+    out_buf[3] = buffer[3];
+    out_buf[4] = buffer[4];
+    out_buf[5] = buffer[5];
+    out_buf[6] = crc & 0xFF;
+    out_buf[7] = crc >> 8;
 }
 
 
