@@ -420,25 +420,44 @@ static scpi_result_t SCPI_ConfigureCylinder(scpi_t *context)
     {
         cylinder_id = number[0];
     }
-    (void)cylinder_id; /* 单气缸系统, id 仅校验 */
     int32_t param;
     const char *name;
     if (!SCPI_ParamChoice(context, cylinder_source, &param, TRUE)) {
         return SCPI_RES_ERR;
     }
     SCPI_ChoiceToName(cylinder_source, param, &name);
-    RamVector_PostCylinder((param == 0) ? VCMD_CYLINDER_CLOSE : VCMD_CYLINDER_OPEN, CMD_PRIO_USER);
+    /* 多气缸: id=1 门, id=2 USB */
+    if (cylinder_id == 2)
+        RamVector_PostCylinder((param == 0) ? VCMD_CYLINDER2_CLOSE : VCMD_CYLINDER2_OPEN, CMD_PRIO_USER);
+    else
+        RamVector_PostCylinder((param == 0) ? VCMD_CYLINDER_CLOSE : VCMD_CYLINDER_OPEN, CMD_PRIO_USER);
     SCPI_ResultCharacters(context, name, strlen(name));
     return SCPI_RES_OK;
 }
 
 static scpi_result_t SCPI_ReadCylinderState(scpi_t *context)
 {
+    int32_t number[2] = {0,0};
+    uint16_t cylinder_id = 1;
+    SCPI_CommandNumbers(context, number, 0, 1);
+    if(number[0] == 2) cylinder_id = 2;
+
     const Vector_IOState_t* io = RamVector_GetLocalIO();
     const char *name = "CYL ERR";
-    if (io->door_state == 1) name = "OPENED";
-    else if (io->door_state == 0) name = "CLOSED";
-    else if (io->door_moving) name = (io->cylinder_cmd[0] ? "OPENING" : "CLOSING");
+
+    if (cylinder_id == 1) {
+        /* 气缸1: 基于 door_state / cylinder_cmd[0] */
+        if (io->door_state == 1)      name = "OPENED";
+        else if (io->door_state == 0) name = "CLOSED";
+        else if (io->door_moving)     name = (io->cylinder_cmd[0] ? "OPENING" : "CLOSING");
+    } else {
+        /* 气缸2 (USB): 基于 raw_out_lo bits 0x04/0x08 (usb_pne_in/usb_pne_out) */
+        uint8_t out = io->raw_out_lo;
+        if (out & 0x04)           name = "OPENING";
+        else if (out & 0x08)      name = "CLOSING";
+        else                      name = "CLOSED";
+    }
+
     SCPI_ResultCharacters(context, name, strlen(name));
     return SCPI_RES_OK;
 }

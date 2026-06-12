@@ -28,9 +28,12 @@
 typedef enum {
     VCMD_NONE               = 0x0000,
 
-    /* 气缸 */
+    /* 气缸 1 (门) */
     VCMD_CYLINDER_OPEN      = 0x0100,
     VCMD_CYLINDER_CLOSE     = 0x0101,
+    /* 气缸 2 (USB) */
+    VCMD_CYLINDER2_OPEN     = 0x0102,
+    VCMD_CYLINDER2_CLOSE    = 0x0103,
 
     /* 锁定/解锁 */
     VCMD_LOCK               = 0x0200,

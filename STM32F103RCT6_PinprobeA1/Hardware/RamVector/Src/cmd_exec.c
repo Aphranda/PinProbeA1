@@ -38,6 +38,12 @@ static void CmdExec_Cylinder(Vector_Cmd_t cmd)
     case VCMD_CYLINDER_CLOSE:
         Cylinder_Write(1, cylinder_source[0]); /* CLOSE */
         break;
+    case VCMD_CYLINDER2_OPEN:
+        Cylinder_Write(2, cylinder_source[1]); /* USB 插入 */
+        break;
+    case VCMD_CYLINDER2_CLOSE:
+        Cylinder_Write(2, cylinder_source[0]); /* USB 拔出 */
+        break;
     default:
         break;
     }
