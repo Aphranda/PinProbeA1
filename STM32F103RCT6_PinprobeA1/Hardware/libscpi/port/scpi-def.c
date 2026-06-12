@@ -623,6 +623,15 @@ static scpi_result_t SCPI_ReadIOAll(scpi_t *context)
     return SCPI_RES_OK;
 }
 
+/* ===== 固件版本查询 ===== */
+
+static scpi_result_t SCPI_SystemVersionQ(scpi_t *context)
+{
+    const char *ver = FW_VERSION "+" FW_GIT_HASH;
+    SCPI_ResultCharacters(context, ver, strlen(ver));
+    return SCPI_RES_OK;
+}
+
 const scpi_command_t scpi_commands[] = {
     /* IEEE Mandated Commands (SCPI std V1999.0 4.1.1) */
     {
@@ -657,6 +666,11 @@ const scpi_command_t scpi_commands[] = {
     {
         .pattern = "SYSTem:ERRor:COUNt?",
         .callback = SCPI_SystemErrorCountQ,
+    },
+    /* 固件版本查询 */
+    {
+        .pattern = "SYSTem:VERSion?",
+        .callback = SCPI_SystemVersionQ,
     },
     /* SCPI *IDN? 字段配置命令 - 可运行时修改并持久化到 Flash */
     {
