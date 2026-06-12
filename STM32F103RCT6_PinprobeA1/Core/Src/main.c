@@ -82,58 +82,55 @@ void MX_FREERTOS_Init(void);
 /**
   * @brief 上电自检 (Power-On Self Test)
   * @note  检查 RCC 时钟、Flash 配置 CRC、RS485 从机响应。
-  *        使用阻塞 HAL_UART_Transmit 确保输出不丢失。
-  *        RS485 测试期间喂狗防止复位。
+  *        每条打印后延时 5ms 等待 DMA TX 完成，避免非阻塞 printf 丢帧。
   * @retval 0=全部通过, 非0=故障码 (bit0=RCC, bit1=Flash, bit2=RS485)
   */
 static uint8_t PowerOnSelfTest(void)
 {
     uint8_t fault = 0;
-    char buf[64];
-    int len;
 
-    /* 辅助宏: 阻塞发送, 确保 POST 日志不丢 */
-    #define POST_PRINT(s)  HAL_UART_Transmit(&huart1, (uint8_t*)(s), strlen(s), 100)
+    /* 等 PC 端串口软件就绪 (冷启时 MCU 比 PC 快) */
+    HAL_Delay(500);
 
-    POST_PRINT("[POST] === Self Test ===\r\n");
+    Uart1_Printf("[POST] === Self Test ===\r\n");
+    HAL_Delay(5);
 
     /* 1. RCC 时钟 */
     {
         uint32_t sysclk = HAL_RCC_GetSysClockFreq();
         if (__HAL_RCC_GET_FLAG(RCC_FLAG_HSERDY) == RESET)  fault |= 0x01;
         if (sysclk < 71000000UL || sysclk > 73000000UL)    fault |= 0x01;
-        len = snprintf(buf, sizeof(buf), "[POST] RCC   %s (SYSCLK=%luHz)\r\n",
-                       (fault & 0x01) ? "FAIL" : "OK", sysclk);
-        HAL_UART_Transmit(&huart1, (uint8_t*)buf, len, 100);
+        Uart1_Printf("[POST] RCC   %s (SYSCLK=%luHz)\r\n",
+                     (fault & 0x01) ? "FAIL" : "OK", sysclk);
+        HAL_Delay(5);
     }
 
     /* 2. Flash 配置 CRC */
     {
         if (!Flash_IsValid()) {
             fault |= 0x02;
-            POST_PRINT("[POST] Flash FAIL (using defaults)\r\n");
+            Uart1_Printf("[POST] Flash FAIL (using defaults)\r\n");
         } else {
-            len = snprintf(buf, sizeof(buf), "[POST] Flash OK (v=%08lX)\r\n",
-                           (unsigned int)Flash_GetConfig()->version);
-            HAL_UART_Transmit(&huart1, (uint8_t*)buf, len, 100);
+            Uart1_Printf("[POST] Flash OK (v=%08lX)\r\n",
+                         (unsigned int)Flash_GetConfig()->version);
         }
+        HAL_Delay(5);
     }
 
-    /* 3. RS485 从机响应 (IO_Read 约 60ms/次, 最多 3 次) */
+    /* 3. RS485 从机响应 (IO_Read 约 60ms/次, 含内部 HAL_Delay) */
     {
         uint8_t io_buf[2] = {0};
         bool ok = IO_Read(3, 2, io_buf);
         if (!ok) fault |= 0x04;
-        len = snprintf(buf, sizeof(buf), "[POST] RS485 %s (IN=0x%02X,0x%02X)\r\n",
-                       ok ? "OK" : "FAIL", io_buf[0], io_buf[1]);
-        HAL_UART_Transmit(&huart1, (uint8_t*)buf, len, 100);
+        Uart1_Printf("[POST] RS485 %s (IN=0x%02X,0x%02X)\r\n",
+                     ok ? "OK" : "FAIL", io_buf[0], io_buf[1]);
+        HAL_Delay(5);
     }
 
-    len = snprintf(buf, sizeof(buf), "[POST] === %s (code=0x%02X) ===\r\n",
-                   fault ? "FAILED" : "PASSED", fault);
-    HAL_UART_Transmit(&huart1, (uint8_t*)buf, len, 100);
+    Uart1_Printf("[POST] === %s (code=0x%02X) ===\r\n",
+                 fault ? "FAILED" : "PASSED", fault);
+    HAL_Delay(5);
 
-    #undef POST_PRINT
     return fault;
 }
 
