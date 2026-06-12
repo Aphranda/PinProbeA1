@@ -37,10 +37,13 @@ SCPI_COMMANDS = {
         ("*IDN?", "*IDN?"),
         ("*RST 复位", "*RST"),
         ("*CLS 清状态", "*CLS"),
+        ("*WAI", "*WAI"),
         ("*STB?", "*STB?"),
         ("*OPC?", "*OPC?"),
         ("读错误", "SYSTem:ERRor:NEXT?"),
         ("错误计数", "SYSTem:ERRor:COUNt?"),
+        ("固件版本", "SYSTem:VERSion?"),
+        ("运行时间", "SYSTem:UPTime?"),
     ],
     "门/气缸": [
         ("开门", "CONFigure:CYLInder1 OPEN"),
@@ -64,6 +67,7 @@ SCPI_COMMANDS = {
     ],
     "系统状态": [
         ("读系统状态", "READ:SYSTem:STATe?"),
+        ("读全部IO", "READ:IO:ALL?"),
     ],
     "急停": [
         ("常闭 NC (默认)", "CONFigure:ESTOP:TYPE NC"),
@@ -83,6 +87,16 @@ SCPI_COMMANDS = {
         ("✏ 设型号...", "__IDN2_SET__"),
         ("✏ 设序列号...", "__IDN3_SET__"),
         ("✏ 设固件版本...", "__IDN4_SET__"),
+    ],
+    "调试": [
+        ("状态跟踪 ON", "CONFigure:DEBUg:STATe ON"),
+        ("状态跟踪 OFF", "CONFigure:DEBUg:STATe OFF"),
+        ("动作耗时 ON", "CONFigure:DEBUg:ACTion ON"),
+        ("动作耗时 OFF", "CONFigure:DEBUg:ACTion OFF"),
+        ("事件打印 ON", "CONFigure:DEBUg:EVENt ON"),
+        ("事件打印 OFF", "CONFigure:DEBUg:EVENt OFF"),
+        ("IO刷屏 ON", "CONFigure:DEBUg:IO ON"),
+        ("IO刷屏 OFF", "CONFigure:DEBUg:IO OFF"),
     ],
 }
 
@@ -295,14 +309,22 @@ class SerialWorker:
                         decoded = line.decode("utf-8", errors="replace").strip()
                         if not decoded:
                             continue
-                        # 跳过固件调试输出
+                        # 跳过固件调试输出 (与 state_vector.c 中 printf 前缀对齐)
                         if (decoded.startswith("[STATE]") or
-                            decoded.startswith("[DOOR]") or
+                            decoded.startswith("[CLOSE]") or
+                            decoded.startswith("[EVENT]") or
+                            decoded.startswith("[RISK]") or
                             decoded.startswith("[IO]") or
-                            decoded.startswith("[RAMVEC]") or
                             decoded.startswith("[RS485]") or
+                            decoded.startswith("[LOCK]") or
+                            decoded.startswith("[UNLOCK]") or
+                            decoded.startswith("[CLOSE_START]") or
+                            decoded.startswith("[CLOSE_DONE]") or
+                            decoded.startswith("[OPEN_START]") or
+                            decoded.startswith("[OPEN_DONE]") or
                             decoded.startswith("E-STOP") or
-                            decoded.startswith("Door_Emerge")):
+                            decoded.startswith("Door_Emerge") or
+                            decoded.startswith("Intake air")):
                             self.rx_queue.put(("debug", "", decoded, 0))
                             continue
                         if decoded.startswith("**ERROR") or decoded.startswith("**SRQ"):
@@ -1061,6 +1083,12 @@ class PinProbeApp:
         self.log_text.tag_config("RS485", foreground="#FF6B6B")      # RS485通讯异常
         self.log_text.tag_config("EMERGENCY", foreground="#FF4444")  # 急停/紧急状态
         self.log_text.tag_config("E-STOP", foreground="#FF4444")     # 急停按钮
+        self.log_text.tag_config("CLOSE", foreground="#DCDCAA")      # 关门过程
+        self.log_text.tag_config("EVENT", foreground="#CE9178")      # 事件 (ESTOP/LASER)
+        self.log_text.tag_config("RISK", foreground="#FF6B6B")       # 风险模式
+        self.log_text.tag_config("LOCK", foreground="#4FC1FF")       # 锁动作
+        self.log_text.tag_config("UNLOCK", foreground="#4FC1FF")     # 解锁动作
+        self.log_text.tag_config("OPEN", foreground="#569CD6")       # 开门动作
 
     # ── 串口连接管理 ──────────────────────────────────────────────────
     def _refresh_com_list(self):
@@ -1259,6 +1287,9 @@ class PinProbeApp:
                 elif msg_type == "debug":
                     _, _, decoded, _ = msg
                     tag = decoded.split()[0].strip("[]")
+                    # 复合动作标签映射: CLOSE_START/DONE → CLOSE, OPEN_START/DONE → OPEN
+                    if tag.startswith("CLOSE"):   tag = "CLOSE"
+                    elif tag.startswith("OPEN"):  tag = "OPEN"
                     self._log(decoded, tag)
 
                 elif msg_type == "sent":
@@ -1451,12 +1482,20 @@ class PinProbeApp:
                         if not decoded:
                             continue
                         if (decoded.startswith("[STATE]") or
-                            decoded.startswith("[DOOR]") or
+                            decoded.startswith("[CLOSE]") or
+                            decoded.startswith("[EVENT]") or
+                            decoded.startswith("[RISK]") or
                             decoded.startswith("[IO]") or
-                            decoded.startswith("[RAMVEC]") or
                             decoded.startswith("[RS485]") or
+                            decoded.startswith("[LOCK]") or
+                            decoded.startswith("[UNLOCK]") or
+                            decoded.startswith("[CLOSE_START]") or
+                            decoded.startswith("[CLOSE_DONE]") or
+                            decoded.startswith("[OPEN_START]") or
+                            decoded.startswith("[OPEN_DONE]") or
                             decoded.startswith("E-STOP") or
-                            decoded.startswith("Door_Emerge")):
+                            decoded.startswith("Door_Emerge") or
+                            decoded.startswith("Intake air")):
                             continue
                         scpi_resp = decoded
                         break
