@@ -52,6 +52,17 @@ typedef enum {
     VCMD_SYS_RESET          = 0x0600,
 } Vector_Cmd_t;
 
+/* ===== 命令优先级 ===== */
+#define CMD_PRIO_OBSERVE  0   /* 状态观测 (最低) */
+#define CMD_PRIO_USER     1   /* 按钮 / SCPI */
+#define CMD_PRIO_SAFETY   2   /* 急停 / 激光 / 故障 (最高) */
+
+/* ===== 命令槽 (带优先级仲裁) ===== */
+typedef struct __attribute__((packed)) {
+    uint16_t cmd;
+    uint8_t  priority;
+} CmdSlot_t;
+
 /* ========================================================================== */
 /*              节点状态 (每节点 8B)                                           */
 /* ========================================================================== */
@@ -133,10 +144,10 @@ typedef struct __attribute__((packed)) {
     uint32_t timestamp;
     uint32_t crc32;
 
-    /* 命令区 (16B) */
-    uint16_t cmd;                   /* 当前命令码 */
-    uint16_t param_len;
-    uint8_t  params[12];
+    /* 命令区 (16B) — 三通道独立, 带优先级仲裁 */
+    CmdSlot_t cmd_lock;      /* LOCK / UNLOCK */
+    CmdSlot_t cmd_cylinder;  /* CYLINDER OPEN / CLOSE */
+    CmdSlot_t cmd_led;       /* LED OFF / GREEN / RED / YELLOW */
 
     /* 路由 (8B) — 单机为0, 多机启用 */
     uint8_t  node_mask;
@@ -173,10 +184,14 @@ _Static_assert(sizeof(RAM_Vector_t) == RAM_VECTOR_SIZE,
 void        RamVector_Init(uint8_t node_id);
 RAM_Vector_t* RamVector_Get(void);
 
-/* 命令注入 (事件源调用) */
-void        RamVector_PostCmd(Vector_Cmd_t cmd);
-Vector_Cmd_t RamVector_GetCmd(void);
-void        RamVector_ClearCmd(void);
+/* 命令注入 — 三通道独立, 带优先级仲裁 */
+void RamVector_PostLock(Vector_Cmd_t cmd, uint8_t prio);
+void RamVector_PostCylinder(Vector_Cmd_t cmd, uint8_t prio);
+void RamVector_PostLED(Vector_Cmd_t cmd, uint8_t prio);
+Vector_Cmd_t RamVector_GetLockCmd(void);
+Vector_Cmd_t RamVector_GetCylinderCmd(void);
+Vector_Cmd_t RamVector_GetLEDCmd(void);
+void RamVector_ClearCmd(void);
 
 /* IO 状态更新 (执行层/IO读取后调用) */
 void        RamVector_UpdateLocalIO(const Vector_IOState_t *io);

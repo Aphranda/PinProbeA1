@@ -68,7 +68,7 @@ void StateVector_Input(void)
         if (++rs485_err_cnt >= RS485_FAIL_THRESHOLD) {
             if (!rs485_fault) {
                 Uart1_Printf("[RS485] FAULT\r\n");
-                RamVector_PostCmd(VCMD_LED_YELLOW);
+                RamVector_PostLED(VCMD_LED_YELLOW, CMD_PRIO_SAFETY);
                 rs485_fault = true;
                 rs485_err_cnt = 0;     /* 防溢出, 保持故障态 */
             }
@@ -78,7 +78,7 @@ void StateVector_Input(void)
     /* RS485 恢复 */
     if (rs485_fault) {
         Uart1_Printf("[RS485] RECOVERED\r\n");
-        RamVector_PostCmd(VCMD_LED_OFF);
+        RamVector_PostLED(VCMD_LED_OFF, CMD_PRIO_SAFETY);
         rs485_fault = false;
     }
     rs485_err_cnt = 0;
@@ -143,7 +143,7 @@ void StateVector_Input(void)
         if (limit_ok || risk_ok) {
             if (risk_ok && !limit_ok)
                 Uart1_Printf("[RISK] door close confirmed by pressure, limit failed\r\n");
-            RamVector_PostCmd(VCMD_LED_GREEN);
+            RamVector_PostLED(VCMD_LED_GREEN, CMD_PRIO_USER);
             door_close_timing = 0; door_open_confirm_tick = 0;
             if (door_close_from_full) {
                 door_close_default_ms = now - door_close_start_tick;
@@ -158,7 +158,7 @@ void StateVector_Input(void)
     /* Complete → Idle */
     if (system_status == V_STATE_COMPLETE) {
         if ((out_01_08 & 0x01) && (in_01_08 & 0x01)) {
-            RamVector_PostCmd(VCMD_LED_OFF);
+            RamVector_PostLED(VCMD_LED_OFF, CMD_PRIO_USER);
             VEC_ACTION("OPEN_DONE", now - door_open_start_tick);
             door_open_start_tick = 0;
             system_status = V_STATE_IDLE;
@@ -167,7 +167,7 @@ void StateVector_Input(void)
 
     /* Emergency → Lock + LED */
     if (system_status == V_STATE_EMERGENCY) {
-        RamVector_PostCmd(VCMD_LED_RED);
+        RamVector_PostLED(VCMD_LED_RED, CMD_PRIO_OBSERVE);
         if (((in_01_08 & 0xE0) != 0xE0) && ((in_09_16 & 0x01) != 0x01)) {
             system_status = V_STATE_LOCK;
             door_close_done_tick = 0;
@@ -185,8 +185,10 @@ void StateVector_Input(void)
     if (estop) {
         VEC_EVENT("ESTOP");
         system_status = V_STATE_EMERGENCY;
-        if (!(in_01_08 & 0x01)) RamVector_PostCmd(VCMD_CYLINDER_OPEN);
-        RamVector_PostCmd(VCMD_LOCK);
+        RamVector_PostLED(VCMD_LED_RED, CMD_PRIO_SAFETY);
+        RamVector_PostLock(VCMD_LOCK, CMD_PRIO_SAFETY);
+        if (!(in_01_08 & 0x01))
+            RamVector_PostCylinder(VCMD_CYLINDER_OPEN, CMD_PRIO_SAFETY);
         door_close_done_tick = 0;
     }
 
@@ -199,8 +201,9 @@ void StateVector_Input(void)
             VEC_EVENT("LASER");
             laser_emergency = true;
             system_status = V_STATE_EMERGENCY;
-            RamVector_PostCmd(VCMD_CYLINDER_OPEN);
-            RamVector_PostCmd(VCMD_LOCK);
+            RamVector_PostLED(VCMD_LED_RED, CMD_PRIO_SAFETY);
+            RamVector_PostLock(VCMD_LOCK, CMD_PRIO_SAFETY);
+            RamVector_PostCylinder(VCMD_CYLINDER_OPEN, CMD_PRIO_SAFETY);
             door_close_start_tick = 0; door_close_timing = 0; door_close_done_tick = 0;
         }
     }
@@ -217,17 +220,17 @@ void StateVector_Input(void)
         if ((in_09_16 & 0x10) && ((now - lock_press_tick) >= LOCK_PRESS_MS) && lock_released &&
             (!lock_release_tick || (now - lock_release_tick) >= LOCK_IDLE_MS)) {
             if (out_01_08 & 0x80) {
-                RamVector_PostCmd(VCMD_LOCK); VEC_ACTION("LOCK", now - lock_press_tick);
+                RamVector_PostLock(VCMD_LOCK, CMD_PRIO_USER); VEC_ACTION("LOCK", now - lock_press_tick);
             } else {
-                RamVector_PostCmd(VCMD_UNLOCK); VEC_ACTION("UNLOCK", now - lock_press_tick);
+                RamVector_PostLock(VCMD_UNLOCK, CMD_PRIO_USER); VEC_ACTION("UNLOCK", now - lock_press_tick);
             }
             lock_press_tick = 0; lock_released = 0; lock_release_tick = now;
         }
 
         /* 上电位置确认 */
         if (system_status == V_STATE_IDLE && !poweron_position_ok) {
-            if (in_01_08 & 0x01) { RamVector_PostCmd(VCMD_CYLINDER_OPEN); poweron_position_ok = 1; }
-            else if (in_01_08 & 0x02) { RamVector_PostCmd(VCMD_CYLINDER_CLOSE); poweron_position_ok = 1; }
+            if (in_01_08 & 0x01) { RamVector_PostCylinder(VCMD_CYLINDER_OPEN, CMD_PRIO_USER); poweron_position_ok = 1; }
+            else if (in_01_08 & 0x02) { RamVector_PostCylinder(VCMD_CYLINDER_CLOSE, CMD_PRIO_USER); poweron_position_ok = 1; }
         }
 
         /* 关门按钮 → DOOR_READY (Idle) */
@@ -236,7 +239,7 @@ void StateVector_Input(void)
                 if (!door_ready_tick) door_ready_tick = now;
             } else { door_ready_tick = 0; }
             if (door_ready_tick && ((now - door_ready_tick) >= DOOR_READY_MS) && !release_start_tick) {
-                RamVector_PostCmd(VCMD_DOOR_READY);
+                RamVector_PostLED(VCMD_LED_YELLOW, CMD_PRIO_USER);
                 door_ready_tick = 0; poweron_position_ok = 1;
             }
         }
@@ -250,7 +253,7 @@ void StateVector_Input(void)
             if (door_close_confirm_tick && ((now - door_close_confirm_tick) >= DOOR_CLOSE_CONFIRM_MS)) drs = 1;
             if ((in_09_16 & 0x06) == 0x06 && drs && !release_start_tick) {
                 if (!(out_01_08 & 0x02)) {
-                    RamVector_PostCmd(VCMD_CYLINDER_CLOSE);
+                    RamVector_PostCylinder(VCMD_CYLINDER_CLOSE, CMD_PRIO_USER);
                     door_close_confirm_tick = 0; release_start_tick = now;
                     door_close_start_tick = now; door_close_timing = 1;
                     door_close_from_full = (in_01_08 & 0x01) ? 1 : 0;
@@ -269,7 +272,7 @@ void StateVector_Input(void)
             if (door_open_confirm_tick && ((now - door_open_confirm_tick) >= DOOR_OPEN_CONFIRM_MS)) dcs = 1;
             if ((in_09_16 & 0x06) && dcs && !release_start_tick) {
                 if (!(out_01_08 & 0x01)) {
-                    RamVector_PostCmd(VCMD_CYLINDER_OPEN);
+                    RamVector_PostCylinder(VCMD_CYLINDER_OPEN, CMD_PRIO_USER);
                     door_open_start_tick = now; door_open_confirm_tick = 0; release_start_tick = now;
                     VEC_ACTION("OPEN_START", 0);
                 }

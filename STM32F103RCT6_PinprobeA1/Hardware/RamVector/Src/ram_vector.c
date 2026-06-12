@@ -35,20 +35,46 @@ RAM_Vector_t* RamVector_Get(void)
     return &ram_vector;
 }
 
-/* ===== 命令 ===== */
-void RamVector_PostCmd(Vector_Cmd_t cmd)
+/* ===== 命令 — 三通道独立, 低优先级不覆盖高优先级 ===== */
+void RamVector_PostLock(Vector_Cmd_t cmd, uint8_t prio)
 {
-    ram_vector.cmd = (uint16_t)cmd;
+    if (prio >= ram_vector.cmd_lock.priority) {
+        ram_vector.cmd_lock.cmd      = (uint16_t)cmd;
+        ram_vector.cmd_lock.priority = prio;
+    }
 }
 
-Vector_Cmd_t RamVector_GetCmd(void)
+void RamVector_PostCylinder(Vector_Cmd_t cmd, uint8_t prio)
 {
-    return (Vector_Cmd_t)ram_vector.cmd;
+    if (prio >= ram_vector.cmd_cylinder.priority) {
+        ram_vector.cmd_cylinder.cmd      = (uint16_t)cmd;
+        ram_vector.cmd_cylinder.priority = prio;
+    }
 }
+
+void RamVector_PostLED(Vector_Cmd_t cmd, uint8_t prio)
+{
+    if (prio >= ram_vector.cmd_led.priority) {
+        ram_vector.cmd_led.cmd      = (uint16_t)cmd;
+        ram_vector.cmd_led.priority = prio;
+    }
+}
+
+Vector_Cmd_t RamVector_GetLockCmd(void)
+    { return (Vector_Cmd_t)ram_vector.cmd_lock.cmd; }
+Vector_Cmd_t RamVector_GetCylinderCmd(void)
+    { return (Vector_Cmd_t)ram_vector.cmd_cylinder.cmd; }
+Vector_Cmd_t RamVector_GetLEDCmd(void)
+    { return (Vector_Cmd_t)ram_vector.cmd_led.cmd; }
 
 void RamVector_ClearCmd(void)
 {
-    ram_vector.cmd = VCMD_NONE;
+    ram_vector.cmd_lock.cmd      = VCMD_NONE;
+    ram_vector.cmd_lock.priority = 0;
+    ram_vector.cmd_cylinder.cmd  = VCMD_NONE;
+    ram_vector.cmd_cylinder.priority = 0;
+    ram_vector.cmd_led.cmd       = VCMD_NONE;
+    ram_vector.cmd_led.priority  = 0;
 }
 
 /* ===== IO 状态 ===== */

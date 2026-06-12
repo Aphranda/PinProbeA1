@@ -361,14 +361,21 @@ void ModBusTask(void *argument)
     io.raw_out_lo = out_buf[0];
     io.raw_out_hi = out_buf[1];
     io.rs485_ok   = ok ? 1 : 0;
+    /* 从原始 IO 推导状态字段, 供 SCPI 查询 */
+    if (in_buf[0] & 0x01)      io.door_state = 1;
+    else if (in_buf[0] & 0x02) io.door_state = 0;
+    io.door_moving    = (out_buf[0] & 0x03) ? 1 : 0;
+    io.cylinder_cmd[0]= (out_buf[0] & 0x01) ? 1 : 0;
+    io.cylinder_cmd[1]= (out_buf[0] & 0x02) ? 1 : 0;
+    io.lock_state     = (out_buf[0] & 0x80) ? 1 : 0;
+    if (out_buf[0] & 0x10)      io.led_state = 1;
+    else if (out_buf[0] & 0x20) io.led_state = 2;
+    else if (out_buf[0] & 0x40) io.led_state = 4;
+    else                        io.led_state = 0;
     RamVector_UpdateLocalIO(&io);
 
-    /* 执行待处理命令 */
-    Vector_Cmd_t cmd = RamVector_GetCmd();
-    if (cmd != VCMD_NONE) {
-        CmdExec_Execute(cmd);
-        RamVector_ClearCmd();
-    }
+    /* 执行待处理命令 (三通道) */
+    CmdExec_ExecuteAll();
 
     /* 周期由 SysTimer 控制 */
   }

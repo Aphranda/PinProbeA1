@@ -11,6 +11,6 @@
 #include "ram_vector.h"
 
 void CmdExec_Init(void);
-void CmdExec_Execute(Vector_Cmd_t cmd);
+void CmdExec_ExecuteAll(void);  /* 三通道依次执行: Lock → Cylinder → LED */
 
 #endif /* APP_RAMVECTOR_INC_CMD_EXEC_H_ */

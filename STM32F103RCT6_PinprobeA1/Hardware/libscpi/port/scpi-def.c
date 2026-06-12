@@ -426,7 +426,7 @@ static scpi_result_t SCPI_ConfigureCylinder(scpi_t *context)
         return SCPI_RES_ERR;
     }
     SCPI_ChoiceToName(cylinder_source, param, &name);
-    RamVector_PostCmd((param == 0) ? VCMD_CYLINDER_CLOSE : VCMD_CYLINDER_OPEN);
+    RamVector_PostCylinder((param == 0) ? VCMD_CYLINDER_CLOSE : VCMD_CYLINDER_OPEN, CMD_PRIO_USER);
     SCPI_ResultCharacters(context, name, strlen(name));
     return SCPI_RES_OK;
 }
@@ -457,7 +457,7 @@ static scpi_result_t SCPI_ConfigureLOCK(scpi_t *context)
         return SCPI_RES_ERR;
     }
     SCPI_ChoiceToName(lock_source, param, &name);
-    RamVector_PostCmd((param == 0) ? VCMD_UNLOCK : VCMD_LOCK);
+    RamVector_PostLock((param == 0) ? VCMD_UNLOCK : VCMD_LOCK, CMD_PRIO_USER);
     SCPI_ResultCharacters(context, name, strlen(name));
     return SCPI_RES_OK;
 }
@@ -487,7 +487,7 @@ static scpi_result_t SCPI_ConfigureLED(scpi_t *context)
         return SCPI_RES_ERR;
     }
     SCPI_ChoiceToName(led_source, param, &name);
-    RamVector_PostCmd((Vector_Cmd_t)(VCMD_LED_OFF + param));
+    RamVector_PostLED((Vector_Cmd_t)(VCMD_LED_OFF + param), CMD_PRIO_USER);
     SCPI_ResultCharacters(context, name, strlen(name));
     return SCPI_RES_OK;
 }
