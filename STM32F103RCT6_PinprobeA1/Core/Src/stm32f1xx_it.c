@@ -56,8 +56,6 @@ uint32_t Uart1_RxLength = 0;           // USART1 最近接收帧长度
 uint8_t* Uart1_BuffIsReady = Usart1_RX_BUF2;
 uint8_t* Uart1_BuffOccupied = Usart1_RX_BUF1;
 
-volatile uint8_t Usart3_TX_Flag = 0;
-uint8_t Usart3_TX_BUF[MAX_TX_LEN];
 uint8_t Usart3_RX_BUF1[MAX_RX_LEN];
 uint8_t Usart3_RX_BUF2[MAX_RX_LEN];
 
@@ -204,7 +202,6 @@ void DMA1_Channel2_IRQHandler(void)
   if(__HAL_DMA_GET_FLAG(&hdma_usart3_tx, DMA_FLAG_TC2) != RESET)
   {
     __HAL_UART_CLEAR_IDLEFLAG(&huart3); // clear uart idle flag
-    Usart3_TX_Flag = 0;                 // reset tx flag
     huart3.gState = HAL_UART_STATE_READY;
     hdma_usart3_tx.State = HAL_DMA_STATE_READY;
   }
@@ -260,9 +257,6 @@ void DMA1_Channel5_IRQHandler(void)
   if(__HAL_DMA_GET_FLAG(&hdma_usart3_tx, DMA_FLAG_TC5) != RESET)
   {
     __HAL_UART_CLEAR_IDLEFLAG(&huart3); // clear uart idle flag
-
-    Usart3_TX_Flag = 0; // reset tx flag
-
     huart3.gState = HAL_UART_STATE_READY;
     hdma_usart3_tx.State = HAL_DMA_STATE_READY;
   }
@@ -484,16 +478,4 @@ void Uart1_Printf(char *format, ...) // Usart1 print (非阻塞, TX忙时跳过)
   HAL_UART_Transmit_DMA(&huart1, Usart1_TX_BUF, strlen((const char *)Usart1_TX_BUF));
 }
 
-void Uart3_Printf(char *format, ...) // Usart3 print (非阻塞, TX忙时跳过)
-{
-  if (Usart3_TX_Flag) return;
-
-  va_list arg_ptr;
-  va_start(arg_ptr, format);
-  vsnprintf((char *)Usart3_TX_BUF, MAX_TX_LEN, format, arg_ptr);
-  va_end(arg_ptr);
-
-  Usart3_TX_Flag = 1;
-  HAL_UART_Transmit_DMA(&huart3, Usart3_TX_BUF, strlen((const char *)Usart3_TX_BUF));
-}
 /* USER CODE END 1 */

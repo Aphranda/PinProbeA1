@@ -78,7 +78,6 @@ void DMA2_Channel1_IRQHandler(void);
 void DMA2_Channel2_IRQHandler(void);
 /* USER CODE BEGIN EFP */
 void Uart1_Printf(char *format, ...);
-void Uart3_Printf(char *format, ...);
 /* USER CODE END EFP */
 
 #ifdef __cplusplus
