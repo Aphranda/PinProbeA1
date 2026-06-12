@@ -180,3 +180,45 @@ bool modbus_crc_compare(uint16_t data_len, uint8_t *data, uint8_t *compareData)
     }
     return false;
 }
+
+/// @brief 读 ModBus 保持寄存器 (功能码 03)
+bool ReadHoldingRegister(uint16_t reg_addr, uint8_t *out_hi, uint8_t *out_lo)
+{
+    uint8_t cmd[8];
+    uint16_t crc;
+
+    cmd[0] = 0x01;                       /* 从机地址 */
+    cmd[1] = 0x03;                       /* 功能码: 读保持寄存器 */
+    cmd[2] = (reg_addr >> 8) & 0xFF;     /* 寄存器地址高字节 */
+    cmd[3] = reg_addr & 0xFF;            /* 寄存器地址低字节 */
+    cmd[4] = 0x00;                       /* 寄存器数量高字节 */
+    cmd[5] = 0x01;                       /* 寄存器数量低字节 (读 1 个) */
+    crc = modbus_crc16(6, cmd);
+    cmd[6] = crc & 0xFF;                 /* CRC 低字节 */
+    cmd[7] = (crc >> 8) & 0xFF;          /* CRC 高字节 */
+
+    HAL_Delay(2);
+    HAL_UART_Transmit(&huart3, cmd, 8, RS485_TX_TIMEOUT_MS);
+    HAL_Delay(2);
+
+    if (!RS485_WaitRx(60))
+        return false;
+
+    /* 校验响应: 地址+功能码+字节数+2数据+2CRC = 7 字节 */
+    if (Uart3_RxLength < 7)
+        return false;
+
+    uint8_t *resp = Uart3_BuffIsReady;
+    if (resp[0] != 0x01 || resp[1] != 0x03 || resp[2] != 0x02)
+        return false;
+
+    uint8_t crc_buf[2];
+    crc_buf[0] = resp[5];
+    crc_buf[1] = resp[6];
+    if (!modbus_crc_compare(5, resp, crc_buf))
+        return false;
+
+    *out_hi = resp[3];
+    *out_lo = resp[4];
+    return true;
+}

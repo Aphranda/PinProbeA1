@@ -46,6 +46,12 @@
 #include "ram_vector.h"
 #include "tim.h"
 
+/* 辅助: 推送 SCPI 错误并返回 ERR (附带描述信息) */
+#define PUSH_ERR(ctx, code, info) do { \
+    SCPI_ErrorPushEx((ctx), (code), (char*)(info), sizeof(info)-1); \
+    return SCPI_RES_ERR; \
+} while(0)
+
 /* ========================================================================== */
 /*            SCPI *IDN? 运行时缓冲区                                         */
 /* ========================================================================== */
@@ -112,13 +118,9 @@ static scpi_result_t SCPI_SetIdn1(scpi_t *context)
 
     /* 更新 Flash 配置并保存 */
     if (Flash_SetScpiIdn1(buffer) != FLASH_OK)
-    {
-        return SCPI_RES_ERR;
-    }
+        PUSH_ERR(context, -320 /*Storage fault*/, "Flash write");
     if (Flash_Save() != FLASH_OK)
-    {
-        return SCPI_RES_ERR;
-    }
+        PUSH_ERR(context, -320 /*Storage fault*/, "Flash save");
 
     /* 同步到运行时缓冲区 */
     SCPI_SyncIdnFromFlash();
@@ -152,13 +154,9 @@ static scpi_result_t SCPI_SetIdn2(scpi_t *context)
     }
 
     if (Flash_SetScpiIdn2(buffer) != FLASH_OK)
-    {
-        return SCPI_RES_ERR;
-    }
+        PUSH_ERR(context, -320 /*Storage fault*/, "Flash write");
     if (Flash_Save() != FLASH_OK)
-    {
-        return SCPI_RES_ERR;
-    }
+        PUSH_ERR(context, -320 /*Storage fault*/, "Flash save");
 
     SCPI_SyncIdnFromFlash();
 
@@ -191,13 +189,9 @@ static scpi_result_t SCPI_SetIdn3(scpi_t *context)
     }
 
     if (Flash_SetScpiIdn3(buffer) != FLASH_OK)
-    {
-        return SCPI_RES_ERR;
-    }
+        PUSH_ERR(context, -320 /*Storage fault*/, "Flash write");
     if (Flash_Save() != FLASH_OK)
-    {
-        return SCPI_RES_ERR;
-    }
+        PUSH_ERR(context, -320 /*Storage fault*/, "Flash save");
 
     SCPI_SyncIdnFromFlash();
 
@@ -230,13 +224,9 @@ static scpi_result_t SCPI_SetIdn4(scpi_t *context)
     }
 
     if (Flash_SetScpiIdn4(buffer) != FLASH_OK)
-    {
-        return SCPI_RES_ERR;
-    }
+        PUSH_ERR(context, -320 /*Storage fault*/, "Flash write");
     if (Flash_Save() != FLASH_OK)
-    {
-        return SCPI_RES_ERR;
-    }
+        PUSH_ERR(context, -320 /*Storage fault*/, "Flash save");
 
     SCPI_SyncIdnFromFlash();
 
@@ -269,9 +259,7 @@ static scpi_result_t SCPI_ConfigureSwitch(scpi_t *context)
         return SCPI_RES_ERR;
     }
     if(Switch_Write(switch_id, switch_value))
-    {
-        return SCPI_RES_ERR;
-    }
+        PUSH_ERR(context, -240 /*Hardware error*/, "Switch write");
     return SCPI_RES_OK;
 }
 
@@ -291,9 +279,7 @@ static scpi_result_t SCPI_Configurebaudrate(scpi_t *context)
     // First change UART3 baudrate to 9600 to match BSM default
     huart3.Init.BaudRate = 9600;
     if (HAL_UART_Init(&huart3) != HAL_OK)
-    {
-        return SCPI_RES_ERR;
-    }
+        PUSH_ERR(context, -240 /*Hardware error*/, "UART init");
 
     // Send command to change BSM baudrate to 115200
     uint8_t set_baud_cmd[] = {0x01, 0x06, 0x00, 0x02, 0x04, 0x80, 0x2B, 0x6A};
@@ -315,27 +301,21 @@ static scpi_result_t SCPI_Configurebaudrate(scpi_t *context)
     // Change UART3 baudrate to new value (115200)
     huart3.Init.BaudRate = 115200;
     if (HAL_UART_Init(&huart3) != HAL_OK)
-    {
-        return SCPI_RES_ERR;
-    }
+        PUSH_ERR(context, -240 /*Hardware error*/, "UART init");
 
     // Verify the baudrate was changed by reading it back
     uint8_t read_baud_cmd[] = {0x01, 0x03, 0x00, 0x02, 0x00, 0x01, 0x25, 0xCA};
     uint8_t response[8];
-    
+
     HAL_UART_Transmit(&huart3, read_baud_cmd, sizeof(read_baud_cmd), HAL_MAX_DELAY);
-    
+
     // Wait for response (adjust timeout as needed)
     if (HAL_UART_Receive(&huart3, response, sizeof(response), 100) != HAL_OK)
-    {
-        return SCPI_RES_ERR;
-    }
+        PUSH_ERR(context, -240 /*Hardware error*/, "UART rx");
 
     // Check if response indicates 115200 baud (0x04 0x80)
     if (response[3] != 0x04 || response[4] != 0x80)
-    {
-        return SCPI_RES_ERR;
-    }
+        PUSH_ERR(context, -360 /*Communication error*/, "Baudrate verify");
 
     SCPI_ResultText(context, "115200 baudrate is enable");
 
@@ -389,9 +369,7 @@ static scpi_result_t SCPI_ConfigureLink(scpi_t *context)
     }
     SCPI_ChoiceToName(link_source, param, &name);
     if(Link_Write(1, link_source[param].tag))
-    {
-        return SCPI_RES_ERR;
-    }
+        PUSH_ERR(context, -240 /*Hardware error*/, "Link write");
 
     const char * name_read = "LINK ERR";
     uint32_t mask = 0;
@@ -441,6 +419,7 @@ static scpi_result_t SCPI_ConfigureCylinder(scpi_t *context)
     {
         cylinder_id = number[0];
     }
+    (void)cylinder_id; /* 单气缸系统, id 仅校验 */
     int32_t param;
     const char *name;
     if (!SCPI_ParamChoice(context, cylinder_source, &param, TRUE)) {
@@ -486,8 +465,8 @@ static scpi_result_t SCPI_ConfigureLOCK(scpi_t *context)
 static scpi_result_t SCPI_ReadLOCKState(scpi_t *context)
 {
     const Vector_IOState_t* io = RamVector_GetLocalIO();
-    SCPI_ResultCharacters(context, io->lock_state ? "UNLOCK" : "LOCKED",
-                          io->lock_state ? 6 : 6);
+    const char *name = io->lock_state ? "UNLOCK" : "LOCKED";
+    SCPI_ResultCharacters(context, name, strlen(name));
     return SCPI_RES_OK;
 }
 
@@ -560,9 +539,9 @@ static scpi_result_t SCPI_ConfigureEstopType(scpi_t *context)
     if (!SCPI_ParamChoice(context, estop_type_source, &param, TRUE))
         return SCPI_RES_ERR;
     if (Flash_SetEstopType((uint8_t)param) != FLASH_OK)
-        return SCPI_RES_ERR;
+        PUSH_ERR(context, -320 /*Storage fault*/, "Flash write");
     if (Flash_Save() != FLASH_OK)
-        return SCPI_RES_ERR;
+        PUSH_ERR(context, -320 /*Storage fault*/, "Flash save");
     const char *name;
     SCPI_ChoiceToName(estop_type_source, param, &name);
     SCPI_ResultCharacters(context, name, strlen(name));
@@ -592,9 +571,9 @@ static scpi_result_t SCPI_ConfigureRiskMode(scpi_t *context)
     if (!SCPI_ParamChoice(context, risk_mode_source, &param, TRUE))
         return SCPI_RES_ERR;
     if (Flash_SetRiskMode((uint8_t)param) != FLASH_OK)
-        return SCPI_RES_ERR;
+        PUSH_ERR(context, -320 /*Storage fault*/, "Flash write");
     if (Flash_Save() != FLASH_OK)
-        return SCPI_RES_ERR;
+        PUSH_ERR(context, -320 /*Storage fault*/, "Flash save");
     const char *name;
     SCPI_ChoiceToName(risk_mode_source, param, &name);
     SCPI_ResultCharacters(context, name, strlen(name));

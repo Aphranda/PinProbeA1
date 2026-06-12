@@ -25,4 +25,11 @@ uint8_t* IOWriteOrder(uint8_t index, uint8_t num);
 uint8_t* IOReadOrder(uint8_t index, uint16_t num);
 uint16_t modbus_crc16(uint16_t data_len, uint8_t *data);
 bool modbus_crc_compare(uint16_t data_len, uint8_t *data, uint8_t *compareData);
+
+/// @brief 读 ModBus 保持寄存器 (功能码 03)
+/// @param reg_addr 寄存器地址 (0-based)
+/// @param out_hi   输出: 寄存器高字节
+/// @param out_lo   输出: 寄存器低字节
+/// @return true=成功, false=超时或CRC错误
+bool ReadHoldingRegister(uint16_t reg_addr, uint8_t *out_hi, uint8_t *out_lo);
 #endif // !__RS485_H

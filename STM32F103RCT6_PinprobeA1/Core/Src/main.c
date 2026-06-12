@@ -155,6 +155,18 @@ static uint8_t PowerOnSelfTest(void)
         HAL_Delay(5);
     }
 
+    /* 3b. IO 板型号 (读保持寄存器 0) */
+    {
+        uint8_t model_hi = 0, model_lo = 0;
+        if (ReadHoldingRegister(0, &model_hi, &model_lo)) {
+            Uart1_Printf("[POST] Board model: 0x%02X%02X\r\n", model_hi, model_lo);
+        } else {
+            fault |= 0x04;
+            Uart1_Printf("[POST] Board model: FAIL\r\n");
+        }
+        HAL_Delay(5);
+    }
+
     Uart1_Printf("[POST] === %s (code=0x%02X) ===\r\n",
                  fault ? "FAILED" : "PASSED", fault);
     HAL_Delay(5);
