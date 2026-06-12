@@ -44,6 +44,7 @@
 #include "BsmRelay.h"
 #include "flash.h"
 #include "ram_vector.h"
+#include "tim.h"
 
 /* ========================================================================== */
 /*            SCPI *IDN? 运行时缓冲区                                         */
@@ -632,6 +633,14 @@ static scpi_result_t SCPI_SystemVersionQ(scpi_t *context)
     return SCPI_RES_OK;
 }
 
+static scpi_result_t SCPI_SystemUpTimeQ(scpi_t *context)
+{
+    /* 返回秒, uint32_t 秒可跑 136 年不溢出 (毫秒仅 49.7 天) */
+    uint32_t sec = GetTim1Ms() / 1000;
+    SCPI_ResultUInt32(context, sec);
+    return SCPI_RES_OK;
+}
+
 const scpi_command_t scpi_commands[] = {
     /* IEEE Mandated Commands (SCPI std V1999.0 4.1.1) */
     {
@@ -671,6 +680,11 @@ const scpi_command_t scpi_commands[] = {
     {
         .pattern = "SYSTem:VERSion?",
         .callback = SCPI_SystemVersionQ,
+    },
+    /* 运行时间查询 */
+    {
+        .pattern = "SYSTem:UPTime?",
+        .callback = SCPI_SystemUpTimeQ,
     },
     /* SCPI *IDN? 字段配置命令 - 可运行时修改并持久化到 Flash */
     {
