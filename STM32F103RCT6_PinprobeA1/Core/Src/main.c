@@ -119,12 +119,10 @@ static uint8_t PowerOnSelfTest(void)
         }
     }
 
-    /* 3. RS485 从机响应 (期间喂狗, IO_Read 单次约 60ms) */
+    /* 3. RS485 从机响应 (IO_Read 约 60ms/次, 最多 3 次) */
     {
-        HAL_IWDG_Refresh(&hiwdg);
         uint8_t io_buf[2] = {0};
         bool ok = IO_Read(3, 2, io_buf);
-        HAL_IWDG_Refresh(&hiwdg);
         if (!ok) fault |= 0x04;
         len = snprintf(buf, sizeof(buf), "[POST] RS485 %s (IN=0x%02X,0x%02X)\r\n",
                        ok ? "OK" : "FAIL", io_buf[0], io_buf[1]);

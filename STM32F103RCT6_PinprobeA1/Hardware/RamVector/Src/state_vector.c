@@ -64,11 +64,16 @@ void StateVector_Input(void)
     }
     rs485_err_cnt = 0;
 
-    /* IO 变化时输出 */
+    /* IO 变化时输出 (合并为一次 printf 避免非阻塞丢帧) */
+#ifdef VECTOR_DEBUG
     { static uint8_t li0=0xFF,li1=0xFF,lo0=0xFF,lo1=0xFF;
-      if(in_01_08!=li0||in_09_16!=li1){Uart1_Printf("[IO] IN  0x%02X,0x%02X\r\n",in_01_08,in_09_16);li0=in_01_08;li1=in_09_16;}
-      if(out_01_08!=lo0||out_09_16!=lo1){Uart1_Printf("[IO] OUT 0x%02X,0x%02X\r\n",out_01_08,out_09_16);lo0=out_01_08;lo1=out_09_16;}
+      if(in_01_08!=li0||in_09_16!=li1||out_01_08!=lo0||out_09_16!=lo1){
+          Uart1_Printf("[IO] IN:0x%02X,0x%02X OUT:0x%02X,0x%02X\r\n",
+                       in_01_08,in_09_16,out_01_08,out_09_16);
+          li0=in_01_08;li1=in_09_16;lo0=out_01_08;lo1=out_09_16;
+      }
     }
+#endif
 
     /* ── 2. 消抖 ── */
     if (in_01_08 & 0x01) { if (++door_up_cnt >= DOOR_DEBOUNCE_CNT) door_up_db = 1; door_down_cnt = 0; }
