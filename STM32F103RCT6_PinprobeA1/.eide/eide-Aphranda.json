@@ -148,8 +148,8 @@
       "compileConfig": {
         "cpuType": "Cortex-M3",
         "floatingPointHardware": "none",
-        "scatterFilePath": "",
-        "useCustomScatterFile": false,
+        "scatterFilePath": "MDK-ARM/STM32F103RCT6_PinprobeA1.sct",
+        "useCustomScatterFile": true,
         "storageLayout": {
           "RAM": [
             {
@@ -169,7 +169,7 @@
               "id": 1,
               "mem": {
                 "startAddr": "0x08000000",
-                "size": "0x00040000"
+                "size": "0x0003F800"
               },
               "isChecked": true,
               "isStartup": true
@@ -211,7 +211,7 @@
           "speed": 4000,
           "address": "0x08000000",
           "elFile": "None",
-          "optionBytes": ".eide/stm32f103rct6_pinprobem1i.st.option.bytes.ini",
+          "optionBytes": ".eide/stm32f103rct6_pinprobea1.st.option.bytes.ini",
           "otherCmds": ""
         },
         "pyOCD": {
@@ -219,7 +219,7 @@
           "targetName": "cortex_m",
           "baseAddr": "0x08000000",
           "speed": "4M",
-          "config": ".eide/stm32f103rct6_pinprobem1i.pyocd.yaml"
+          "config": ".eide/stm32f103rct6_pinprobea1.pyocd.yaml"
         }
       },
       "custom_dep": {

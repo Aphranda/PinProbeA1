@@ -207,7 +207,7 @@ targets:
               isChecked: true
               isStartup: true
               mem:
-                size: "0x40000"
+                size: "0x3F800"
                 startAddr: "0x8000000"
               tag: IROM
             - id: 2
@@ -237,7 +237,7 @@ targets:
         address: "0x8000000"
         bin: ""
         elFile: None
-        optionBytes: .eide/stm32f103rct6_pinprobem1i.st.option.bytes.ini
+        optionBytes: .eide/stm32f103rct6_pinprobea1.st.option.bytes.ini
         otherCmds: ""
         proType: SWD
         resetMode: default
@@ -246,7 +246,7 @@ targets:
       pyOCD:
         baseAddr: "0x08000000"
         bin: ""
-        config: .eide/stm32f103rct6_pinprobem1i.pyocd.yaml
+        config: .eide/stm32f103rct6_pinprobea1.pyocd.yaml
         otherCmds: ""
         speed: 4M
         targetName: cortex_m
