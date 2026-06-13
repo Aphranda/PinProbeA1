@@ -92,7 +92,7 @@ outDir: build
 miscInfo:
   uid: 05c51f5bf5b9f342d69d09c4fc419f69
 targets:
-  STM32F103RCT6_PinprobeM1I:
+  STM32F103RCT6_PinprobeA1:
     cppPreprocessAttrs:
       defineList:
         - USE_HAL_DRIVER
@@ -107,7 +107,7 @@ targets:
         - Middlewares/Third_Party/FreeRTOS/Source/include
         - Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2
         - Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM3
-        - MDK-ARM/RTE/_STM32F103RCT6_PinprobeM1I
+        - MDK-ARM/RTE/_STM32F103RCT6_PinprobeA1
         - Hardware/BsmRelay/Inc
         - Hardware/ModBus/Inc
         - Hardware/libscpi/inc
@@ -143,7 +143,7 @@ targets:
             use-microLIB: true
           linker:
             output-format: elf
-        scatterFilePath: "MDK-ARM/STM32F103RCT6_PinprobeM1I.sct"
+        scatterFilePath: "MDK-ARM/STM32F103RCT6_PinprobeA1.sct"
         storageLayout:
           RAM:
             - id: 1

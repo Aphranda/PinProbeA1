@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 <ProjectOpt xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="project_optx.xsd">
 
   <SchemaVersion>1.0</SchemaVersion>
@@ -22,7 +22,7 @@
   </DaveTm>
 
   <Target>
-    <TargetName>STM32F103RCT6_PinprobeM1I</TargetName>
+    <TargetName>STM32F103RCT6_PinprobeA1</TargetName>
     <ToolsetNumber>0x4</ToolsetNumber>
     <ToolsetName>ARM-ADS</ToolsetName>
     <TargetOption>
@@ -510,3 +510,4 @@
   </Group>
 
 </ProjectOpt>
+

@@ -3,8 +3,8 @@
  * Auto generated Run-Time-Environment Configuration File
  *      *** Do not modify ! ***
  *
- * Project: 'STM32F103RCT6_PinprobeM1I' 
- * Target:  'STM32F103RCT6_PinprobeM1I' 
+ * Project: 'STM32F103RCT6_PinprobeA1' 
+ * Target:  'STM32F103RCT6_PinprobeA1' 
  */
 
 #ifndef RTE_COMPONENTS_H

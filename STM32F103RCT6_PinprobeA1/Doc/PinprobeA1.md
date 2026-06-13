@@ -1,4 +1,4 @@
-PinProbe M1I下位机 指令说明
+PinProbe A1 下位机指令说明
 
 ## 链路图
 

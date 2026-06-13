@@ -1,5 +1,5 @@
 {
-  "name": "STM32F103RCT6_PinprobeM1I",
+  "name": "STM32F103RCT6_PinprobeA1",
   "type": "ARM",
   "dependenceList": [],
   "srcDirs": [
@@ -140,7 +140,7 @@
     "uid": "05c51f5bf5b9f342d69d09c4fc419f69"
   },
   "targets": {
-    "STM32F103RCT6_PinprobeM1I": {
+    "STM32F103RCT6_PinprobeA1": {
       "excludeList": [
         "<virtual_root>/Hardware"
       ],
@@ -231,7 +231,7 @@
           "Drivers/CMSIS/Device/ST/STM32F1xx/Include",
           "Drivers/CMSIS/Include",
           ".cmsis/include",
-          "MDK-ARM/RTE/_STM32F103RCT6_PinprobeM1I",
+          "MDK-ARM/RTE/_STM32F103RCT6_PinprobeA1",
           ".eide/deps",
           "Hardware/libscpi/inc",
           "Hardware/BsmRelay/Inc",
