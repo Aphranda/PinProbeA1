@@ -10,9 +10,11 @@
 *.userosscache
 *.sln.docstates
 /.claude
-
+Tools/build
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
+*.spec
+*.clangd
 
 # Mono auto generated files
 mono_crash.*
