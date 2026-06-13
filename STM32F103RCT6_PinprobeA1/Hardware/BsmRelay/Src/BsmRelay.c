@@ -142,6 +142,10 @@ static uint8_t output_io_cache[2] = {0, 0};
 
 bool IO_Read(uint8_t checkNum, uint8_t direction, uint8_t* trueData){
     uint8_t State_count = 0;
+
+    if (trueData == NULL || (direction != 1 && direction != 2))
+        return false;
+
     while (State_count < checkNum)
     {
         // Read bsm input IO status
@@ -154,8 +158,16 @@ bool IO_Read(uint8_t checkNum, uint8_t direction, uint8_t* trueData){
             continue;
         }
 
-        // 校验接收帧长度（至少6字节：地址+功能码+字节数+1数据+2CRC）
-        if (Uart3_RxLength < 6)
+        // 校验接收帧长度：地址+功能码+字节数+2数据+2CRC = 7字节
+        if (Uart3_RxLength < 7)
+        {
+            State_count++;
+            continue;
+        }
+
+        if (Uart3_BuffIsReady[0] != 0x01 ||
+            Uart3_BuffIsReady[1] != direction ||
+            Uart3_BuffIsReady[2] != 0x02)
         {
             State_count++;
             continue;
