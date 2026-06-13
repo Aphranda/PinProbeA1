@@ -26,6 +26,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "iwdg.h"
+#include "can.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -52,7 +53,7 @@ osThreadId_t defaultTaskHandle;
 const osThreadAttr_t defaultTask_attributes = {
   .name = "defaultTask",
   .stack_size = 128 * 4,
-  .priority = (osPriority_t) osPriorityNormal,
+  .priority = (osPriority_t) osPriorityLow,
 };
 /* Definitions for SCPI */
 osThreadId_t SCPIHandle;
@@ -66,7 +67,7 @@ osThreadId_t ModBusHandle;
 const osThreadAttr_t ModBus_attributes = {
   .name = "ModBus",
   .stack_size = 512 * 4,
-  .priority = (osPriority_t) osPriorityNormal1,
+  .priority = (osPriority_t) osPriorityNormal2,
 };
 /* Definitions for WatchDog */
 osThreadId_t WatchDogHandle;
@@ -80,7 +81,45 @@ osThreadId_t StateVectorHandle;
 const osThreadAttr_t StateVector_attributes = {
   .name = "StateVector",
   .stack_size = 512 * 4,
+  .priority = (osPriority_t) osPriorityNormal1,
+};
+/* Definitions for CANRx */
+osThreadId_t CANRxHandle;
+const osThreadAttr_t CANRx_attributes = {
+  .name = "CANRx",
+  .stack_size = 512 * 4,
+  .priority = (osPriority_t) osPriorityNormal2,
+};
+/* Definitions for CANTx */
+osThreadId_t CANTxHandle;
+const osThreadAttr_t CANTx_attributes = {
+  .name = "CANTx",
+  .stack_size = 512 * 4,
   .priority = (osPriority_t) osPriorityNormal,
+};
+/* Definitions for CANProtocol */
+osThreadId_t CANProtocolHandle;
+const osThreadAttr_t CANProtocol_attributes = {
+  .name = "CANProtocol",
+  .stack_size = 768 * 4,
+  .priority = (osPriority_t) osPriorityNormal1,
+};
+/* Definitions for Snapshot */
+osThreadId_t SnapshotHandle;
+const osThreadAttr_t Snapshot_attributes = {
+  .name = "Snapshot",
+  .stack_size = 512 * 4,
+  .priority = (osPriority_t) osPriorityLow,
+};
+/* Definitions for CanRxQueue */
+osMessageQueueId_t CanRxQueueHandle;
+const osMessageQueueAttr_t CanRxQueue_attributes = {
+  .name = "CanRxQueue"
+};
+/* Definitions for CanTxQueue */
+osMessageQueueId_t CanTxQueueHandle;
+const osMessageQueueAttr_t CanTxQueue_attributes = {
+  .name = "CanTxQueue"
 };
 /* Definitions for SysTimer */
 osTimerId_t SysTimerHandle;
@@ -98,6 +137,10 @@ void SCPITask(void *argument);
 void ModBusTask(void *argument);
 void WatchDogTask(void *argument);
 void StateVectorTask(void *argument);
+void CANRxTask(void *argument);
+void CANTxTask(void *argument);
+void CANProtocolTask(void *argument);
+void SnapshotTask(void *argument);
 void SysTimerCallback(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
@@ -128,6 +171,13 @@ void MX_FREERTOS_Init(void) {
   osTimerStart(SysTimerHandle, 25);  /* 25ms 系统节拍 */
   /* USER CODE END RTOS_TIMERS */
 
+  /* Create the queue(s) */
+  /* creation of CanRxQueue */
+  CanRxQueueHandle = osMessageQueueNew (16, sizeof(CanFrame_t), &CanRxQueue_attributes);
+
+  /* creation of CanTxQueue */
+  CanTxQueueHandle = osMessageQueueNew (16, sizeof(CanFrame_t), &CanTxQueue_attributes);
+
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
   /* USER CODE END RTOS_QUEUES */
@@ -147,6 +197,18 @@ void MX_FREERTOS_Init(void) {
 
   /* creation of StateVector */
   StateVectorHandle = osThreadNew(StateVectorTask, NULL, &StateVector_attributes);
+
+  /* creation of CANRx */
+  CANRxHandle = osThreadNew(CANRxTask, NULL, &CANRx_attributes);
+
+  /* creation of CANTx */
+  CANTxHandle = osThreadNew(CANTxTask, NULL, &CANTx_attributes);
+
+  /* creation of CANProtocol */
+  CANProtocolHandle = osThreadNew(CANProtocolTask, NULL, &CANProtocol_attributes);
+
+  /* creation of Snapshot */
+  SnapshotHandle = osThreadNew(SnapshotTask, NULL, &Snapshot_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -249,6 +311,78 @@ __weak void StateVectorTask(void *argument)
     osDelay(1);
   }
   /* USER CODE END StateVectorTask */
+}
+
+/* USER CODE BEGIN Header_CANRxTask */
+/**
+* @brief Function implementing the CANRx thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_CANRxTask */
+__weak void CANRxTask(void *argument)
+{
+  /* USER CODE BEGIN CANRxTask */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END CANRxTask */
+}
+
+/* USER CODE BEGIN Header_CANTxTask */
+/**
+* @brief Function implementing the CANTx thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_CANTxTask */
+__weak void CANTxTask(void *argument)
+{
+  /* USER CODE BEGIN CANTxTask */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END CANTxTask */
+}
+
+/* USER CODE BEGIN Header_CANProtocolTask */
+/**
+* @brief Function implementing the CANProtocol thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_CANProtocolTask */
+__weak void CANProtocolTask(void *argument)
+{
+  /* USER CODE BEGIN CANProtocolTask */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END CANProtocolTask */
+}
+
+/* USER CODE BEGIN Header_SnapshotTask */
+/**
+* @brief Function implementing the Snapshot thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_SnapshotTask */
+__weak void SnapshotTask(void *argument)
+{
+  /* USER CODE BEGIN SnapshotTask */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END SnapshotTask */
 }
 
 /* SysTimerCallback function */

@@ -35,6 +35,12 @@ extern "C" {
 extern CAN_HandleTypeDef hcan;
 
 /* USER CODE BEGIN Private defines */
+typedef struct {
+    uint32_t id;
+    uint8_t  dlc;
+    uint8_t  data[8];
+    uint32_t tick;
+} CanFrame_t;
 
 /* USER CODE END Private defines */
 
