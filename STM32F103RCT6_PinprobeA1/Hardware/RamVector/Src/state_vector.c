@@ -266,6 +266,13 @@ void StateVector_Input(void)
     if (btn2_db)      in_hi |= IN_DOOR_BTN2; else in_hi &= ~IN_DOOR_BTN2;
 
     uint32_t now = GetTim1Ms();     /* 当前时间 (TIM1 ms 计数器) */
+    /*
+     * 急停按钮: 支持 NC (常闭) 和 NO (常开) 两种接线方式, Flash 可配置。
+     * 后续触发与恢复都使用同一个有效态, 避免 NC/NO 逻辑不一致。
+     */
+    bool estop_active = (Flash_GetEstopType() == 1)
+        ? IS_ESTOP(in_hi)           /* NO 模式: bit=1 → 触发 */
+        : !IS_ESTOP(in_hi);         /* NC 模式: bit=0 → 触发 (默认) */
 
     /* ══════════════════════════════════════════════════════════════════════
      *  步骤 3: Layer 1 — IO 观测 → 状态自动纠偏
@@ -421,7 +428,7 @@ void StateVector_Input(void)
      */
     if (system_status == V_STATE_EMERGENCY) {
         RamVector_PostLED(VCMD_LED_RED, CMD_PRIO_OBSERVE);
-        if (!IS_ANY_LASER(in_lo, in_hi) && !IS_ESTOP(in_hi)) {
+        if (!IS_ANY_LASER(in_lo, in_hi) && !estop_active) {
             system_status = V_STATE_LOCK;
             door_close_done_tick = 0;
         }
@@ -434,14 +441,7 @@ void StateVector_Input(void)
      *  不经过状态判断。处理完后 return, 本轮不再执行按钮事件。
      * ══════════════════════════════════════════ */
 
-    /*
-     * 急停按钮: 支持 NC (常闭) 和 NO (常开) 两种接线方式, Flash 可配置。
-     *   NC (默认): 急停未按下 → 触点闭合 → bit=1; 按下 → 断开 → bit=0 触发
-     *   NO:        急停按下 → 触点闭合 → bit=1 触发
-     */
-    bool estop = (Flash_GetEstopType() == 1)
-        ? IS_ESTOP(in_hi)           /* NO 模式: bit=1 → 触发 */
-        : !IS_ESTOP(in_hi);          /* NC 模式: bit=0 → 触发 (默认) */
+    bool estop = estop_active;
     bool laser_emergency = false;
 
     if (estop) {
