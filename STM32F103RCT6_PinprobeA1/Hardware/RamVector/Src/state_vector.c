@@ -52,8 +52,13 @@
 #include "app_log.h"
 #include <string.h>
 
-/* ── 运行时调试开关 (由 SCPI CONFigure:DEBUg:xxx 控制, 默认全关) ── */
-VectorDebugFlags_t vector_debug_flags = {false, false, false, false};
+/* ── 运行时调试开关 (由 SCPI CONFigure:DEBUg:xxx 控制) ── */
+VectorDebugFlags_t vector_debug_flags = {
+    true,   /* state: 默认缓存状态流转 */
+    true,   /* action: 默认缓存动作耗时 */
+    true,   /* event: 默认缓存事件来源 */
+    false   /* io: IO 变化量大, 按需开启 */
+};
 
 #define VEC_ACTION(id,e) do { if (vector_debug_flags.action) \
     AppLog_Action((id), (e), 0); } while(0)
