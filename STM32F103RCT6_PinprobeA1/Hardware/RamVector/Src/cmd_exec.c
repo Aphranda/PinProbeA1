@@ -20,11 +20,9 @@ static void CmdExec_Lock(Vector_Cmd_t cmd)
 {
     switch (cmd) {
     case VCMD_LOCK:
-        AppLog_Action(APPLOG_ACT_LOCK, 0, 0);
         Lock_Write(lock_source[1]);            /* LOCKED */
         break;
     case VCMD_UNLOCK:
-        AppLog_Action(APPLOG_ACT_UNLOCK, 0, 0);
         Lock_Write(lock_source[0]);            /* UNLOCK */
         break;
     default:
@@ -34,21 +32,28 @@ static void CmdExec_Lock(Vector_Cmd_t cmd)
 
 static void CmdExec_Cylinder(Vector_Cmd_t cmd)
 {
+    const Vector_IOState_t *io = RamVector_GetLocalIO();
+    uint8_t out_lo = io->raw_out_lo;
+
     switch (cmd) {
     case VCMD_CYLINDER_OPEN:
-        AppLog_Action(APPLOG_ACT_CYLINDER_OPEN, 0, 1);
+        if ((out_lo & 0x01U) == 0U)
+            AppLog_Action(APPLOG_ACT_CYLINDER_OPEN, 0, 1);
         Cylinder_Write(1, cylinder_source[1]); /* OPEN */
         break;
     case VCMD_CYLINDER_CLOSE:
-        AppLog_Action(APPLOG_ACT_CYLINDER_CLOSE, 0, 1);
+        if ((out_lo & 0x02U) == 0U)
+            AppLog_Action(APPLOG_ACT_CYLINDER_CLOSE, 0, 1);
         Cylinder_Write(1, cylinder_source[0]); /* CLOSE */
         break;
     case VCMD_CYLINDER2_OPEN:
-        AppLog_Action(APPLOG_ACT_CYLINDER_OPEN, 0, 2);
+        if ((out_lo & 0x04U) == 0U)
+            AppLog_Action(APPLOG_ACT_CYLINDER_OPEN, 0, 2);
         Cylinder_Write(2, cylinder_source[1]); /* USB 插入 */
         break;
     case VCMD_CYLINDER2_CLOSE:
-        AppLog_Action(APPLOG_ACT_CYLINDER_CLOSE, 0, 2);
+        if ((out_lo & 0x08U) == 0U)
+            AppLog_Action(APPLOG_ACT_CYLINDER_CLOSE, 0, 2);
         Cylinder_Write(2, cylinder_source[0]); /* USB 拔出 */
         break;
     default:

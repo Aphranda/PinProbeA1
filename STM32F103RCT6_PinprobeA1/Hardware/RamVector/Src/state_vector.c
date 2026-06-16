@@ -181,6 +181,7 @@ void StateVector_Input(void)
     static uint8_t  btn1_cnt, btn2_cnt, btn1_db, btn2_db;
     static uint8_t  system_status = V_STATE_INIT;
     static uint8_t  last_power_btn, last_door_btn;
+    static uint8_t  last_door_closing, last_door_opening;
     static uint8_t  rs485_err_cnt;
     static bool     rs485_fault;
     static bool     m_23, m_100, m_300;
@@ -343,6 +344,35 @@ void StateVector_Input(void)
         if (IS_DOOR_CLOSING(out_lo) && !IS_DOOR_DOWN(in_lo)) system_status = V_STATE_RUNNING;  /* 开始关门 */
     }
 
+    /*
+     * 运动计时统一由 IO 输出沿触发。
+     * 按钮、SCPI、后续 CAN 只要最终让气缸动作, 都能得到 START/DONE 耗时日志。
+     */
+    {
+        uint8_t door_closing = IS_DOOR_CLOSING(out_lo) ? 1U : 0U;
+        uint8_t door_opening = IS_DOOR_OPENING(out_lo) ? 1U : 0U;
+
+        if (door_closing && !last_door_closing && !IS_DOOR_DOWN(in_lo)) {
+            door_close_start_tick = now;
+            door_close_timing = 1;
+            door_close_from_full = IS_DOOR_UP(in_lo) ? 1U : 0U;
+            air_last_check_tick = 0;
+            m_23 = m_100 = m_300 = false;
+            VEC_ACTION(APPLOG_ACT_CLOSE_START, 0);
+            if (system_status == V_STATE_READY || system_status == V_STATE_IDLE ||
+                system_status == V_STATE_COMPLETE)
+                system_status = V_STATE_RUNNING;
+        }
+
+        if (door_opening && !last_door_opening && !IS_DOOR_UP(in_lo)) {
+            door_open_start_tick = now;
+            VEC_ACTION(APPLOG_ACT_OPEN_START, 0);
+        }
+
+        last_door_closing = door_closing;
+        last_door_opening = door_opening;
+    }
+
     /* Running 状态: 关门进行中 */
     if (system_status == V_STATE_RUNNING) {
 
@@ -392,20 +422,21 @@ void StateVector_Input(void)
                       && door_close_start_tick
                       && ((now - door_close_start_tick) > door_close_default_ms);
         if (limit_ok || risk_ok) {
+            uint32_t close_elapsed = now - door_close_start_tick;
             if (risk_ok && !limit_ok)
-                AppLog_Event(APPLOG_EVT_RISK_PRESSURE, now - door_close_start_tick, 0);
+                AppLog_Event(APPLOG_EVT_RISK_PRESSURE, close_elapsed, 0);
             RamVector_PostLED(VCMD_LED_GREEN, CMD_PRIO_USER);
             door_close_timing = 0; door_open_confirm_tick = 0;
             /* 从上限位开始的关门才学习时间 (中间位置的时间不准确) */
             if (door_close_from_full) {
-                uint32_t t = now - door_close_start_tick;
+                uint32_t t = close_elapsed;
                 if (t >= 1000) {                        /* < 1s 不学, 太快不靠谱 */
                     door_close_default_ms = t;
                     door_close_time_learned = 1;
                 }
             }
             door_close_done_tick = now; door_close_from_full = 0;
-            VEC_ACTION(APPLOG_ACT_CLOSE_DONE, door_close_default_ms);
+            VEC_ACTION(APPLOG_ACT_CLOSE_DONE, close_elapsed);
             system_status = V_STATE_COMPLETE;
         }
     }
@@ -414,7 +445,8 @@ void StateVector_Input(void)
     if (system_status == V_STATE_COMPLETE) {
         if (IS_DOOR_OPENING(out_lo) && IS_DOOR_UP(in_lo)) {
             RamVector_PostLED(VCMD_LED_OFF, CMD_PRIO_USER);
-            VEC_ACTION(APPLOG_ACT_OPEN_DONE, now - door_open_start_tick);
+            if (door_open_start_tick != 0U)
+                VEC_ACTION(APPLOG_ACT_OPEN_DONE, now - door_open_start_tick);
             door_open_start_tick = 0;
             door_close_done_tick  = 0;
             poweron_position_ok   = 0;                  /* 完成一周期, 复位人工确认 */
@@ -449,7 +481,7 @@ void StateVector_Input(void)
     if (estop) {
         uint32_t et = door_close_start_tick ? (now - door_close_start_tick) : 0;
         if (vector_debug_flags.event)
-            AppLog_Event(APPLOG_EVT_ESTOP, now, et);
+            AppLog_Event(APPLOG_EVT_ESTOP, et, 0);
 
         system_status = V_STATE_EMERGENCY;
         RamVector_PostLED(VCMD_LED_RED, CMD_PRIO_SAFETY);     /* 红灯 */
@@ -515,11 +547,14 @@ void StateVector_Input(void)
         }
         if (IS_POWER_BTN(in_hi) && ((now - lock_press_tick) >= LOCK_PRESS_MS) && lock_released &&
             (!lock_release_tick || (now - lock_release_tick) >= LOCK_IDLE_MS)) {
+            uint32_t hold_ms = now - lock_press_tick;
             if (IS_UNLOCKED(out_lo)) {
                 RamVector_PostLock(VCMD_LOCK, CMD_PRIO_USER);
+                VEC_ACTION(APPLOG_ACT_LOCK, hold_ms);
             } else {
                 RamVector_PostLock(VCMD_UNLOCK, CMD_PRIO_USER);
                 RamVector_PostLED(VCMD_LED_OFF, CMD_PRIO_USER);
+                VEC_ACTION(APPLOG_ACT_UNLOCK, hold_ms);
             }
             lock_press_tick = 0; lock_released = 0; lock_release_tick = now;  /* 冷却开始 */
         }
@@ -578,11 +613,6 @@ void StateVector_Input(void)
                 if (!IS_DOOR_CLOSING(out_lo)) {
                     RamVector_PostCylinder(VCMD_CYLINDER_CLOSE, CMD_PRIO_USER);
                     door_close_confirm_tick = 0; release_start_tick = now;
-                    door_close_start_tick = now; door_close_timing = 1;
-                    door_close_from_full = IS_DOOR_UP(in_lo) ? 1 : 0;  /* 记录起点 */
-                    air_last_check_tick = 0;
-                    m_23 = m_100 = m_300 = false;                       /* 重置里程碑 */
-                    VEC_ACTION(APPLOG_ACT_CLOSE_START, 0);
                 }
             }
         }
@@ -604,8 +634,7 @@ void StateVector_Input(void)
                 ((now - door_open_confirm_tick) >= DOOR_OPEN_CONFIRM_MS) && !release_start_tick) {
                 if (!IS_DOOR_OPENING(out_lo)) {
                     RamVector_PostCylinder(VCMD_CYLINDER_OPEN, CMD_PRIO_USER);
-                    door_open_start_tick = now; door_open_confirm_tick = 0; release_start_tick = now;
-                    VEC_ACTION(APPLOG_ACT_OPEN_START, 0);
+                    door_open_confirm_tick = 0; release_start_tick = now;
                 }
             }
         }

@@ -93,7 +93,7 @@ static size_t writeDelimiter(scpi_t * context) {
  * @return number of characters written
  */
 static size_t writeNewLine(scpi_t * context) {
-    if (!context->first_output) {
+    if (!context->first_output || (context->output_count > 0)) {
         size_t len;
 #ifndef SCPI_LINE_ENDING
 #error no termination character defined

@@ -84,8 +84,32 @@ static const char *level_name(uint8_t level)
     }
 }
 
-static void push_record(uint8_t level, uint8_t module, uint8_t event_id,
-                        uint16_t arg0, uint16_t arg1)
+static uint8_t event_level(uint8_t event_id)
+{
+    switch (event_id) {
+    case APPLOG_EVT_RS485_FAULT:
+    case APPLOG_EVT_ESTOP:
+    case APPLOG_EVT_LASER:
+    case APPLOG_EVT_RISK_PRESSURE:
+    case APPLOG_EVT_AIR_LOW:
+        return APPLOG_LEVEL_WARN;
+    default:
+        return APPLOG_LEVEL_INFO;
+    }
+}
+
+static const char *close_mark_name(uint16_t mark)
+{
+    switch (mark) {
+    case 23: return "2/3";
+    case 100: return "expected";
+    case 300: return "timeout";
+    default: return "?";
+    }
+}
+
+static void push_record_ex(uint8_t level, uint8_t module, uint8_t event_id,
+                           uint16_t arg0, uint16_t arg1, uint16_t reserved)
 {
     AppLog_Record_t record;
 
@@ -96,7 +120,7 @@ static void push_record(uint8_t level, uint8_t module, uint8_t event_id,
     record.event_id = event_id;
     record.arg0 = arg0;
     record.arg1 = arg1;
-    record.reserved = 0;
+    record.reserved = reserved;
 
     taskENTER_CRITICAL();
     record.seq = ++log_table.next_seq;
@@ -118,6 +142,12 @@ static void push_record(uint8_t level, uint8_t module, uint8_t event_id,
         }
     }
     taskEXIT_CRITICAL();
+}
+
+static void push_record(uint8_t level, uint8_t module, uint8_t event_id,
+                        uint16_t arg0, uint16_t arg1)
+{
+    push_record_ex(level, module, event_id, arg0, arg1, 0);
 }
 
 void AppLog_Init(uint8_t node_id)
@@ -226,8 +256,10 @@ uint16_t AppLog_PumpRealtime(uint16_t max_records)
 
 void AppLog_State(uint8_t old_state, uint8_t new_state, uint32_t elapsed_ms)
 {
-    push_record(APPLOG_LEVEL_INFO, APPLOG_MODULE_STATE, new_state,
-                old_state, clamp_u16(elapsed_ms));
+    push_record_ex(APPLOG_LEVEL_INFO, APPLOG_MODULE_STATE, new_state,
+                   old_state,
+                   (uint16_t)(elapsed_ms & 0xFFFFU),
+                   (uint16_t)(elapsed_ms >> 16));
 }
 
 void AppLog_Action(uint8_t action_id, uint32_t elapsed_ms, uint16_t arg)
@@ -238,9 +270,7 @@ void AppLog_Action(uint8_t action_id, uint32_t elapsed_ms, uint16_t arg)
 
 void AppLog_Event(uint8_t event_id, uint32_t arg0, uint32_t arg1)
 {
-    uint8_t level = (event_id == APPLOG_EVT_RS485_RECOVERED) ?
-                    APPLOG_LEVEL_INFO : APPLOG_LEVEL_WARN;
-    push_record(level, APPLOG_MODULE_EVENT, event_id,
+    push_record(event_level(event_id), APPLOG_MODULE_EVENT, event_id,
                 clamp_u16(arg0), clamp_u16(arg1));
 }
 
@@ -311,16 +341,20 @@ size_t AppLog_Format(const AppLog_Record_t *record, char *buffer, size_t buffer_
 
     switch (record->module) {
     case APPLOG_MODULE_STATE:
+    {
+        unsigned long stay_ms =
+            ((unsigned long)record->reserved << 16) | record->arg1;
         len = snprintf(buffer, buffer_size,
-                       "[T+%lu.%03lus][N%u][%s][STATE] %s -> %s %u ms",
+                       "[T+%lu.%03lus][N%u][%s][STATE] %s -> %s stay=%lums",
                        tick_s,
                        tick_ms,
                        record->node_id,
                        level_name(record->level),
                        state_name((uint8_t)record->arg0),
                        state_name(record->event_id),
-                       record->arg1);
+                       stay_ms);
         break;
+    }
     case APPLOG_MODULE_ACTION:
         switch (record->event_id) {
         case APPLOG_ACT_CYLINDER_OPEN:
@@ -336,6 +370,46 @@ size_t AppLog_Format(const AppLog_Record_t *record, char *buffer, size_t buffer_
             break;
         case APPLOG_ACT_LOCK:
         case APPLOG_ACT_UNLOCK:
+            if (record->arg0 > 0U) {
+                len = snprintf(buffer, buffer_size,
+                               "[T+%lu.%03lus][N%u][%s][ACTION] %s held=%ums",
+                               tick_s,
+                               tick_ms,
+                               record->node_id,
+                               level_name(record->level),
+                               action_name(record->event_id),
+                               record->arg0);
+            } else {
+                len = snprintf(buffer, buffer_size,
+                               "[T+%lu.%03lus][N%u][%s][ACTION] %s",
+                               tick_s,
+                               tick_ms,
+                               record->node_id,
+                               level_name(record->level),
+                               action_name(record->event_id));
+            }
+            break;
+        case APPLOG_ACT_CLOSE_START:
+        case APPLOG_ACT_OPEN_START:
+            len = snprintf(buffer, buffer_size,
+                           "[T+%lu.%03lus][N%u][%s][ACTION] %s",
+                           tick_s,
+                           tick_ms,
+                           record->node_id,
+                           level_name(record->level),
+                           action_name(record->event_id));
+            break;
+        case APPLOG_ACT_CLOSE_DONE:
+        case APPLOG_ACT_OPEN_DONE:
+            len = snprintf(buffer, buffer_size,
+                           "[T+%lu.%03lus][N%u][%s][ACTION] %s duration=%ums",
+                           tick_s,
+                           tick_ms,
+                           record->node_id,
+                           level_name(record->level),
+                           action_name(record->event_id),
+                           record->arg0);
+            break;
         case APPLOG_ACT_LED_OFF:
         case APPLOG_ACT_LED_GREEN:
         case APPLOG_ACT_LED_RED:
@@ -349,9 +423,8 @@ size_t AppLog_Format(const AppLog_Record_t *record, char *buffer, size_t buffer_
                            action_name(record->event_id));
             break;
         case APPLOG_ACT_CLOSE_PHASE:
-        case APPLOG_ACT_CLOSE_MARK:
             len = snprintf(buffer, buffer_size,
-                           "[T+%lu.%03lus][N%u][%s][ACTION] %s elapsed=%ums mark=%u",
+                           "[T+%lu.%03lus][N%u][%s][ACTION] %s elapsed=%ums phase=%u",
                            tick_s,
                            tick_ms,
                            record->node_id,
@@ -359,6 +432,17 @@ size_t AppLog_Format(const AppLog_Record_t *record, char *buffer, size_t buffer_
                            action_name(record->event_id),
                            record->arg0,
                            record->arg1);
+            break;
+        case APPLOG_ACT_CLOSE_MARK:
+            len = snprintf(buffer, buffer_size,
+                           "[T+%lu.%03lus][N%u][%s][ACTION] %s elapsed=%ums point=%s",
+                           tick_s,
+                           tick_ms,
+                           record->node_id,
+                           level_name(record->level),
+                           action_name(record->event_id),
+                           record->arg0,
+                           close_mark_name(record->arg1));
             break;
         default:
             len = snprintf(buffer, buffer_size,
@@ -424,6 +508,19 @@ size_t AppLog_Format(const AppLog_Record_t *record, char *buffer, size_t buffer_
                            event_name(record->event_id),
                            record->arg0,
                            state_name((uint8_t)record->arg1));
+            break;
+        case APPLOG_EVT_ESTOP:
+        case APPLOG_EVT_LASER:
+        case APPLOG_EVT_RISK_PRESSURE:
+        case APPLOG_EVT_AIR_LOW:
+            len = snprintf(buffer, buffer_size,
+                           "[T+%lu.%03lus][N%u][%s][EVENT] %s close_elapsed=%ums",
+                           tick_s,
+                           tick_ms,
+                           record->node_id,
+                           level_name(record->level),
+                           event_name(record->event_id),
+                           record->arg0);
             break;
         default:
             len = snprintf(buffer, buffer_size,
