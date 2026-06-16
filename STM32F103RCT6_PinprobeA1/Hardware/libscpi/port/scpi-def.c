@@ -45,6 +45,7 @@
 #include "ram_vector.h"
 #include "state_vector.h"
 #include "tim.h"
+#include "app_log.h"
 
 /* 辅助: 推送 SCPI 错误并返回 ERR (附带描述信息) */
 #define PUSH_ERR(ctx, code, info) do { \
@@ -632,6 +633,65 @@ static scpi_result_t SCPI_ReadDebugIOQ(scpi_t *context)
     return SCPI_RES_OK;
 }
 
+static scpi_result_t SCPI_ConfigureLogUart(scpi_t *context)
+{
+    int32_t param;
+    if (!SCPI_ParamChoice(context, debug_on_off, &param, TRUE))
+        return SCPI_RES_ERR;
+    AppLog_SetRealtime(param != 0);
+    const char *name;
+    SCPI_ChoiceToName(debug_on_off, param, &name);
+    SCPI_ResultCharacters(context, name, strlen(name));
+    return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_ReadLogUartQ(scpi_t *context)
+{
+    const char *name;
+    SCPI_ChoiceToName(debug_on_off, AppLog_IsRealtimeEnabled() ? 1 : 0, &name);
+    SCPI_ResultCharacters(context, name, strlen(name));
+    return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_ReadLogNextQ(scpi_t *context)
+{
+    AppLog_Record_t record;
+    char line[128];
+
+    if (!AppLog_Read(&record)) {
+        SCPI_ResultText(context, "EMPTY");
+        return SCPI_RES_OK;
+    }
+
+    AppLog_Format(&record, line, sizeof(line));
+    SCPI_ResultCharacters(context, line, strlen(line));
+    return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_ReadLogStatusQ(scpi_t *context)
+{
+    AppLog_Status_t status;
+    char line[96];
+
+    AppLog_GetStatus(&status);
+    snprintf(line, sizeof(line), "PEND:%u CAP:%u NEXT:%u DROP:%lu RDROP:%lu UART:%u",
+             status.pending,
+             status.capacity,
+             status.next_seq,
+             (unsigned long)status.drop_count,
+             (unsigned long)status.realtime_drop_count,
+             status.realtime_enabled ? 1U : 0U);
+    SCPI_ResultCharacters(context, line, strlen(line));
+    return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_ClearLog(scpi_t *context)
+{
+    AppLog_Clear();
+    SCPI_ResultText(context, "OK");
+    return SCPI_RES_OK;
+}
+
 const scpi_command_t scpi_commands[] = {
     /* IEEE Mandated Commands (SCPI std V1999.0 4.1.1) */
     {
@@ -794,6 +854,26 @@ const scpi_command_t scpi_commands[] = {
     {
         .pattern = "READ:DEBUg:IO?",
         .callback = SCPI_ReadDebugIOQ,
+    },
+    {
+        .pattern = "CONFigure:LOG:UART",
+        .callback = SCPI_ConfigureLogUart,
+    },
+    {
+        .pattern = "READ:LOG:UART?",
+        .callback = SCPI_ReadLogUartQ,
+    },
+    {
+        .pattern = "READ:LOG:NEXT?",
+        .callback = SCPI_ReadLogNextQ,
+    },
+    {
+        .pattern = "READ:LOG:STATus?",
+        .callback = SCPI_ReadLogStatusQ,
+    },
+    {
+        .pattern = "CONFigure:LOG:CLEar",
+        .callback = SCPI_ClearLog,
     },
     SCPI_CMD_LIST_END};
 

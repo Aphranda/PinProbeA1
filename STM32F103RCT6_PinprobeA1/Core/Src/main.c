@@ -38,6 +38,7 @@
 #include "ram_vector.h"
 #include "state_vector.h"
 #include "cmd_exec.h"
+#include "app_log.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -241,6 +242,9 @@ int main(void)
   /* 从 Flash 同步 IDN 字符串到运行时缓冲区 (覆盖默认值) */
   SCPI_SyncIdnFromFlash();
 
+  AppLog_Init(0);
+  AppLog_SetSink(AppLog_UartSink);
+
   /* 上电自检 */
   (void)PowerOnSelfTest();
 
@@ -341,6 +345,7 @@ void SCPITask(void *argument)
     {
       SCPI_Input(&scpi_context, buf, len);
     }
+    AppLog_PumpRealtime(4);
     osDelay(10);                   // 任务延时10ms
   }
   /* USER CODE END SCPITask */

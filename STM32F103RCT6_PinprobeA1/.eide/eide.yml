@@ -41,8 +41,12 @@ virtualFolder:
               files:
                 - path: Hardware/RamVector/Src/ram_vector.c
                 - path: Hardware/RamVector/Src/cmd_exec.c
-                - path: Hardware/RamVector/Src/event_table.c
                 - path: Hardware/RamVector/Src/state_vector.c
+              folders: []
+            - name: AppLog
+              files:
+                - path: Hardware/AppLog/Src/app_log.c
+                - path: Hardware/AppLog/Src/app_log_uart.c
               folders: []
     - name: Drivers
       files: []
@@ -116,6 +120,7 @@ targets:
         - Hardware/CheckMode/inc
         - Hardware/Flash/Inc
         - Hardware/RamVector/Inc
+        - Hardware/AppLog/Inc
       libList: []
     excludeList: []
     settings:

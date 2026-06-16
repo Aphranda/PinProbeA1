@@ -49,23 +49,14 @@
 #include "ram_vector.h"
 #include "tim.h"
 #include "flash.h"
+#include "app_log.h"
 #include <string.h>
 
 /* ── 运行时调试开关 (由 SCPI CONFigure:DEBUg:xxx 控制, 默认全关) ── */
 VectorDebugFlags_t vector_debug_flags = {false, false, false, false};
 
-/* 调试打印宏 (仅对应 debug flag 开启时才输出) */
-#define VEC_ACTION(n,e) do { if (vector_debug_flags.action) \
-    Uart1_Printf("[%s] %u ms\r\n", n, (unsigned int)(e)); } while(0)
-
-#define VEC_EVENT(e)    do { if (vector_debug_flags.event) \
-    Uart1_Printf("[EVENT] %s\r\n", (e)); } while(0)
-
-/* 状态码 → 可读名称 */
-static const char* state_name(uint8_t s) {
-    switch(s){case 0:return"LOCK";case 1:return"IDLE";case 2:return"READY";
-    case 3:return"RUNNING";case 4:return"EMERGENCY";case 5:return"COMPLETE";default:return"INIT";}
-}
+#define VEC_ACTION(id,e) do { if (vector_debug_flags.action) \
+    AppLog_Action((id), (e), 0); } while(0)
 
 /* ════════════════════════════════════════════════════════════════════════════
  *  IO 位定义
@@ -220,7 +211,7 @@ void StateVector_Input(void)
     if (!io_ok) {
         if (++rs485_err_cnt >= RS485_FAIL_THRESHOLD) {
             if (!rs485_fault) {                         /* 首次触发, 仅打印一次 */
-                Uart1_Printf("[RS485] FAULT\r\n");
+                AppLog_Event(APPLOG_EVT_RS485_FAULT, 0, 0);
                 RamVector_PostLED(VCMD_LED_YELLOW, CMD_PRIO_SAFETY);
                 rs485_fault = true;
                 rs485_err_cnt = 0;                      /* 防溢出, 保持故障态 */
@@ -229,7 +220,7 @@ void StateVector_Input(void)
         return;                                         /* IO 不可靠, 跳过本轮 */
     }
     if (rs485_fault) {                                  /* 故障恢复 */
-        Uart1_Printf("[RS485] RECOVERED\r\n");
+        AppLog_Event(APPLOG_EVT_RS485_RECOVERED, 0, 0);
         RamVector_PostLED(VCMD_LED_OFF, CMD_PRIO_SAFETY);
         rs485_fault = false;
     }
@@ -239,8 +230,7 @@ void StateVector_Input(void)
     if (vector_debug_flags.io)
     { static uint8_t li0=0xFF,li1=0xFF,lo0=0xFF,lo1=0xFF;
       if(in_lo!=li0||in_hi!=li1||out_lo!=lo0||out_hi!=lo1){
-          Uart1_Printf("[IO] IN:0x%02X,0x%02X OUT:0x%02X,0x%02X\r\n",
-                       in_lo,in_hi,out_lo,out_hi);
+          AppLog_IO(in_lo, in_hi, out_lo, out_hi);
           li0=in_lo;li1=in_hi;lo0=out_lo;lo1=out_hi;
       }
     }
@@ -352,8 +342,8 @@ void StateVector_Input(void)
             else if (IS_DOOR_DOWN(in_lo))   new_phase = 2;
             else                            new_phase = 1;
             if (new_phase != close_phase) {
-                Uart1_Printf("[CLOSE] phase %d @ %u ms\r\n",
-                    new_phase, (unsigned int)(now - door_close_start_tick));
+                AppLog_Action(APPLOG_ACT_CLOSE_PHASE,
+                              now - door_close_start_tick, new_phase);
                 close_phase = new_phase;
             }
         }
@@ -362,11 +352,11 @@ void StateVector_Input(void)
         if (vector_debug_flags.action)
         {   uint32_t el = now - door_close_start_tick;
             if (!m_23 && el > door_close_default_ms * 2 / 3)
-                { Uart1_Printf("[CLOSE] 2/3 @ %u ms, laser active\r\n", (unsigned int)el); m_23 = true; }
+                { AppLog_Action(APPLOG_ACT_CLOSE_MARK, el, 23); m_23 = true; }
             if (!m_100 && el > door_close_default_ms)
-                { Uart1_Printf("[CLOSE] 100%% @ %u ms, expected done\r\n", (unsigned int)el); m_100 = true; }
+                { AppLog_Action(APPLOG_ACT_CLOSE_MARK, el, 100); m_100 = true; }
             if (!m_300 && el > door_close_default_ms * 3)
-                { Uart1_Printf("[CLOSE] 300%% @ %u ms, TIMEOUT\r\n", (unsigned int)el); m_300 = true; }
+                { AppLog_Action(APPLOG_ACT_CLOSE_MARK, el, 300); m_300 = true; }
         }
 
         /*
@@ -391,7 +381,7 @@ void StateVector_Input(void)
                       && ((now - door_close_start_tick) > door_close_default_ms);
         if (limit_ok || risk_ok) {
             if (risk_ok && !limit_ok)
-                Uart1_Printf("[RISK] door close confirmed by pressure, limit failed\r\n");
+                AppLog_Event(APPLOG_EVT_RISK_PRESSURE, now - door_close_start_tick, 0);
             RamVector_PostLED(VCMD_LED_GREEN, CMD_PRIO_USER);
             door_close_timing = 0; door_open_confirm_tick = 0;
             /* 从上限位开始的关门才学习时间 (中间位置的时间不准确) */
@@ -403,7 +393,7 @@ void StateVector_Input(void)
                 }
             }
             door_close_done_tick = now; door_close_from_full = 0;
-            VEC_ACTION("CLOSE_DONE", door_close_default_ms);
+            VEC_ACTION(APPLOG_ACT_CLOSE_DONE, door_close_default_ms);
             system_status = V_STATE_COMPLETE;
         }
     }
@@ -412,7 +402,7 @@ void StateVector_Input(void)
     if (system_status == V_STATE_COMPLETE) {
         if (IS_DOOR_OPENING(out_lo) && IS_DOOR_UP(in_lo)) {
             RamVector_PostLED(VCMD_LED_OFF, CMD_PRIO_USER);
-            VEC_ACTION("OPEN_DONE", now - door_open_start_tick);
+            VEC_ACTION(APPLOG_ACT_OPEN_DONE, now - door_open_start_tick);
             door_open_start_tick = 0;
             door_close_done_tick  = 0;
             poweron_position_ok   = 0;                  /* 完成一周期, 复位人工确认 */
@@ -447,7 +437,7 @@ void StateVector_Input(void)
     if (estop) {
         uint32_t et = door_close_start_tick ? (now - door_close_start_tick) : 0;
         if (vector_debug_flags.event)
-            Uart1_Printf("[EVENT] ESTOP @ %u ms (close el:%u)\r\n", (unsigned int)now, (unsigned int)et);
+            AppLog_Event(APPLOG_EVT_ESTOP, now, et);
 
         system_status = V_STATE_EMERGENCY;
         RamVector_PostLED(VCMD_LED_RED, CMD_PRIO_SAFETY);     /* 红灯 */
@@ -482,7 +472,7 @@ void StateVector_Input(void)
         if (door_close_timing && door_close_start_tick &&
             !IS_DOOR_DOWN(in_lo) && (de > door_close_default_ms * 2 / 3)) {
             if (vector_debug_flags.event)
-                Uart1_Printf("[EVENT] LASER @ %u ms\r\n", (unsigned int)de);
+                AppLog_Event(APPLOG_EVT_LASER, de, 0);
             laser_emergency = true;
             system_status = V_STATE_EMERGENCY;
             RamVector_PostLED(VCMD_LED_RED, CMD_PRIO_SAFETY);
@@ -514,11 +504,11 @@ void StateVector_Input(void)
         if (IS_POWER_BTN(in_hi) && ((now - lock_press_tick) >= LOCK_PRESS_MS) && lock_released &&
             (!lock_release_tick || (now - lock_release_tick) >= LOCK_IDLE_MS)) {
             if (IS_UNLOCKED(out_lo)) {
-                RamVector_PostLock(VCMD_LOCK, CMD_PRIO_USER); VEC_ACTION("LOCK", now - lock_press_tick);
+                RamVector_PostLock(VCMD_LOCK, CMD_PRIO_USER); VEC_ACTION(APPLOG_ACT_LOCK, now - lock_press_tick);
             } else {
                 RamVector_PostLock(VCMD_UNLOCK, CMD_PRIO_USER);
                 RamVector_PostLED(VCMD_LED_OFF, CMD_PRIO_USER);
-                VEC_ACTION("UNLOCK", now - lock_press_tick);
+                VEC_ACTION(APPLOG_ACT_UNLOCK, now - lock_press_tick);
             }
             lock_press_tick = 0; lock_released = 0; lock_release_tick = now;  /* 冷却开始 */
         }
@@ -581,7 +571,7 @@ void StateVector_Input(void)
                     door_close_from_full = IS_DOOR_UP(in_lo) ? 1 : 0;  /* 记录起点 */
                     air_last_check_tick = 0;
                     m_23 = m_100 = m_300 = false;                       /* 重置里程碑 */
-                    VEC_ACTION("CLOSE_START", 0);
+                    VEC_ACTION(APPLOG_ACT_CLOSE_START, 0);
                 }
             }
         }
@@ -604,7 +594,7 @@ void StateVector_Input(void)
                 if (!IS_DOOR_OPENING(out_lo)) {
                     RamVector_PostCylinder(VCMD_CYLINDER_OPEN, CMD_PRIO_USER);
                     door_open_start_tick = now; door_open_confirm_tick = 0; release_start_tick = now;
-                    VEC_ACTION("OPEN_START", 0);
+                    VEC_ACTION(APPLOG_ACT_OPEN_START, 0);
                 }
             }
         }
@@ -620,7 +610,7 @@ void StateVector_Input(void)
             uint32_t el = now - door_close_done_tick;
             if (el >= 3000 && (!air_last_check_tick || ((now - air_last_check_tick) >= 1500))) {
                 if (!(in_lo & IN_LASER1))
-                    Uart1_Printf("Intake air pressure too low, elapsed:%u ms\r\n", (unsigned int)el);
+                    AppLog_Event(APPLOG_EVT_AIR_LOW, el, 0);
                 air_last_check_tick = now;
             }
         }
@@ -648,11 +638,9 @@ void StateVector_Input(void)
       static uint32_t state_enter_tick;
       if (system_status != last_state) {
           if (last_state != 0xFF)
-              Uart1_Printf("[STATE] %s -> %s (%u ms)\r\n",
-                  state_name(last_state), state_name(system_status),
-                  (unsigned int)(now - state_enter_tick));
+              AppLog_State(last_state, system_status, now - state_enter_tick);
           else
-              Uart1_Printf("[STATE] %s\r\n", state_name(system_status));
+              AppLog_State(0xFF, system_status, 0);
           last_state = system_status;
           state_enter_tick = now;
       }
