@@ -4,6 +4,7 @@
 
 #include "cmd_exec.h"
 #include "BsmRelay.h"
+#include "app_log.h"
 
 /* 外部 SCPI choice 表 */
 extern scpi_choice_def_t cylinder_source[];
@@ -19,9 +20,11 @@ static void CmdExec_Lock(Vector_Cmd_t cmd)
 {
     switch (cmd) {
     case VCMD_LOCK:
+        AppLog_Action(APPLOG_ACT_LOCK, 0, 0);
         Lock_Write(lock_source[1]);            /* LOCKED */
         break;
     case VCMD_UNLOCK:
+        AppLog_Action(APPLOG_ACT_UNLOCK, 0, 0);
         Lock_Write(lock_source[0]);            /* UNLOCK */
         break;
     default:
@@ -33,15 +36,19 @@ static void CmdExec_Cylinder(Vector_Cmd_t cmd)
 {
     switch (cmd) {
     case VCMD_CYLINDER_OPEN:
+        AppLog_Action(APPLOG_ACT_CYLINDER_OPEN, 0, 1);
         Cylinder_Write(1, cylinder_source[1]); /* OPEN */
         break;
     case VCMD_CYLINDER_CLOSE:
+        AppLog_Action(APPLOG_ACT_CYLINDER_CLOSE, 0, 1);
         Cylinder_Write(1, cylinder_source[0]); /* CLOSE */
         break;
     case VCMD_CYLINDER2_OPEN:
+        AppLog_Action(APPLOG_ACT_CYLINDER_OPEN, 0, 2);
         Cylinder_Write(2, cylinder_source[1]); /* USB 插入 */
         break;
     case VCMD_CYLINDER2_CLOSE:
+        AppLog_Action(APPLOG_ACT_CYLINDER_CLOSE, 0, 2);
         Cylinder_Write(2, cylinder_source[0]); /* USB 拔出 */
         break;
     default:
@@ -52,10 +59,22 @@ static void CmdExec_Cylinder(Vector_Cmd_t cmd)
 static void CmdExec_LED(Vector_Cmd_t cmd)
 {
     switch (cmd) {
-    case VCMD_LED_OFF:    LED_Write(led_source[0]); break;
-    case VCMD_LED_GREEN:  LED_Write(led_source[1]); break;
-    case VCMD_LED_RED:    LED_Write(led_source[2]); break;
-    case VCMD_LED_YELLOW: LED_Write(led_source[3]); break;
+    case VCMD_LED_OFF:
+        AppLog_Action(APPLOG_ACT_LED_OFF, 0, 0);
+        LED_Write(led_source[0]);
+        break;
+    case VCMD_LED_GREEN:
+        AppLog_Action(APPLOG_ACT_LED_GREEN, 0, 0);
+        LED_Write(led_source[1]);
+        break;
+    case VCMD_LED_RED:
+        AppLog_Action(APPLOG_ACT_LED_RED, 0, 0);
+        LED_Write(led_source[2]);
+        break;
+    case VCMD_LED_YELLOW:
+        AppLog_Action(APPLOG_ACT_LED_YELLOW, 0, 0);
+        LED_Write(led_source[3]);
+        break;
     default: break;
     }
 }

@@ -5,11 +5,18 @@
 #include "app_log.h"
 #include "stm32f1xx_it.h"
 
-void AppLog_UartSink(const AppLog_Record_t *record)
+bool AppLog_UartSink(const AppLog_Record_t *record)
 {
     char line[128];
 
+    if (Uart1_IsTxBusy()) {
+        return false;
+    }
+
     if (AppLog_Format(record, line, sizeof(line)) > 0U) {
         Uart1_Printf("%s\r\n", line);
+        return true;
     }
+
+    return false;
 }

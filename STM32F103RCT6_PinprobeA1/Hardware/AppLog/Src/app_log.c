@@ -46,6 +46,12 @@ static const char *action_name(uint8_t action)
     case APPLOG_ACT_OPEN_DONE: return "OPEN_DONE";
     case APPLOG_ACT_CLOSE_PHASE: return "CLOSE_PHASE";
     case APPLOG_ACT_CLOSE_MARK: return "CLOSE_MARK";
+    case APPLOG_ACT_CYLINDER_OPEN: return "CYLINDER_OPEN";
+    case APPLOG_ACT_CYLINDER_CLOSE: return "CYLINDER_CLOSE";
+    case APPLOG_ACT_LED_OFF: return "LED_OFF";
+    case APPLOG_ACT_LED_GREEN: return "LED_GREEN";
+    case APPLOG_ACT_LED_RED: return "LED_RED";
+    case APPLOG_ACT_LED_YELLOW: return "LED_YELLOW";
     default: return "ACTION?";
     }
 }
@@ -59,6 +65,11 @@ static const char *event_name(uint8_t event)
     case APPLOG_EVT_LASER: return "LASER";
     case APPLOG_EVT_RISK_PRESSURE: return "RISK_PRESSURE";
     case APPLOG_EVT_AIR_LOW: return "AIR_LOW";
+    case APPLOG_EVT_POWER_BTN: return "POWER_BTN";
+    case APPLOG_EVT_DOOR_BTN: return "DOOR_BTN";
+    case APPLOG_EVT_SCPI_LOCK: return "SCPI_LOCK";
+    case APPLOG_EVT_SCPI_CYLINDER: return "SCPI_CYLINDER";
+    case APPLOG_EVT_SCPI_LED: return "SCPI_LED";
     default: return "EVENT?";
     }
 }
@@ -195,11 +206,18 @@ uint16_t AppLog_PumpRealtime(uint16_t max_records)
             break;
         }
         record = log_table.records[log_table.realtime_index];
-        log_table.realtime_index = (uint16_t)((log_table.realtime_index + 1U) % APPLOG_RECORD_CAPACITY);
-        log_table.realtime_count--;
         taskEXIT_CRITICAL();
 
-        log_sink(&record);
+        if (!log_sink(&record)) {
+            break;
+        }
+
+        taskENTER_CRITICAL();
+        if (log_table.realtime_count > 0U) {
+            log_table.realtime_index = (uint16_t)((log_table.realtime_index + 1U) % APPLOG_RECORD_CAPACITY);
+            log_table.realtime_count--;
+        }
+        taskEXIT_CRITICAL();
         sent++;
     }
 
@@ -281,16 +299,22 @@ uint32_t AppLog_GetDropCount(void)
 size_t AppLog_Format(const AppLog_Record_t *record, char *buffer, size_t buffer_size)
 {
     int len;
+    unsigned long tick_s;
+    unsigned long tick_ms;
 
     if (record == NULL || buffer == NULL || buffer_size == 0U) {
         return 0U;
     }
 
+    tick_s = (unsigned long)(record->tick / 1000UL);
+    tick_ms = (unsigned long)(record->tick % 1000UL);
+
     switch (record->module) {
     case APPLOG_MODULE_STATE:
         len = snprintf(buffer, buffer_size,
-                       "[%lu][N%u][%s][STATE] %s -> %s %u ms",
-                       (unsigned long)record->tick,
+                       "[T+%lu.%03lus][N%u][%s][STATE] %s -> %s %u ms",
+                       tick_s,
+                       tick_ms,
                        record->node_id,
                        level_name(record->level),
                        state_name((uint8_t)record->arg0),
@@ -298,29 +322,127 @@ size_t AppLog_Format(const AppLog_Record_t *record, char *buffer, size_t buffer_
                        record->arg1);
         break;
     case APPLOG_MODULE_ACTION:
-        len = snprintf(buffer, buffer_size,
-                       "[%lu][N%u][%s][ACTION] %s %u ms arg=%u",
-                       (unsigned long)record->tick,
-                       record->node_id,
-                       level_name(record->level),
-                       action_name(record->event_id),
-                       record->arg0,
-                       record->arg1);
+        switch (record->event_id) {
+        case APPLOG_ACT_CYLINDER_OPEN:
+        case APPLOG_ACT_CYLINDER_CLOSE:
+            len = snprintf(buffer, buffer_size,
+                           "[T+%lu.%03lus][N%u][%s][ACTION] %s cyl=%u",
+                           tick_s,
+                           tick_ms,
+                           record->node_id,
+                           level_name(record->level),
+                           action_name(record->event_id),
+                           record->arg1);
+            break;
+        case APPLOG_ACT_LOCK:
+        case APPLOG_ACT_UNLOCK:
+        case APPLOG_ACT_LED_OFF:
+        case APPLOG_ACT_LED_GREEN:
+        case APPLOG_ACT_LED_RED:
+        case APPLOG_ACT_LED_YELLOW:
+            len = snprintf(buffer, buffer_size,
+                           "[T+%lu.%03lus][N%u][%s][ACTION] %s",
+                           tick_s,
+                           tick_ms,
+                           record->node_id,
+                           level_name(record->level),
+                           action_name(record->event_id));
+            break;
+        case APPLOG_ACT_CLOSE_PHASE:
+        case APPLOG_ACT_CLOSE_MARK:
+            len = snprintf(buffer, buffer_size,
+                           "[T+%lu.%03lus][N%u][%s][ACTION] %s elapsed=%ums mark=%u",
+                           tick_s,
+                           tick_ms,
+                           record->node_id,
+                           level_name(record->level),
+                           action_name(record->event_id),
+                           record->arg0,
+                           record->arg1);
+            break;
+        default:
+            len = snprintf(buffer, buffer_size,
+                           "[T+%lu.%03lus][N%u][%s][ACTION] %s elapsed=%ums",
+                           tick_s,
+                           tick_ms,
+                           record->node_id,
+                           level_name(record->level),
+                           action_name(record->event_id),
+                           record->arg0);
+            break;
+        }
         break;
     case APPLOG_MODULE_EVENT:
-        len = snprintf(buffer, buffer_size,
-                       "[%lu][N%u][%s][EVENT] %s arg0=%u arg1=%u",
-                       (unsigned long)record->tick,
-                       record->node_id,
-                       level_name(record->level),
-                       event_name(record->event_id),
-                       record->arg0,
-                       record->arg1);
+        switch (record->event_id) {
+        case APPLOG_EVT_SCPI_CYLINDER:
+            len = snprintf(buffer, buffer_size,
+                           "[T+%lu.%03lus][N%u][%s][EVENT] %s cyl=%u cmd=%s",
+                           tick_s,
+                           tick_ms,
+                           record->node_id,
+                           level_name(record->level),
+                           event_name(record->event_id),
+                           record->arg0,
+                           (record->arg1 == 0U) ? "CLOSE" : "OPEN");
+            break;
+        case APPLOG_EVT_SCPI_LOCK:
+            len = snprintf(buffer, buffer_size,
+                           "[T+%lu.%03lus][N%u][%s][EVENT] %s cmd=%s",
+                           tick_s,
+                           tick_ms,
+                           record->node_id,
+                           level_name(record->level),
+                           event_name(record->event_id),
+                           (record->arg0 == 0U) ? "UNLOCK" : "LOCKED");
+            break;
+        case APPLOG_EVT_SCPI_LED:
+            len = snprintf(buffer, buffer_size,
+                           "[T+%lu.%03lus][N%u][%s][EVENT] %s cmd=%u",
+                           tick_s,
+                           tick_ms,
+                           record->node_id,
+                           level_name(record->level),
+                           event_name(record->event_id),
+                           record->arg0);
+            break;
+        case APPLOG_EVT_POWER_BTN:
+            len = snprintf(buffer, buffer_size,
+                           "[T+%lu.%03lus][N%u][%s][EVENT] %s pressed",
+                           tick_s,
+                           tick_ms,
+                           record->node_id,
+                           level_name(record->level),
+                           event_name(record->event_id));
+            break;
+        case APPLOG_EVT_DOOR_BTN:
+            len = snprintf(buffer, buffer_size,
+                           "[T+%lu.%03lus][N%u][%s][EVENT] %s mask=0x%02X state=%s",
+                           tick_s,
+                           tick_ms,
+                           record->node_id,
+                           level_name(record->level),
+                           event_name(record->event_id),
+                           record->arg0,
+                           state_name((uint8_t)record->arg1));
+            break;
+        default:
+            len = snprintf(buffer, buffer_size,
+                           "[T+%lu.%03lus][N%u][%s][EVENT] %s arg0=%u arg1=%u",
+                           tick_s,
+                           tick_ms,
+                           record->node_id,
+                           level_name(record->level),
+                           event_name(record->event_id),
+                           record->arg0,
+                           record->arg1);
+            break;
+        }
         break;
     case APPLOG_MODULE_IO:
         len = snprintf(buffer, buffer_size,
-                       "[%lu][N%u][%s][IO] IN:0x%02X,0x%02X OUT:0x%02X,0x%02X",
-                       (unsigned long)record->tick,
+                       "[T+%lu.%03lus][N%u][%s][IO] IN:0x%02X,0x%02X OUT:0x%02X,0x%02X",
+                       tick_s,
+                       tick_ms,
                        record->node_id,
                        level_name(record->level),
                        (unsigned int)(record->arg0 >> 8),
@@ -330,8 +452,9 @@ size_t AppLog_Format(const AppLog_Record_t *record, char *buffer, size_t buffer_
         break;
     default:
         len = snprintf(buffer, buffer_size,
-                       "[%lu][N%u][%s][?] module=%u event=%u arg0=%u arg1=%u",
-                       (unsigned long)record->tick,
+                       "[T+%lu.%03lus][N%u][%s][?] module=%u event=%u arg0=%u arg1=%u",
+                       tick_s,
+                       tick_ms,
                        record->node_id,
                        level_name(record->level),
                        record->module,

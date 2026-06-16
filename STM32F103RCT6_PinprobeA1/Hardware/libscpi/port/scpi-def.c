@@ -332,6 +332,8 @@ static scpi_result_t SCPI_ConfigureCylinder(scpi_t *context)
     }
     SCPI_ChoiceToName(cylinder_source, param, &name);
     /* 多气缸: id=1 门, id=2 USB */
+    if (vector_debug_flags.event)
+        AppLog_Event(APPLOG_EVT_SCPI_CYLINDER, cylinder_id, (uint32_t)param);
     if (cylinder_id == 2)
         RamVector_PostCylinder((param == 0) ? VCMD_CYLINDER2_CLOSE : VCMD_CYLINDER2_OPEN, CMD_PRIO_USER);
     else
@@ -382,6 +384,8 @@ static scpi_result_t SCPI_ConfigureLOCK(scpi_t *context)
         return SCPI_RES_ERR;
     }
     SCPI_ChoiceToName(lock_source, param, &name);
+    if (vector_debug_flags.event)
+        AppLog_Event(APPLOG_EVT_SCPI_LOCK, (uint32_t)param, 0);
     RamVector_PostLock((param == 0) ? VCMD_UNLOCK : VCMD_LOCK, CMD_PRIO_USER);
     SCPI_ResultCharacters(context, name, strlen(name));
     return SCPI_RES_OK;
@@ -412,6 +416,8 @@ static scpi_result_t SCPI_ConfigureLED(scpi_t *context)
         return SCPI_RES_ERR;
     }
     SCPI_ChoiceToName(led_source, param, &name);
+    if (vector_debug_flags.event)
+        AppLog_Event(APPLOG_EVT_SCPI_LED, (uint32_t)param, 0);
     RamVector_PostLED((Vector_Cmd_t)(VCMD_LED_OFF + param), CMD_PRIO_USER);
     SCPI_ResultCharacters(context, name, strlen(name));
     return SCPI_RES_OK;

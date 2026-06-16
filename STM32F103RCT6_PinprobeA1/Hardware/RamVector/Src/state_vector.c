@@ -180,6 +180,7 @@ void StateVector_Input(void)
     static uint8_t  door_up_cnt, door_down_cnt, door_up_db, door_down_db;
     static uint8_t  btn1_cnt, btn2_cnt, btn1_db, btn2_db;
     static uint8_t  system_status = V_STATE_INIT;
+    static uint8_t  last_power_btn, last_door_btn;
     static uint8_t  rs485_err_cnt;
     static bool     rs485_fault;
     static bool     m_23, m_100, m_300;
@@ -263,6 +264,17 @@ void StateVector_Input(void)
     bool estop_active = (Flash_GetEstopType() == 1)
         ? IS_ESTOP(in_hi)           /* NO 模式: bit=1 → 触发 */
         : !IS_ESTOP(in_hi);         /* NC 模式: bit=0 → 触发 (默认) */
+
+    if (vector_debug_flags.event) {
+        uint8_t power_btn = IS_POWER_BTN(in_hi) ? 1U : 0U;
+        uint8_t door_btn = (uint8_t)(in_hi & IN_DOOR_BTN_ANY);
+        if (power_btn && !last_power_btn)
+            AppLog_Event(APPLOG_EVT_POWER_BTN, 1, 0);
+        if (door_btn && !last_door_btn)
+            AppLog_Event(APPLOG_EVT_DOOR_BTN, door_btn, system_status);
+        last_power_btn = power_btn;
+        last_door_btn = door_btn ? 1U : 0U;
+    }
 
     /* ══════════════════════════════════════════════════════════════════════
      *  步骤 3: Layer 1 — IO 观测 → 状态自动纠偏
@@ -504,11 +516,10 @@ void StateVector_Input(void)
         if (IS_POWER_BTN(in_hi) && ((now - lock_press_tick) >= LOCK_PRESS_MS) && lock_released &&
             (!lock_release_tick || (now - lock_release_tick) >= LOCK_IDLE_MS)) {
             if (IS_UNLOCKED(out_lo)) {
-                RamVector_PostLock(VCMD_LOCK, CMD_PRIO_USER); VEC_ACTION(APPLOG_ACT_LOCK, now - lock_press_tick);
+                RamVector_PostLock(VCMD_LOCK, CMD_PRIO_USER);
             } else {
                 RamVector_PostLock(VCMD_UNLOCK, CMD_PRIO_USER);
                 RamVector_PostLED(VCMD_LED_OFF, CMD_PRIO_USER);
-                VEC_ACTION(APPLOG_ACT_UNLOCK, now - lock_press_tick);
             }
             lock_press_tick = 0; lock_released = 0; lock_release_tick = now;  /* 冷却开始 */
         }
@@ -633,17 +644,22 @@ void StateVector_Input(void)
     /* ══════════════════════════════════════════
      *  步骤 6: 状态变化输出 + 同步到 RamVector
      * ══════════════════════════════════════════ */
-    if (vector_debug_flags.state)
     { static uint8_t  last_state = 0xFF;
       static uint32_t state_enter_tick;
-      if (system_status != last_state) {
-          if (last_state != 0xFF)
-              AppLog_State(last_state, system_status, now - state_enter_tick);
-          else
-              AppLog_State(0xFF, system_status, 0);
+      static uint8_t  state_debug_was_on;
+      bool state_changed = (system_status != last_state);
+      bool debug_just_on = (vector_debug_flags.state && !state_debug_was_on);
+
+      if (vector_debug_flags.state && (state_changed || debug_just_on)) {
+          uint8_t old_state = state_changed ? last_state : system_status;
+          uint32_t elapsed = state_changed ? (now - state_enter_tick) : 0U;
+          AppLog_State(old_state, system_status, elapsed);
+      }
+      if (state_changed) {
           last_state = system_status;
           state_enter_tick = now;
       }
+      state_debug_was_on = vector_debug_flags.state ? 1U : 0U;
     }
 
     RamVector_SetState((Vector_SysState_t)system_status);

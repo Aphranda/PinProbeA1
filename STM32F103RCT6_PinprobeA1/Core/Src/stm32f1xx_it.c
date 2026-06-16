@@ -512,4 +512,9 @@ void Uart1_Printf(char *format, ...) // Usart1 print (非阻塞, TX忙时跳过)
   HAL_UART_Transmit_DMA(&huart1, Usart1_TX_BUF, strlen((const char *)Usart1_TX_BUF));
 }
 
+uint8_t Uart1_IsTxBusy(void)
+{
+  return Usart1_TX_Flag ? 1U : 0U;
+}
+
 /* USER CODE END 1 */
