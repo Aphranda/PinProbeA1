@@ -40,11 +40,11 @@ extern "C" {
 #define SCPI_IDN1 "GTS"
 #define SCPI_IDN2 "PINPROBEA1"
 #define SCPI_IDN3 "20250626"
-#define SCPI_IDN4 "V0.0.1"
+#define SCPI_IDN4 "V0.0.9"
 
 /* 固件版本 (编译时嵌入, 发布前更新 git hash) */
 #define FW_VERSION  "v1.0.0"
-#define FW_GIT_HASH "87ea8cd199da98496c1d17343541c56bcb587c54"
+#define FW_GIT_HASH "6d11fb1d196d26abd9ee9afceb67ac799df0fbb9"
 
 /* 运行时 SCPI IDN 缓冲区 - 可在运行时通过 SCPI 命令修改 */
 #define SCPI_IDN_BUF1_SIZE FLASH_SCPI_IDN1_LEN

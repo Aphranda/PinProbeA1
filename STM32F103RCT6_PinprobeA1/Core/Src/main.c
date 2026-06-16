@@ -380,6 +380,7 @@ void ModBusTask(void *argument)
     /* 从原始 IO 推导状态字段, 供 SCPI 查询 */
     if (in_buf[0] & 0x01)      io.door_state = 1;
     else if (in_buf[0] & 0x02) io.door_state = 0;
+    else                       io.door_state = 2;
     io.door_moving    = (out_buf[0] & 0x03) ? 1 : 0;
     io.cylinder_cmd[0]= (out_buf[0] & 0x01) ? 1 : 0;
     io.cylinder_cmd[1]= (out_buf[0] & 0x02) ? 1 : 0;
