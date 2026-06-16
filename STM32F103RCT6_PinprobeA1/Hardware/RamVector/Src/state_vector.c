@@ -106,6 +106,7 @@ VectorDebugFlags_t vector_debug_flags = {false, false, false, false};
 #define IS_UNLOCKED(o)    ((o) & OUT_POWER)          /* 系统已解锁? */
 #define IS_DOOR_OPENING(o)  ((o) & OUT_DOOR_OPEN)    /* 气缸正在伸出? */
 #define IS_DOOR_CLOSING(o)  ((o) & OUT_DOOR_CLOSE)   /* 气缸正在回缩? */
+#define IS_LED_RED(o)     ((o) & OUT_LED_RED)        /* 红灯亮? */
 #define IS_LED_YELLOW(o)  ((o) & OUT_LED_YELLOW)     /* 黄灯亮? */
 
 /* ── 时序参数 (ms), 基于 TIM1 1ms 时钟 ── */
@@ -182,6 +183,8 @@ void StateVector_Input(void)
     static uint8_t  system_status = V_STATE_INIT;
     static uint8_t  last_power_btn, last_door_btn;
     static uint8_t  last_door_closing, last_door_opening;
+    static uint8_t  last_estop_active;
+    static uint8_t  air_low_active;
     static uint8_t  rs485_err_cnt;
     static bool     rs485_fault;
     static bool     m_23, m_100, m_300;
@@ -424,7 +427,7 @@ void StateVector_Input(void)
         if (limit_ok || risk_ok) {
             uint32_t close_elapsed = now - door_close_start_tick;
             if (risk_ok && !limit_ok)
-                AppLog_Event(APPLOG_EVT_RISK_PRESSURE, close_elapsed, 0);
+                AppLog_TimedEvent(APPLOG_EVT_RISK_PRESSURE, close_elapsed, 0);
             RamVector_PostLED(VCMD_LED_GREEN, CMD_PRIO_USER);
             door_close_timing = 0; door_open_confirm_tick = 0;
             /* 从上限位开始的关门才学习时间 (中间位置的时间不准确) */
@@ -461,7 +464,8 @@ void StateVector_Input(void)
      *   红灯在 Emergency 期间由事件处理段 (步骤4) 维持, 这里只判断退出。
      */
     if (system_status == V_STATE_EMERGENCY) {
-        RamVector_PostLED(VCMD_LED_RED, CMD_PRIO_OBSERVE);
+        if (!IS_LED_RED(out_lo))
+            RamVector_PostLED(VCMD_LED_RED, CMD_PRIO_OBSERVE);
         if (!IS_ANY_LASER(in_lo, in_hi) && !estop_active) {
             system_status = V_STATE_LOCK;
             door_close_done_tick = 0;
@@ -476,12 +480,14 @@ void StateVector_Input(void)
      * ══════════════════════════════════════════ */
 
     bool estop = estop_active;
+    bool estop_rise = estop && !last_estop_active;
     bool laser_emergency = false;
 
-    if (estop) {
-        uint32_t et = door_close_start_tick ? (now - door_close_start_tick) : 0;
+    if (estop_rise) {
+        uint32_t et = (door_close_timing && door_close_start_tick) ?
+                      (now - door_close_start_tick) : 0;
         if (vector_debug_flags.event)
-            AppLog_Event(APPLOG_EVT_ESTOP, et, 0);
+            AppLog_TimedEvent(APPLOG_EVT_ESTOP, et, 0);
 
         system_status = V_STATE_EMERGENCY;
         RamVector_PostLED(VCMD_LED_RED, CMD_PRIO_SAFETY);     /* 红灯 */
@@ -490,6 +496,7 @@ void StateVector_Input(void)
             RamVector_PostCylinder(VCMD_CYLINDER_OPEN, CMD_PRIO_SAFETY);
         door_close_done_tick = 0;
     }
+    last_estop_active = estop ? 1U : 0U;
 
     /*
      * 激光防夹: 关门过程中任意激光被遮挡 → 紧急停止 + 开门释放
@@ -516,7 +523,7 @@ void StateVector_Input(void)
         if (door_close_timing && door_close_start_tick &&
             !IS_DOOR_DOWN(in_lo) && (de > door_close_default_ms * 2 / 3)) {
             if (vector_debug_flags.event)
-                AppLog_Event(APPLOG_EVT_LASER, de, 0);
+                AppLog_TimedEvent(APPLOG_EVT_LASER, de, 0);
             laser_emergency = true;
             system_status = V_STATE_EMERGENCY;
             RamVector_PostLED(VCMD_LED_RED, CMD_PRIO_SAFETY);
@@ -649,10 +656,19 @@ void StateVector_Input(void)
         if (IS_DOOR_DOWN(in_lo) && door_close_done_tick) {
             uint32_t el = now - door_close_done_tick;
             if (el >= 3000 && (!air_last_check_tick || ((now - air_last_check_tick) >= 1500))) {
-                if (!(in_lo & IN_LASER1))
-                    AppLog_Event(APPLOG_EVT_AIR_LOW, el, 0);
+                if (!(in_lo & IN_LASER1)) {
+                    if (!air_low_active) {
+                        AppLog_TimedEvent(APPLOG_EVT_AIR_LOW, el, 0);
+                        air_low_active = 1;
+                    }
+                } else if (air_low_active) {
+                    AppLog_TimedEvent(APPLOG_EVT_AIR_LOW, el, 1);
+                    air_low_active = 0;
+                }
                 air_last_check_tick = now;
             }
+        } else {
+            air_low_active = 0;
         }
     }
 

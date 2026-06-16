@@ -674,6 +674,30 @@ static scpi_result_t SCPI_ReadLogNextQ(scpi_t *context)
     return SCPI_RES_OK;
 }
 
+static scpi_result_t SCPI_ReadLogAllQ(scpi_t *context)
+{
+    AppLog_Record_t record;
+    char line[128];
+    bool any = false;
+
+    while (AppLog_Read(&record)) {
+        if (any) {
+            context->interface->write(context, "\n", 1);
+        }
+        AppLog_Format(&record, line, sizeof(line));
+        context->interface->write(context, line, strlen(line));
+        any = true;
+    }
+
+    if (any) {
+        context->output_count++;
+    } else {
+        SCPI_ResultText(context, "EMPTY");
+    }
+
+    return SCPI_RES_OK;
+}
+
 static scpi_result_t SCPI_ReadLogStatusQ(scpi_t *context)
 {
     AppLog_Status_t status;
@@ -872,6 +896,10 @@ const scpi_command_t scpi_commands[] = {
     {
         .pattern = "READ:LOG:NEXT?",
         .callback = SCPI_ReadLogNextQ,
+    },
+    {
+        .pattern = "READ:LOG:ALL?",
+        .callback = SCPI_ReadLogAllQ,
     },
     {
         .pattern = "READ:LOG:STATus?",

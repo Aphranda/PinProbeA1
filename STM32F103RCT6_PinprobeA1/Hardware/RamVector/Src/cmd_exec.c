@@ -63,21 +63,28 @@ static void CmdExec_Cylinder(Vector_Cmd_t cmd)
 
 static void CmdExec_LED(Vector_Cmd_t cmd)
 {
+    const Vector_IOState_t *io = RamVector_GetLocalIO();
+    uint8_t out_lo = io->raw_out_lo;
+
     switch (cmd) {
     case VCMD_LED_OFF:
-        AppLog_Action(APPLOG_ACT_LED_OFF, 0, 0);
+        if ((out_lo & 0x70U) != 0U)
+            AppLog_Action(APPLOG_ACT_LED_OFF, 0, 0);
         LED_Write(led_source[0]);
         break;
     case VCMD_LED_GREEN:
-        AppLog_Action(APPLOG_ACT_LED_GREEN, 0, 0);
+        if ((out_lo & 0x10U) == 0U)
+            AppLog_Action(APPLOG_ACT_LED_GREEN, 0, 0);
         LED_Write(led_source[1]);
         break;
     case VCMD_LED_RED:
-        AppLog_Action(APPLOG_ACT_LED_RED, 0, 0);
+        if ((out_lo & 0x20U) == 0U)
+            AppLog_Action(APPLOG_ACT_LED_RED, 0, 0);
         LED_Write(led_source[2]);
         break;
     case VCMD_LED_YELLOW:
-        AppLog_Action(APPLOG_ACT_LED_YELLOW, 0, 0);
+        if ((out_lo & 0x40U) == 0U)
+            AppLog_Action(APPLOG_ACT_LED_YELLOW, 0, 0);
         LED_Write(led_source[3]);
         break;
     default: break;

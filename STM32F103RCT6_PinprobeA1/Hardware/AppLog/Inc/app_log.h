@@ -118,6 +118,7 @@ uint16_t AppLog_PumpRealtime(uint16_t max_records);
 void AppLog_State(uint8_t old_state, uint8_t new_state, uint32_t elapsed_ms);
 void AppLog_Action(uint8_t action_id, uint32_t elapsed_ms, uint16_t arg);
 void AppLog_Event(uint8_t event_id, uint32_t arg0, uint32_t arg1);
+void AppLog_TimedEvent(uint8_t event_id, uint32_t elapsed_ms, uint16_t arg);
 void AppLog_IO(uint8_t in_lo, uint8_t in_hi, uint8_t out_lo, uint8_t out_hi);
 
 bool AppLog_Read(AppLog_Record_t *out);

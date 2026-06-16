@@ -274,6 +274,14 @@ void AppLog_Event(uint8_t event_id, uint32_t arg0, uint32_t arg1)
                 clamp_u16(arg0), clamp_u16(arg1));
 }
 
+void AppLog_TimedEvent(uint8_t event_id, uint32_t elapsed_ms, uint16_t arg)
+{
+    push_record_ex(event_level(event_id), APPLOG_MODULE_EVENT, event_id,
+                   (uint16_t)(elapsed_ms & 0xFFFFU),
+                   arg,
+                   (uint16_t)(elapsed_ms >> 16));
+}
+
 void AppLog_IO(uint8_t in_lo, uint8_t in_hi, uint8_t out_lo, uint8_t out_hi)
 {
     push_record(APPLOG_LEVEL_INFO, APPLOG_MODULE_IO, 0,
@@ -512,16 +520,35 @@ size_t AppLog_Format(const AppLog_Record_t *record, char *buffer, size_t buffer_
         case APPLOG_EVT_ESTOP:
         case APPLOG_EVT_LASER:
         case APPLOG_EVT_RISK_PRESSURE:
-        case APPLOG_EVT_AIR_LOW:
+        {
+            unsigned long event_elapsed =
+                ((unsigned long)record->reserved << 16) | record->arg0;
             len = snprintf(buffer, buffer_size,
-                           "[T+%lu.%03lus][N%u][%s][EVENT] %s close_elapsed=%ums",
+                           "[T+%lu.%03lus][N%u][%s][EVENT] %s close_elapsed=%lums",
                            tick_s,
                            tick_ms,
                            record->node_id,
                            level_name(record->level),
                            event_name(record->event_id),
-                           record->arg0);
+                           event_elapsed);
             break;
+        }
+        case APPLOG_EVT_AIR_LOW:
+        {
+            unsigned long air_elapsed =
+                ((unsigned long)record->reserved << 16) | record->arg0;
+            const char *label = (record->arg1 != 0U) ? "clear_after" : "low_after";
+            len = snprintf(buffer, buffer_size,
+                           "[T+%lu.%03lus][N%u][%s][EVENT] %s %s=%lums",
+                           tick_s,
+                           tick_ms,
+                           record->node_id,
+                           level_name(record->level),
+                           event_name(record->event_id),
+                           label,
+                           air_elapsed);
+            break;
+        }
         default:
             len = snprintf(buffer, buffer_size,
                            "[T+%lu.%03lus][N%u][%s][EVENT] %s arg0=%u arg1=%u",
