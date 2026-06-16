@@ -40,7 +40,7 @@ extern "C" {
 #define SCPI_IDN1 "GTS"
 #define SCPI_IDN2 "PINPROBEA1"
 #define SCPI_IDN3 "20250626"
-#define SCPI_IDN4 "V1.0.0"
+#define SCPI_IDN4 "V0.0.9"
 
 /* 固件版本 (编译时嵌入, 发布前更新 git hash) */
 #define FW_VERSION  "v1.0.0"

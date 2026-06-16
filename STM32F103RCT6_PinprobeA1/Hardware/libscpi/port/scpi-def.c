@@ -350,10 +350,10 @@ static scpi_result_t SCPI_ReadCylinderState(scpi_t *context)
     const char *name = "CYL ERR";
 
     if (cylinder_id == 1) {
-        /* 气缸1: 基于 door_state / cylinder_cmd[0] */
-        if (io->door_moving)          name = (io->cylinder_cmd[0] ? "OPENING" : "CLOSING");
-        else if (io->door_state == 1) name = "OPENED";
+        /* 气缸1: 限位优先, 未到位时再按输出命令判断运动方向 */
+        if (io->door_state == 1)      name = "OPENED";
         else if (io->door_state == 0) name = "CLOSED";
+        else if (io->door_moving)     name = (io->cylinder_cmd[0] ? "OPENING" : "CLOSING");
     } else {
         /* 气缸2 (USB): 基于 raw_out_lo bits 0x04/0x08 (usb_pne_in/usb_pne_out) */
         uint8_t out = io->raw_out_lo;
