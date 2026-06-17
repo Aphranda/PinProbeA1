@@ -59,6 +59,7 @@ typedef enum {
     APPLOG_EVT_SCPI_LOCK,
     APPLOG_EVT_SCPI_CYLINDER,
     APPLOG_EVT_SCPI_LED,
+    APPLOG_EVT_IO_WRITE_FAIL,
 } AppLog_EventId_t;
 
 typedef struct {

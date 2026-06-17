@@ -14,20 +14,33 @@ static bool rs485_io_ok = true;
 
 uint8_t Cylinder_Write(uint32_t cylinder_id, scpi_choice_def_t cylinder_value)
 {
+    uint8_t ok = 1U;
+
     switch (cylinder_id)
     {
     case 1:
-        WriteIO(1,cylinder_value.tag);
-        WriteIO(2,!cylinder_value.tag);
+        if (cylinder_value.tag != 0) {
+            ok &= WriteIO(2, 0) ? 1U : 0U;
+            ok &= WriteIO(1, 1) ? 1U : 0U;
+        } else {
+            ok &= WriteIO(1, 0) ? 1U : 0U;
+            ok &= WriteIO(2, 1) ? 1U : 0U;
+        }
         break;
     case 2:
-        WriteIO(3,cylinder_value.tag);
-        WriteIO(4,!cylinder_value.tag);
+        if (cylinder_value.tag != 0) {
+            ok &= WriteIO(4, 0) ? 1U : 0U;
+            ok &= WriteIO(3, 1) ? 1U : 0U;
+        } else {
+            ok &= WriteIO(3, 0) ? 1U : 0U;
+            ok &= WriteIO(4, 1) ? 1U : 0U;
+        }
         break;
     default:
+        ok = 0U;
         break;
     }
-    return 0;
+    return ok;
 }
 
 /* ── [DEPRECATED] 以下函数仅被旧 StateMachine.c 调用, 已随旧状态机废止 ── */
@@ -59,20 +72,23 @@ scpi_choice_def_t Cylinder_Status(uint32_t cylinder_id)
 
 uint8_t Lock_Write(scpi_choice_def_t lock_value)
 {
+    uint8_t ok = 1U;
+
     switch (lock_value.tag)
     {
     case 0:
-        WriteIO(8,1);
-        WriteIO(9,1);
+        ok &= WriteIO(8, 1) ? 1U : 0U;
+        ok &= WriteIO(9, 1) ? 1U : 0U;
         break;
     case 1:
-        WriteIO(8,0);
-        WriteIO(9,0);
+        ok &= WriteIO(8, 0) ? 1U : 0U;
+        ok &= WriteIO(9, 0) ? 1U : 0U;
         break;
     default:
+        ok = 0U;
         break;
     }
-    return 0;
+    return ok;
 }
 
 scpi_choice_def_t Lock_Status(){
@@ -92,24 +108,35 @@ scpi_choice_def_t Lock_Status(){
 
 uint8_t LED_Write(scpi_choice_def_t led_value)
 {
+    uint8_t ok = 1U;
+
     switch (led_value.tag)
     {
     case 0: // led OFF
-        WriteIO(5,0); WriteIO(6,0); WriteIO(7,0);
+        ok &= WriteIO(5, 0) ? 1U : 0U;
+        ok &= WriteIO(6, 0) ? 1U : 0U;
+        ok &= WriteIO(7, 0) ? 1U : 0U;
         break;
     case 1: // led G
-        WriteIO(5,1); WriteIO(6,0); WriteIO(7,0);
+        ok &= WriteIO(5, 1) ? 1U : 0U;
+        ok &= WriteIO(6, 0) ? 1U : 0U;
+        ok &= WriteIO(7, 0) ? 1U : 0U;
         break;
     case 2: // led R
-        WriteIO(5,0); WriteIO(6,1); WriteIO(7,0);
+        ok &= WriteIO(5, 0) ? 1U : 0U;
+        ok &= WriteIO(6, 1) ? 1U : 0U;
+        ok &= WriteIO(7, 0) ? 1U : 0U;
         break;
     case 3: // led Y
-        WriteIO(5,0); WriteIO(6,0); WriteIO(7,1);
+        ok &= WriteIO(5, 0) ? 1U : 0U;
+        ok &= WriteIO(6, 0) ? 1U : 0U;
+        ok &= WriteIO(7, 1) ? 1U : 0U;
         break;
     default:
+        ok = 0U;
         break;
     }
-    return 0;
+    return ok;
 }
 
 scpi_choice_def_t LED_Status(){
@@ -149,7 +176,11 @@ bool IO_Read(uint8_t checkNum, uint8_t direction, uint8_t* trueData){
     while (State_count < checkNum)
     {
         // Read bsm input IO status
-        ReadIO(direction);
+        if (!ReadIO(direction))
+        {
+            State_count++;
+            continue;
+        }
 
         // 等待从机响应（50ms超时，替代原来的盲等HAL_Delay）
         if (!RS485_WaitRx(50))

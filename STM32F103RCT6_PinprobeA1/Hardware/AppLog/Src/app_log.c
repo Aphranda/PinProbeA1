@@ -70,6 +70,7 @@ static const char *event_name(uint8_t event)
     case APPLOG_EVT_SCPI_LOCK: return "SCPI_LOCK";
     case APPLOG_EVT_SCPI_CYLINDER: return "SCPI_CYLINDER";
     case APPLOG_EVT_SCPI_LED: return "SCPI_LED";
+    case APPLOG_EVT_IO_WRITE_FAIL: return "IO_WRITE_FAIL";
     default: return "EVENT?";
     }
 }
@@ -92,6 +93,7 @@ static uint8_t event_level(uint8_t event_id)
     case APPLOG_EVT_LASER:
     case APPLOG_EVT_RISK_PRESSURE:
     case APPLOG_EVT_AIR_LOW:
+    case APPLOG_EVT_IO_WRITE_FAIL:
         return APPLOG_LEVEL_WARN;
     default:
         return APPLOG_LEVEL_INFO;
@@ -549,6 +551,17 @@ size_t AppLog_Format(const AppLog_Record_t *record, char *buffer, size_t buffer_
                            air_elapsed);
             break;
         }
+        case APPLOG_EVT_IO_WRITE_FAIL:
+            len = snprintf(buffer, buffer_size,
+                           "[T+%lu.%03lus][N%u][%s][EVENT] %s target=%u cmd=0x%04X",
+                           tick_s,
+                           tick_ms,
+                           record->node_id,
+                           level_name(record->level),
+                           event_name(record->event_id),
+                           record->arg0,
+                           record->arg1);
+            break;
         default:
             len = snprintf(buffer, buffer_size,
                            "[T+%lu.%03lus][N%u][%s][EVENT] %s arg0=%u arg1=%u",

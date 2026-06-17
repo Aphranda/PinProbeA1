@@ -447,22 +447,22 @@
 <div class="page">
   <div class="page-header"><img src="model/logo.png" alt="GTS"></div>
   <div class="main">
-    <div class="h1">当前加固清单</div>
+    <div class="h1">当前加固状态清单</div>
     <div class="sub">不是重构方向，而是上线前的边界收紧</div>
     <table>
       <thead><tr><th style="width:70px;">优先级</th><th style="width:250px;">事项</th><th>原因</th><th style="width:210px;">涉及文件</th></tr></thead>
       <tbody>
-        <tr><td class="c"><span class="tag-r">P0</span></td><td class="b">气缸双线圈写入顺序加固</td><td>当前先合目标线圈再断对向线圈，存在短暂双输出窗口；应改为先断对向，再合目标</td><td>BsmRelay.c</td></tr>
-        <tr><td class="c"><span class="tag-y">P1</span></td><td class="b">RamVector IO 镜像整帧快照</td><td>状态机和 SCPI 查询读取局部副本，避免结构体字段半新半旧</td><td>ram_vector.c/h, state_vector.c, scpi-def.c</td></tr>
-        <tr><td class="c"><span class="tag-y">P1</span></td><td class="b">命令槽原子 Take/Clear</td><td>只保证“取命令并清槽”是原子事务，不扩展成队列，不把执行放进临界区</td><td>ram_vector.c/h, cmd_exec.c</td></tr>
-        <tr><td class="c"><span class="tag-b">P2</span></td><td class="b">WriteIO 返回值汇总检查</td><td>不做重试、不增加等待；只记录或上报失败，提升可诊断性</td><td>BsmRelay.c, cmd_exec.c</td></tr>
-        <tr><td class="c"><span class="tag-b">P2</span></td><td class="b">ReadIO 发送失败直接返回</td><td>读命令发送失败时无需继续等待 50ms 响应，可减少无效超时并改善诊断</td><td>RS485.c, BsmRelay.c</td></tr>
-        <tr><td class="c"><span class="tag-b">P4</span></td><td class="b">清理废弃旧状态机接口</td><td>降低维护干扰，避免后续误用 StateMachine.c 和旧 Status 函数</td><td>BsmRelay.c/h, StateMachine.c/h</td></tr>
+        <tr><td class="c"><span class="tag-g">DONE</span></td><td class="b">气缸双线圈写入顺序加固</td><td>已改为先断对向线圈，再合目标线圈，避免短暂双输出窗口</td><td>BsmRelay.c</td></tr>
+        <tr><td class="c"><span class="tag-g">DONE</span></td><td class="b">RamVector IO 镜像整帧快照</td><td>状态机、SCPI、CmdExec 查询均读取局部副本，避免结构体字段半新半旧</td><td>ram_vector.c/h, state_vector.c, scpi-def.c</td></tr>
+        <tr><td class="c"><span class="tag-g">DONE</span></td><td class="b">命令槽原子 Take/Clear</td><td>“取命令并清槽”为原子事务，不扩展成队列，执行保持在临界区外</td><td>ram_vector.c/h, cmd_exec.c</td></tr>
+        <tr><td class="c"><span class="tag-g">DONE</span></td><td class="b">WriteIO 返回值汇总检查</td><td>不做重试、不增加等待；执行失败记录 IO_WRITE_FAIL 事件，提升可诊断性</td><td>BsmRelay.c, cmd_exec.c, app_log.c/h</td></tr>
+        <tr><td class="c"><span class="tag-g">DONE</span></td><td class="b">ReadIO 发送失败直接返回</td><td>读命令发送失败时不再等待 50ms 响应，减少无效超时并改善诊断</td><td>RS485.c, BsmRelay.c</td></tr>
+        <tr><td class="c"><span class="tag-b">P4</span></td><td class="b">清理废弃旧状态机接口</td><td>编译工程已不引用旧 StateMachine.c；后续可物理迁移历史文件，降低维护干扰</td><td>BsmRelay.c/h, StateMachine.c/h</td></tr>
       </tbody>
     </table>
     <div class="conc">
       <h3>加固原则</h3>
-      <p>当前架构不需要大改。优先处理执行器安全、共享数据一致性、失败可诊断三类问题，避免引入会改变现场时序的大规模抽象。</p>
+      <p>当前架构不需要大改。执行器安全、共享数据一致性、失败可诊断三类边界已完成主线加固；后续重点转向 SCPI 错误覆盖、出厂测试和代码清理。</p>
     </div>
   </div>
   <div class="page-footer"><span>Accurate · Simple · Fast · Agile &nbsp;|&nbsp; &copy; General Test Systems Inc. All rights reserved.</span><span>内部文件 &nbsp;|&nbsp; <span class="page-num">12 / 14</span></span></div>
@@ -476,7 +476,7 @@
     <table>
       <thead><tr><th style="width:120px;">阶段</th><th style="width:190px;">目标</th><th>主要内容</th><th style="width:160px;">收益</th></tr></thead>
       <tbody>
-        <tr><td class="b">阶段 1</td><td>单机上线加固</td><td>完成 P0/P1 事项：气缸写入顺序、IO 快照、命令槽 Take/Clear、WriteIO/ReadIO 诊断</td><td>降低现场偶发风险</td></tr>
+        <tr><td class="b">阶段 1</td><td>单机上线加固</td><td>已完成气缸写入顺序、IO 快照、命令槽 Take/Clear、WriteIO/ReadIO 诊断</td><td>降低现场偶发风险</td></tr>
         <tr><td class="b">阶段 2</td><td>产线测试模式</td><td>增加一键 IO/传感器/通讯自测，输出标准化验收结果，补充 SCPI 错误反馈覆盖</td><td>缩短装配和维修定位时间</td></tr>
         <tr><td class="b">阶段 3</td><td>运行数据沉淀</td><td>将关键故障、动作计数、设备寿命累计迁移到 W25Q128 或备份区</td><td>支持预防性维护</td></tr>
         <tr><td class="b">阶段 4</td><td>CAN 多机协同</td><td>启用 node_id、node_status、heartbeat、version、CRC、ack_flags，完成 1~8 节点同步</td><td>从单机控制升级为集群控制</td></tr>

@@ -18,15 +18,21 @@ void CmdExec_Init(void)
 
 static void CmdExec_Lock(Vector_Cmd_t cmd)
 {
+    uint8_t ok = 1U;
+
     switch (cmd) {
     case VCMD_LOCK:
-        Lock_Write(lock_source[1]);            /* LOCKED */
+        ok = Lock_Write(lock_source[1]);            /* LOCKED */
         break;
     case VCMD_UNLOCK:
-        Lock_Write(lock_source[0]);            /* UNLOCK */
+        ok = Lock_Write(lock_source[0]);            /* UNLOCK */
         break;
     default:
         break;
+    }
+
+    if (ok == 0U) {
+        AppLog_Event(APPLOG_EVT_IO_WRITE_FAIL, 1, (uint32_t)cmd);
     }
 }
 
@@ -35,30 +41,35 @@ static void CmdExec_Cylinder(Vector_Cmd_t cmd)
     Vector_IOState_t io;
     (void)RamVector_ReadLocalIO(&io);
     uint8_t out_lo = io.raw_out_lo;
+    uint8_t ok = 1U;
 
     switch (cmd) {
     case VCMD_CYLINDER_OPEN:
         if ((out_lo & 0x01U) == 0U)
             AppLog_Action(APPLOG_ACT_CYLINDER_OPEN, 0, 1);
-        Cylinder_Write(1, cylinder_source[1]); /* OPEN */
+        ok = Cylinder_Write(1, cylinder_source[1]); /* OPEN */
         break;
     case VCMD_CYLINDER_CLOSE:
         if ((out_lo & 0x02U) == 0U)
             AppLog_Action(APPLOG_ACT_CYLINDER_CLOSE, 0, 1);
-        Cylinder_Write(1, cylinder_source[0]); /* CLOSE */
+        ok = Cylinder_Write(1, cylinder_source[0]); /* CLOSE */
         break;
     case VCMD_CYLINDER2_OPEN:
         if ((out_lo & 0x04U) == 0U)
             AppLog_Action(APPLOG_ACT_CYLINDER_OPEN, 0, 2);
-        Cylinder_Write(2, cylinder_source[1]); /* USB 插入 */
+        ok = Cylinder_Write(2, cylinder_source[1]); /* USB 插入 */
         break;
     case VCMD_CYLINDER2_CLOSE:
         if ((out_lo & 0x08U) == 0U)
             AppLog_Action(APPLOG_ACT_CYLINDER_CLOSE, 0, 2);
-        Cylinder_Write(2, cylinder_source[0]); /* USB 拔出 */
+        ok = Cylinder_Write(2, cylinder_source[0]); /* USB 拔出 */
         break;
     default:
         break;
+    }
+
+    if (ok == 0U) {
+        AppLog_Event(APPLOG_EVT_IO_WRITE_FAIL, 2, (uint32_t)cmd);
     }
 }
 
@@ -67,29 +78,34 @@ static void CmdExec_LED(Vector_Cmd_t cmd)
     Vector_IOState_t io;
     (void)RamVector_ReadLocalIO(&io);
     uint8_t out_lo = io.raw_out_lo;
+    uint8_t ok = 1U;
 
     switch (cmd) {
     case VCMD_LED_OFF:
         if ((out_lo & 0x70U) != 0U)
             AppLog_Action(APPLOG_ACT_LED_OFF, 0, 0);
-        LED_Write(led_source[0]);
+        ok = LED_Write(led_source[0]);
         break;
     case VCMD_LED_GREEN:
         if ((out_lo & 0x10U) == 0U)
             AppLog_Action(APPLOG_ACT_LED_GREEN, 0, 0);
-        LED_Write(led_source[1]);
+        ok = LED_Write(led_source[1]);
         break;
     case VCMD_LED_RED:
         if ((out_lo & 0x20U) == 0U)
             AppLog_Action(APPLOG_ACT_LED_RED, 0, 0);
-        LED_Write(led_source[2]);
+        ok = LED_Write(led_source[2]);
         break;
     case VCMD_LED_YELLOW:
         if ((out_lo & 0x40U) == 0U)
             AppLog_Action(APPLOG_ACT_LED_YELLOW, 0, 0);
-        LED_Write(led_source[3]);
+        ok = LED_Write(led_source[3]);
         break;
     default: break;
+    }
+
+    if (ok == 0U) {
+        AppLog_Event(APPLOG_EVT_IO_WRITE_FAIL, 3, (uint32_t)cmd);
     }
 }
 

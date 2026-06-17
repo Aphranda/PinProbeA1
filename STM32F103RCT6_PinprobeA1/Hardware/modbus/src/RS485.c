@@ -20,12 +20,13 @@ bool WriteIO(uint8_t index, uint8_t status){
 
 /// @brief Read BSM IO status
 /// @param func 功能码 (1=读输出, 2=读输入)
-void ReadIO(uint8_t func){
+bool ReadIO(uint8_t func){
     HAL_Delay(2);  // 总线保护间隔
     uint8_t frame[8];
     IOReadOrder(func, 16, frame);
-    HAL_UART_Transmit(&huart3, frame, 8, RS485_TX_TIMEOUT_MS);
+    HAL_StatusTypeDef ret = HAL_UART_Transmit(&huart3, frame, 8, RS485_TX_TIMEOUT_MS);
     HAL_Delay(2);  // 总线释放
+    return (ret == HAL_OK);
 }
 
 /// @brief 等待RS485从机响应（轮询双缓冲就绪标志）
