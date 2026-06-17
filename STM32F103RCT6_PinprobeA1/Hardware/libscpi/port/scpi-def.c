@@ -47,6 +47,7 @@
 #include "tim.h"
 #include "app_log.h"
 #include "ota_manager.h"
+#include "w25q128.h"
 
 /* 辅助: 推送 SCPI 错误并返回 ERR (附带描述信息) */
 #define PUSH_ERR(ctx, code, info) do { \
@@ -524,6 +525,29 @@ static scpi_result_t SCPI_ReadRiskModeQ(scpi_t *context)
     return SCPI_RES_OK;
 }
 
+static scpi_result_t SCPI_ConfigureBootDiag(scpi_t *context)
+{
+    int32_t param;
+    if (!SCPI_ParamChoice(context, risk_mode_source, &param, TRUE))
+        return SCPI_RES_ERR;
+    if (Flash_SetBootDiagUart((uint8_t)(param != 0)) != FLASH_OK)
+        PUSH_ERR(context, -320 /*Storage fault*/, "Flash write");
+    if (Flash_Save() != FLASH_OK)
+        PUSH_ERR(context, -320 /*Storage fault*/, "Flash save");
+    const char *name;
+    SCPI_ChoiceToName(risk_mode_source, param, &name);
+    SCPI_ResultCharacters(context, name, strlen(name));
+    return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_ReadBootDiagQ(scpi_t *context)
+{
+    const char *name;
+    SCPI_ChoiceToName(risk_mode_source, Flash_GetBootDiagUart() ? 1 : 0, &name);
+    SCPI_ResultCharacters(context, name, strlen(name));
+    return SCPI_RES_OK;
+}
+
 /// @brief 查询所有IO状态（输入+输出）
 /// @note 命令: READ:IO:ALL?
 ///       返回: IN:0xHH,0xHH OUT:0xHH,0xHH（16进制原始值）
@@ -553,6 +577,14 @@ static scpi_result_t SCPI_SystemUpTimeQ(scpi_t *context)
     /* 返回秒, uint32_t 秒可跑 136 年不溢出 (毫秒仅 49.7 天) */
     uint32_t sec = GetTim1Ms() / 1000;
     SCPI_ResultUInt32(context, sec);
+    return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_SystemReboot(scpi_t *context)
+{
+    SCPI_ResultText(context, "OK");
+    HAL_Delay(200);
+    NVIC_SystemReset();
     return SCPI_RES_OK;
 }
 
@@ -592,6 +624,37 @@ static scpi_result_t SCPI_OtaStatusQ(scpi_t *context)
              (unsigned long)status.image_version,
              (unsigned long)status.image_id,
              (unsigned long)status.last_error);
+    SCPI_ResultText(context, buf);
+    return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_OtaBootQ(scpi_t *context)
+{
+    OTA_BootInfo_t info;
+    OTA_Error_t err = OTA_GetBootInfo(&info);
+    if (err != OTA_OK) {
+        return scpi_ota_result(context, err);
+    }
+
+    char buf[192];
+    snprintf(buf, sizeof(buf),
+             "FLASH:%u FLAGS:%u MAN:%u SEQ:%lu ACT:%lu PEND:%u PREV:%u BSTATE:%u ATT:%u/%u BERR:%lu MSTATE:%s SIZE:%lu CRC:0x%08lX VER:0x%08lX IMG:%lu",
+             info.flash_ok ? 1U : 0U,
+             info.flags_valid ? 1U : 0U,
+             info.manifest_valid ? 1U : 0U,
+             (unsigned long)info.sequence,
+             (unsigned long)info.active_manifest_sequence,
+             (unsigned int)info.pending_slot,
+             (unsigned int)info.previous_slot,
+             (unsigned int)info.update_state,
+             (unsigned int)info.attempt_count,
+             (unsigned int)info.max_attempts,
+             (unsigned long)info.last_error,
+             OTA_StateName(info.manifest_state),
+             (unsigned long)info.image_size,
+             (unsigned long)info.image_crc32,
+             (unsigned long)info.image_version,
+             (unsigned long)info.image_id);
     SCPI_ResultText(context, buf);
     return SCPI_RES_OK;
 }
@@ -663,7 +726,13 @@ static scpi_result_t SCPI_OtaAbort(scpi_t *context)
 
 static scpi_result_t SCPI_OtaCommit(scpi_t *context)
 {
-    return scpi_ota_result(context, OTA_Commit());
+    OTA_Error_t err = OTA_Commit();
+    scpi_result_t result = scpi_ota_result(context, err);
+    if (err == OTA_OK) {
+        HAL_Delay(50);
+        NVIC_SystemReset();
+    }
+    return result;
 }
 
 /* ===== 调试开关 (运行时控制, 替代编译期宏) ===== */
@@ -837,6 +906,35 @@ static scpi_result_t SCPI_ClearLog(scpi_t *context)
     return SCPI_RES_OK;
 }
 
+static scpi_result_t SCPI_FlashIdQ(scpi_t *context)
+{
+    uint8_t id[3] = {0};
+    uint8_t sr1 = 0;
+    uint8_t sr2 = 0;
+    char line[64];
+
+    W25Q128_Status_t status = W25Q128_Init();
+    if (status != W25Q128_OK) {
+        snprintf(line, sizeof(line), "ERR INIT=%s", W25Q128_StatusName(status));
+        SCPI_ResultText(context, line);
+        return SCPI_RES_OK;
+    }
+
+    status = W25Q128_ReadId(id);
+    if (status != W25Q128_OK) {
+        snprintf(line, sizeof(line), "ERR ID=%s", W25Q128_StatusName(status));
+        SCPI_ResultText(context, line);
+        return SCPI_RES_OK;
+    }
+
+    (void)W25Q128_ReadStatus1(&sr1);
+    (void)W25Q128_ReadStatus2(&sr2);
+    snprintf(line, sizeof(line), "OK ID=%02X%02X%02X SR1=%02X SR2=%02X",
+             id[0], id[1], id[2], sr1, sr2);
+    SCPI_ResultText(context, line);
+    return SCPI_RES_OK;
+}
+
 const scpi_command_t scpi_commands[] = {
     /* IEEE Mandated Commands (SCPI std V1999.0 4.1.1) */
     {
@@ -881,6 +979,10 @@ const scpi_command_t scpi_commands[] = {
     {
         .pattern = "SYSTem:UPTime?",
         .callback = SCPI_SystemUpTimeQ,
+    },
+    {
+        .pattern = "SYSTem:REBoot",
+        .callback = SCPI_SystemReboot,
     },
     /* SCPI *IDN? 字段配置命令 - 可运行时修改并持久化到 Flash */
     {
@@ -952,6 +1054,14 @@ const scpi_command_t scpi_commands[] = {
         .callback = SCPI_OtaStatusQ,
     },
     {
+        .pattern = "SYSTem:OTA:BOOT?",
+        .callback = SCPI_OtaBootQ,
+    },
+    {
+        .pattern = "SYSTem:FLASH:ID?",
+        .callback = SCPI_FlashIdQ,
+    },
+    {
         .pattern = "SYSTem:OTA:BEGIN",
         .callback = SCPI_OtaBegin,
     },
@@ -994,6 +1104,14 @@ const scpi_command_t scpi_commands[] = {
     {
         .pattern = "CONFigure:RISK:MODE?",
         .callback = SCPI_ReadRiskModeQ,
+    },
+    {
+        .pattern = "CONFigure:BOOT:DIAG",
+        .callback = SCPI_ConfigureBootDiag,
+    },
+    {
+        .pattern = "CONFigure:BOOT:DIAG?",
+        .callback = SCPI_ReadBootDiagQ,
     },
     /* 调试开关 (运行时控制, 默认 OFF) */
     {

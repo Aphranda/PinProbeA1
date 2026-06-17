@@ -6,6 +6,7 @@
 
 #include "ota_manager.h"
 
+#include "ota_boot_request.h"
 #include "w25q128.h"
 
 #include <string.h>
@@ -307,6 +308,7 @@ OTA_Error_t OTA_Commit(void)
         return err;
     }
 
+    OTA_BootRequestSet(sequence);
     return OTA_OK;
 }
 
@@ -383,6 +385,51 @@ OTA_Error_t OTA_GetStatus(OTA_Status_t *status)
     status->image_id = ota_manifest.image_build_id;
     status->last_error = ota_manifest.last_error;
     status->next_offset = find_next_missing_offset();
+    return OTA_OK;
+}
+
+OTA_Error_t OTA_GetBootInfo(OTA_BootInfo_t *info)
+{
+    OTA_BootFlags_t boot_flags;
+    OTA_Manifest_t manifest;
+
+    if (info == NULL) {
+        return OTA_ERR_BAD_PARAM;
+    }
+    memset(info, 0, sizeof(*info));
+
+    W25Q128_Status_t flash_status = W25Q128_Init();
+    if (flash_status != W25Q128_OK) {
+        info->flash_ok = false;
+        return OTA_ERR_FLASH_FAIL;
+    }
+    info->flash_ok = true;
+
+    if (W25Q128_Read(OTA_BOOT_FLAGS_ADDR, &boot_flags, sizeof(boot_flags)) != W25Q128_OK ||
+        W25Q128_Read(OTA_METADATA_A_ADDR, &manifest, sizeof(manifest)) != W25Q128_OK) {
+        return OTA_ERR_FLASH_FAIL;
+    }
+
+    info->flags_valid = OTA_BootFlagsValidate(&boot_flags);
+    info->manifest_valid = OTA_ManifestValidate(&manifest);
+    if (info->flags_valid) {
+        info->sequence = boot_flags.sequence;
+        info->active_manifest_sequence = boot_flags.active_manifest_sequence;
+        info->pending_slot = boot_flags.pending_slot;
+        info->previous_slot = boot_flags.previous_slot;
+        info->update_state = boot_flags.update_state;
+        info->max_attempts = boot_flags.max_attempts;
+        info->attempt_count = boot_flags.attempt_count;
+        info->last_error = boot_flags.last_error;
+    }
+    if (info->manifest_valid) {
+        info->manifest_state = manifest.state;
+        info->image_size = manifest.image_size;
+        info->image_crc32 = manifest.image_crc32;
+        info->image_version = manifest.image_version;
+        info->image_id = manifest.image_build_id;
+    }
+
     return OTA_OK;
 }
 

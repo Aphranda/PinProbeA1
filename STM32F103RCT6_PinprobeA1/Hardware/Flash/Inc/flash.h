@@ -51,7 +51,7 @@ extern "C" {
 /**
  * @brief 配置结构版本号
  */
-#define FLASH_CONFIG_VERSION       0x00020000UL  /* v2.0.0 - added SCPI IDN fields */
+#define FLASH_CONFIG_VERSION       0x00020001UL  /* v2.0.1 - added boot diag flag */
 
 /**
  * @brief 设备名称最大长度
@@ -105,7 +105,8 @@ typedef struct {
     /* ===== 外设配置 ===== */
     uint8_t  estop_type;        /**< 急停输入类型: 0=常闭(NC), 1=常开(NO)                 */
     uint8_t  risk_mode;         /**< 风险模式: 0=关闭, 1=气压传感器替代限位               */
-    uint8_t  reserved[14];      /**< 保留字节                                          */
+    uint8_t  boot_diag_uart;    /**< Bootloader OTA阶段码串口输出: 0=OFF, 1=ON          */
+    uint8_t  reserved[13];      /**< 保留字节                                          */
 
     /* ===== CRC校验 (必须在结构体末尾) ===== */
     uint32_t crc;               /**< CRC32校验 (从 magic 到 reserved 末尾)              */
@@ -295,6 +296,9 @@ uint8_t Flash_GetEstopType(void);
 
 Flash_Status_t Flash_SetRiskMode(uint8_t mode);
 uint8_t Flash_GetRiskMode(void);
+
+Flash_Status_t Flash_SetBootDiagUart(uint8_t enable);
+uint8_t Flash_GetBootDiagUart(void);
 
 #ifdef __cplusplus
 }

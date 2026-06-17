@@ -251,6 +251,8 @@ void Flash_LoadDefaults(void)
     strncpy(config_cache.scpi_idn4, "V0.0.1",      FLASH_SCPI_IDN4_LEN - 1);
     config_cache.scpi_idn4[FLASH_SCPI_IDN4_LEN - 1] = '\0';
 
+    config_cache.boot_diag_uart = 0U;
+
     /* 保留字段已初始化为0 (memset) */
 
     /* 计算CRC */
@@ -560,4 +562,18 @@ Flash_Status_t Flash_SetRiskMode(uint8_t mode)
 uint8_t Flash_GetRiskMode(void)
 {
     return config_cache.risk_mode;
+}
+
+/* ===== Bootloader诊断输出访问函数 ===== */
+
+Flash_Status_t Flash_SetBootDiagUart(uint8_t enable)
+{
+    if (enable > 1U) return FLASH_ERR_PARAM;
+    config_cache.boot_diag_uart = enable;
+    return FLASH_OK;
+}
+
+uint8_t Flash_GetBootDiagUart(void)
+{
+    return config_cache.boot_diag_uart ? 1U : 0U;
 }

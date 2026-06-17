@@ -5,12 +5,15 @@
  */
 
 #include "ota_manifest.h"
+#include "ota_boot_request.h"
 
 #include <string.h>
 
 #define OTA_CRC32_INIT      0xFFFFFFFFUL
 #define OTA_CRC32_XOROUT    0xFFFFFFFFUL
 #define OTA_CRC32_POLY_REV  0xEDB88320UL
+
+volatile OTA_BootRequest_t g_ota_boot_request __attribute__((section(OTA_BOOT_REQUEST_SECTION), zero_init));
 
 static uint32_t crc32_update(uint32_t crc, const uint8_t *data, size_t length)
 {

@@ -49,6 +49,9 @@ SCPI_COMMANDS = {
         ("错误计数", "SYSTem:ERRor:COUNt?"),
         ("固件版本", "SYSTem:VERSion?"),
         ("运行时间", "SYSTem:UPTime?"),
+        ("系统重启", "SYSTem:REBoot"),
+        ("OTA Boot状态", "SYSTem:OTA:BOOT?"),
+        ("Boot诊断?", "CONFigure:BOOT:DIAG?"),
     ],
     "门/气缸": [
         ("开门", "CONFigure:CYLInder1 OPEN"),
@@ -1096,6 +1099,7 @@ class PinProbeApp:
         btn_row = ttk.Frame(action_frame)
         btn_row.pack(fill=tk.X, padx=5, pady=5)
         ttk.Button(btn_row, text="查询状态", command=self._ota_query_status).pack(side=tk.LEFT)
+        ttk.Button(btn_row, text="查询Boot", command=self._ota_query_boot).pack(side=tk.LEFT, padx=(5, 0))
         self.btn_ota_start = ttk.Button(btn_row, text="开始上传", command=self._ota_start_upload)
         self.btn_ota_start.pack(side=tk.LEFT, padx=5)
         self.btn_ota_abort = ttk.Button(btn_row, text="中止", command=self._ota_abort,
@@ -1303,6 +1307,9 @@ class PinProbeApp:
     def _ota_query_status(self):
         self._send_scpi("SYSTem:OTA:STATus?")
 
+    def _ota_query_boot(self):
+        self._send_scpi("SYSTem:OTA:BOOT?")
+
     def _ota_commit(self):
         if not self.serial_worker.is_connected:
             messagebox.showwarning("未连接", "请先连接串口")
@@ -1310,6 +1317,12 @@ class PinProbeApp:
         if not messagebox.askyesno("确认提交", "确认提交升级? 设备将写入 OTA 提交标志，下一步由 Bootloader 执行搬运。"):
             return
         self._send_scpi("SYSTem:OTA:COMMit")
+
+    def _ota_prompt_reboot(self):
+        if not self.serial_worker.is_connected:
+            return
+        if messagebox.askyesno("重启设备", "OTA 已提交。是否立即重启设备进入 Bootloader?"):
+            self._send_scpi("SYSTem:REBoot")
 
     def _ota_abort(self):
         self.ota_abort_requested = True
@@ -1434,7 +1447,12 @@ class PinProbeApp:
             cmd = f'{scpi_cmd} "{value}"'
 
         self._log(f">>> {cmd}", "CMD")
-        self.serial_worker.send_command(cmd, expect_response=cmd.endswith("?"))
+        expect_response = (
+            cmd.endswith("?") or
+            cmd.startswith("SYSTem:OTA:") or
+            cmd.strip() == "SYSTem:REBoot"
+        )
+        self.serial_worker.send_command(cmd, expect_response=expect_response)
         self._add_to_history(cmd)
 
     def _send_custom_cmd(self):
@@ -1505,6 +1523,9 @@ class PinProbeApp:
                     tag = "OK" if "ERR" not in resp.upper() else "ERROR"
                     self._log(f"← [{elapsed_ms:.1f}ms] {resp}", tag)
                     self._update_monitor_row(cmd, resp)
+                    if cmd.strip() == "SYSTem:OTA:COMMit" and resp.strip().startswith("OK"):
+                        self.ota_status_var.set("OTA 已提交，等待重启")
+                        self.root.after(100, self._ota_prompt_reboot)
                     if cmd.strip() == "*IDN?":
                         self.device_info_label.configure(
                             text=f"设备: {resp}", foreground="#4FC1FF")

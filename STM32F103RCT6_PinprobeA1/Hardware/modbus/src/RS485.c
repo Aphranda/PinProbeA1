@@ -1,21 +1,48 @@
 #include "RS485.h"
 #include "tim.h"
 
+#define RS485_WRITE_ACK_TIMEOUT_MS  20U
+#define RS485_WRITE_RETRY_COUNT      1U
+
 /* 前向声明 */
 static void IOWriteOrder(uint8_t index, uint8_t status, uint8_t *out_buf);
 static void IOReadOrder(uint8_t index, uint16_t num, uint8_t *out_buf);
+static bool RS485_WaitRxChanged(uint8_t prev_ready, uint32_t timeout_ms);
+static bool IOCheckWriteAck(uint8_t index, uint8_t status);
 
 /// @brief 写 BSM IO 状态（Modbus 05 功能码）
 /// @param index  IO 索引 (1-based)
 /// @param status 0=OFF, 1=ON
 /// @return true=发送成功
 bool WriteIO(uint8_t index, uint8_t status){
-    HAL_Delay(2);
+    if (index == 0U || status > 1U) {
+        return false;
+    }
+
     uint8_t frame[8];
     IOWriteOrder(index-1, status, frame);
-    HAL_StatusTypeDef ret = HAL_UART_Transmit(&huart3, frame, 8, RS485_TX_TIMEOUT_MS);
+
+    for (uint8_t attempt = 0U; attempt <= RS485_WRITE_RETRY_COUNT; ++attempt) {
+        uint8_t prev_ready = Usart3_RX_BUF1_IsReady;
+
+        HAL_Delay(2);
+        HAL_StatusTypeDef ret = HAL_UART_Transmit(&huart3, frame, 8, RS485_TX_TIMEOUT_MS);
+        if (ret != HAL_OK) {
+            continue;
+        }
+
+        if (!RS485_WaitRxChanged(prev_ready, RS485_WRITE_ACK_TIMEOUT_MS)) {
+            continue;
+        }
+
+        if (IOCheckWriteAck((uint8_t)(index - 1U), status)) {
+            HAL_Delay(2);
+            return true;
+        }
+    }
+
     HAL_Delay(2);
-    return (ret == HAL_OK);
+    return false;
 }
 
 /// @brief Read BSM IO status
@@ -34,8 +61,13 @@ bool ReadIO(uint8_t func){
 /// @return true=收到响应, false=超时
 bool RS485_WaitRx(uint32_t timeout_ms)
 {
-    uint32_t start = GetTim1Ms();
     uint8_t prev_ready = Usart3_RX_BUF1_IsReady;
+    return RS485_WaitRxChanged(prev_ready, timeout_ms);
+}
+
+static bool RS485_WaitRxChanged(uint8_t prev_ready, uint32_t timeout_ms)
+{
+    uint32_t start = GetTim1Ms();
 
     while ((GetTim1Ms() - start) < timeout_ms)
     {
@@ -46,6 +78,32 @@ bool RS485_WaitRx(uint32_t timeout_ms)
         HAL_Delay(1); // 1ms 忙等，不切换RTOS任务
     }
     return false;
+}
+
+static bool IOCheckWriteAck(uint8_t index, uint8_t status)
+{
+    uint8_t *resp = Uart3_BuffIsReady;
+    uint8_t crcData[2];
+
+    if (Uart3_RxLength < 8U) {
+        return false;
+    }
+
+    if (resp[0] != 0x01U || resp[1] != 0x05U) {
+        return false;
+    }
+
+    if (resp[2] != 0x00U || resp[3] != index) {
+        return false;
+    }
+
+    if (resp[4] != (status ? 0xFFU : 0x00U) || resp[5] != 0x00U) {
+        return false;
+    }
+
+    crcData[0] = resp[6];
+    crcData[1] = resp[7];
+    return modbus_crc_compare(6, resp, crcData);
 }
 
 

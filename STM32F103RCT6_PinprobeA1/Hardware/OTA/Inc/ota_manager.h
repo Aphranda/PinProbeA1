@@ -30,6 +30,25 @@ typedef struct {
     uint32_t next_offset;
 } OTA_Status_t;
 
+typedef struct {
+    bool flash_ok;
+    bool flags_valid;
+    bool manifest_valid;
+    uint32_t sequence;
+    uint32_t active_manifest_sequence;
+    uint8_t pending_slot;
+    uint8_t previous_slot;
+    uint8_t update_state;
+    uint8_t max_attempts;
+    uint8_t attempt_count;
+    uint32_t last_error;
+    uint8_t manifest_state;
+    uint32_t image_size;
+    uint32_t image_crc32;
+    uint32_t image_version;
+    uint32_t image_id;
+} OTA_BootInfo_t;
+
 void OTA_ManagerInit(void);
 OTA_Error_t OTA_Begin(uint32_t size, uint32_t crc32, uint32_t version, uint32_t image_id);
 OTA_Error_t OTA_WriteData(uint32_t offset, const uint8_t *data, size_t length, uint32_t *next_offset);
@@ -39,6 +58,7 @@ OTA_Error_t OTA_Commit(void);
 OTA_Error_t OTA_ConfirmRunningApp(void);
 OTA_Error_t OTA_Abort(void);
 OTA_Error_t OTA_GetStatus(OTA_Status_t *status);
+OTA_Error_t OTA_GetBootInfo(OTA_BootInfo_t *info);
 const OTA_Manifest_t *OTA_GetManifest(void);
 
 #ifdef __cplusplus

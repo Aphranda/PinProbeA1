@@ -47,6 +47,7 @@
 - `Hardware/libscpi/inc`
 - `Hardware/libscpi/port`
 - `Hardware/Flash/Inc`
+- `Hardware/W25Q128/Inc`
 - `Hardware/RamVector/Inc`
 - `Hardware/AppLog/Inc`
 
@@ -109,14 +110,14 @@ $env:DOTNET_ROLL_FORWARD = "Major"
   -c "cmsis_dap_backend hid" `
   -f target/stm32f1x.cfg `
   -c "adapter speed 1000" `
-  -c "program build/STM32F103RCT6_PinprobeA1/STM32F103RCT6_PinprobeA1.hex verify reset exit"
+  -c "program build/PinProbeA1_Factory/PinProbeA1_Factory.hex verify reset exit"
 ```
 
 关键点：
 
 - 使用 CMSIS-DAP HID 后端：`cmsis_dap_backend hid`
 - 目标配置：`target/stm32f1x.cfg`
-- 下载文件：`build/STM32F103RCT6_PinprobeA1/STM32F103RCT6_PinprobeA1.hex`
+- 下载文件：`build/PinProbeA1_Factory/PinProbeA1_Factory.hex`
 - 烧录流程：`program ... verify reset exit`
 
 成功烧录输出应包含：
@@ -157,5 +158,6 @@ python Tools\merge_ota_images.py
 烧录建议：
 
 - 出厂整机烧录优先使用 `PinProbeA1_Factory.hex`
+- 当前 EIDE 主目标的 flash 配置已指向 `PinProbeA1_Factory.hex`
 - 如果烧录 `.bin`，基地址必须为 `0x08000000`
 - OTA 上位机上传的应用固件仍使用 APP bin：`build/STM32F103RCT6_PinprobeA1/STM32F103RCT6_PinprobeA1.bin`

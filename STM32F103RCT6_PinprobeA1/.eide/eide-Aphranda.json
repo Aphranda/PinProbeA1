@@ -180,15 +180,15 @@
       },
       "uploader": "OpenOCD",
       "uploadConfig": {
-        "bin": "",
+        "bin": "build/PinProbeA1_Factory/PinProbeA1_Factory.hex",
         "target": "stm32f1x",
         "interface": "cmsis-dap-v1",
-        "baseAddr": "0x08006000"
+        "baseAddr": "0x08000000"
       },
       "uploadConfigMap": {
         "JLink": {
-          "bin": "",
-          "baseAddr": "",
+          "bin": "build/PinProbeA1_Factory/PinProbeA1_Factory.hex",
+          "baseAddr": "0x08000000",
           "cpuInfo": {
             "vendor": "ST",
             "cpuName": "STM32F103RC"
@@ -198,26 +198,26 @@
           "otherCmds": ""
         },
         "OpenOCD": {
-          "bin": "",
+          "bin": "build/PinProbeA1_Factory/PinProbeA1_Factory.hex",
           "target": "stm32f1x",
           "interface": "cmsis-dap-v1",
-          "baseAddr": "0x08006000"
+          "baseAddr": "0x08000000"
         },
         "STLink": {
-          "bin": "",
+          "bin": "build/PinProbeA1_Factory/PinProbeA1_Factory.hex",
           "proType": "SWD",
           "resetMode": "default",
           "runAfterProgram": true,
           "speed": 4000,
-          "address": "0x08006000",
+          "address": "0x08000000",
           "elFile": "None",
           "optionBytes": ".eide/stm32f103rct6_pinprobea1.st.option.bytes.ini",
           "otherCmds": ""
         },
         "pyOCD": {
-          "bin": "",
+          "bin": "build/PinProbeA1_Factory/PinProbeA1_Factory.hex",
           "targetName": "cortex_m",
-          "baseAddr": "0x08006000",
+          "baseAddr": "0x08000000",
           "speed": "4M",
           "config": ".eide/stm32f103rct6_pinprobea1.pyocd.yaml"
         }
@@ -341,6 +341,7 @@
           "Drivers/CMSIS/Device/ST/STM32F1xx/Include",
           "Drivers/CMSIS/Include",
           "Hardware/Flash/Inc",
+          "Hardware/W25Q128/Inc",
           "Hardware/OTA/Inc"
         ],
         "libList": [],

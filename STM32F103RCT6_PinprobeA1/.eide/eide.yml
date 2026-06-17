@@ -101,6 +101,7 @@ targets:
       defineList:
         - USE_HAL_DRIVER
         - STM32F103xE
+        - PINPROBE_APP_IMAGE
       incList:
         - .
         - Core/Inc
@@ -119,6 +120,7 @@ targets:
         - Hardware/libscpi/port
         - Hardware/CheckMode/inc
         - Hardware/Flash/Inc
+        - Hardware/W25Q128/Inc
         - Hardware/OTA/Inc
         - Hardware/RamVector/Inc
         - Hardware/AppLog/Inc
@@ -226,8 +228,8 @@ targets:
         useCustomScatterFile: true
     uploadConfigMap:
       JLink:
-        baseAddr: ""
-        bin: ""
+        baseAddr: "0x08000000"
+        bin: build/PinProbeA1_Factory/PinProbeA1_Factory.hex
         cpuInfo:
           cpuName: STM32F103RC
           vendor: ST
@@ -235,13 +237,13 @@ targets:
         proType: 1
         speed: 8000
       OpenOCD:
-        baseAddr: "0x08006000"
-        bin: ""
+        baseAddr: "0x08000000"
+        bin: build/PinProbeA1_Factory/PinProbeA1_Factory.hex
         interface: cmsis-dap-v1
         target: stm32f1x
       STLink:
-        address: "0x8006000"
-        bin: ""
+        address: "0x8000000"
+        bin: build/PinProbeA1_Factory/PinProbeA1_Factory.hex
         elFile: None
         optionBytes: .eide/stm32f103rct6_pinprobea1.st.option.bytes.ini
         otherCmds: ""
@@ -250,8 +252,8 @@ targets:
         runAfterProgram: true
         speed: 4000
       pyOCD:
-        baseAddr: "0x08006000"
-        bin: ""
+        baseAddr: "0x08000000"
+        bin: build/PinProbeA1_Factory/PinProbeA1_Factory.hex
         config: .eide/stm32f103rct6_pinprobea1.pyocd.yaml
         otherCmds: ""
         speed: 4M

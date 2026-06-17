@@ -512,6 +512,21 @@ void Uart1_Printf(char *format, ...) // Usart1 print (非阻塞, TX忙时跳过)
   HAL_UART_Transmit_DMA(&huart1, Usart1_TX_BUF, strlen((const char *)Usart1_TX_BUF));
 }
 
+void Uart1_ResetRuntime(void)
+{
+  Usart1_TX_Flag = 0;
+  Uart1_RxLength = 0;
+  Uart1_BuffIsReady = Usart1_RX_BUF2;
+  Uart1_BuffOccupied = Usart1_RX_BUF1;
+  memset(Usart1_TX_BUF, 0, sizeof(Usart1_TX_BUF));
+  memset(Usart1_RX_BUF1, 0, sizeof(Usart1_RX_BUF1));
+  memset(Usart1_RX_BUF2, 0, sizeof(Usart1_RX_BUF2));
+  __HAL_UART_CLEAR_IDLEFLAG(&huart1);
+  __HAL_UART_CLEAR_OREFLAG(&huart1);
+  __HAL_UART_CLEAR_FEFLAG(&huart1);
+  __HAL_UART_CLEAR_NEFLAG(&huart1);
+}
+
 uint8_t Uart1_IsTxBusy(void)
 {
   return Usart1_TX_Flag ? 1U : 0U;

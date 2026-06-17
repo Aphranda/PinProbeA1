@@ -40,6 +40,7 @@
 #include "cmd_exec.h"
 #include "app_log.h"
 #include "ota_manager.h"
+#include "ota_manifest.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -186,6 +187,9 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
+  SCB->VTOR = OTA_APP_BASE_ADDR;
+  __DSB();
+  __ISB();
 
   /* USER CODE END 1 */
 
@@ -225,6 +229,7 @@ int main(void)
   __HAL_UART_CLEAR_IDLEFLAG(&huart1);
   __HAL_UART_CLEAR_IDLEFLAG(&huart3);
 
+  Uart1_ResetRuntime();
   HAL_UART_Receive_DMA(&huart1, Uart1_BuffOccupied, MAX_RX_LEN);
   HAL_UART_Receive_DMA(&huart3, Uart3_BuffOccupied, MAX_RX_LEN);
 
