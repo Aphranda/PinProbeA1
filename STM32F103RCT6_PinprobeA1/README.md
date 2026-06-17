@@ -128,3 +128,34 @@ Info : flash size = 256 KiB
 ** Verified OK **
 ** Resetting Target **
 ```
+
+## OTA/Bootloader 出厂镜像
+
+OTA 版固件拆成两个镜像：
+
+- Bootloader: `0x08000000`，大小上限 `0x6000`
+- APP: `0x08006000`，大小上限 `0x39800`
+
+生成出厂合并镜像：
+
+```powershell
+.\Script\build_factory_images.ps1
+```
+
+该脚本会依次构建 Bootloader、APP，并调用：
+
+```powershell
+python Tools\merge_ota_images.py
+```
+
+默认输出：
+
+- `build/PinProbeA1_Factory/PinProbeA1_Factory.hex`
+- `build/PinProbeA1_Factory/PinProbeA1_Factory.bin`
+- `build/PinProbeA1_Factory/PinProbeA1_Factory.json`
+
+烧录建议：
+
+- 出厂整机烧录优先使用 `PinProbeA1_Factory.hex`
+- 如果烧录 `.bin`，基地址必须为 `0x08000000`
+- OTA 上位机上传的应用固件仍使用 APP bin：`build/STM32F103RCT6_PinprobeA1/STM32F103RCT6_PinprobeA1.bin`

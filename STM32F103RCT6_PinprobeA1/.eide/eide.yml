@@ -119,6 +119,7 @@ targets:
         - Hardware/libscpi/port
         - Hardware/CheckMode/inc
         - Hardware/Flash/Inc
+        - Hardware/OTA/Inc
         - Hardware/RamVector/Inc
         - Hardware/AppLog/Inc
       libList: []
@@ -148,7 +149,7 @@ targets:
             use-microLIB: true
           linker:
             output-format: elf
-        scatterFilePath: "MDK-ARM/STM32F103RCT6_PinprobeA1.sct"
+        scatterFilePath: .eide/STM32F103RCT6_PinprobeA1_app.sct
         storageLayout:
           RAM:
             - id: 1
@@ -212,8 +213,8 @@ targets:
               isChecked: true
               isStartup: true
               mem:
-                size: "0x3F800"
-                startAddr: "0x8000000"
+                size: "0x39800"
+                startAddr: "0x8006000"
               tag: IROM
             - id: 2
               isChecked: true
@@ -234,12 +235,12 @@ targets:
         proType: 1
         speed: 8000
       OpenOCD:
-        baseAddr: "0x08000000"
+        baseAddr: "0x08006000"
         bin: ""
         interface: cmsis-dap-v1
         target: stm32f1x
       STLink:
-        address: "0x8000000"
+        address: "0x8006000"
         bin: ""
         elFile: None
         optionBytes: .eide/stm32f103rct6_pinprobea1.st.option.bytes.ini
@@ -249,7 +250,7 @@ targets:
         runAfterProgram: true
         speed: 4000
       pyOCD:
-        baseAddr: "0x08000000"
+        baseAddr: "0x08006000"
         bin: ""
         config: .eide/stm32f103rct6_pinprobea1.pyocd.yaml
         otherCmds: ""

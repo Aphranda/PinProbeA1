@@ -16,8 +16,10 @@ import serial.tools.list_ports
 import threading
 import time
 import queue
+import zlib
 from datetime import datetime
 from collections import deque
+from pathlib import Path
 
 # ══════════════════════════════════════════════════════════════════════
 # 常量
@@ -26,6 +28,9 @@ APP_TITLE = "PinProbeA1 调试工具 v1.0"
 DEFAULT_BAUD = 115200
 SCPI_TERMINATOR = "\r\n"
 SERIAL_TIMEOUT = 0.5
+OTA_CHUNK_SIZE = 128
+OTA_ACK_TIMEOUT = 1.0
+OTA_MAX_RETRIES = 3
 MAX_LOG_LINES = 2000
 STATS_HISTORY = 1000
 
@@ -240,6 +245,7 @@ class SerialWorker:
         self._running = False
         self._thread: threading.Thread | None = None
         self._lock = threading.Lock()
+        self._ota_active = False
         self._response_event = threading.Event()
 
     @property
@@ -278,7 +284,54 @@ class SerialWorker:
 
     def send_command(self, cmd: str, expect_response: bool = True) -> None:
         """发送 SCPI 命令 (线程安全)"""
+        if self._ota_active:
+            self.rx_queue.put(("ERROR", cmd, "OTA 上传中, 串口已独占"))
+            return
         self.cmd_queue.put((cmd, expect_response))
+
+    def ota_set_active(self, active: bool) -> None:
+        """标记 OTA 上传独占串口。"""
+        self._ota_active = active
+
+    @staticmethod
+    def _is_debug_line(decoded: str) -> bool:
+        return (decoded.startswith("[STATE]") or
+                decoded.startswith("[CLOSE]") or
+                decoded.startswith("[EVENT]") or
+                decoded.startswith("[RISK]") or
+                decoded.startswith("[IO]") or
+                decoded.startswith("[RS485]") or
+                decoded.startswith("[LOCK]") or
+                decoded.startswith("[UNLOCK]") or
+                decoded.startswith("[CLOSE_START]") or
+                decoded.startswith("[CLOSE_DONE]") or
+                decoded.startswith("[OPEN_START]") or
+                decoded.startswith("[OPEN_DONE]") or
+                decoded.startswith("E-STOP") or
+                decoded.startswith("Door_Emerge") or
+                decoded.startswith("Intake air"))
+
+    def transact_raw(self, payload: bytes, timeout: float = OTA_ACK_TIMEOUT) -> str:
+        """直接发送 bytes 并读取一行 SCPI 响应, OTA 上传线程使用。"""
+        with self._lock:
+            if not self.is_connected:
+                raise serial.SerialException("串口未连接")
+            self.serial_port.reset_input_buffer()
+            self.serial_port.write(payload)
+            self.serial_port.flush()
+            deadline = time.time() + timeout
+            while time.time() < deadline:
+                line = self.serial_port.read_until(b'\n', size=512)
+                if not line:
+                    continue
+                decoded = line.decode("utf-8", errors="replace").strip()
+                if not decoded:
+                    continue
+                if self._is_debug_line(decoded):
+                    self.rx_queue.put(("debug", "", decoded, 0))
+                    continue
+                return decoded
+        return ""
 
     def _worker_loop(self) -> None:
         """后台工作循环: 发送 SCPI 命令 → 读取响应 (过滤固件调试输出)"""
@@ -310,21 +363,7 @@ class SerialWorker:
                         if not decoded:
                             continue
                         # 跳过固件调试输出 (与 state_vector.c 中 printf 前缀对齐)
-                        if (decoded.startswith("[STATE]") or
-                            decoded.startswith("[CLOSE]") or
-                            decoded.startswith("[EVENT]") or
-                            decoded.startswith("[RISK]") or
-                            decoded.startswith("[IO]") or
-                            decoded.startswith("[RS485]") or
-                            decoded.startswith("[LOCK]") or
-                            decoded.startswith("[UNLOCK]") or
-                            decoded.startswith("[CLOSE_START]") or
-                            decoded.startswith("[CLOSE_DONE]") or
-                            decoded.startswith("[OPEN_START]") or
-                            decoded.startswith("[OPEN_DONE]") or
-                            decoded.startswith("E-STOP") or
-                            decoded.startswith("Door_Emerge") or
-                            decoded.startswith("Intake air")):
+                        if self._is_debug_line(decoded):
                             self.rx_queue.put(("debug", "", decoded, 0))
                             continue
                         if decoded.startswith("**ERROR") or decoded.startswith("**SRQ"):
@@ -376,6 +415,17 @@ class PinProbeApp:
 
         # 命令历史
         self.cmd_history: list[str] = []
+
+        # OTA 状态
+        self.ota_file_path: Path | None = None
+        self.ota_running = False
+        self.ota_thread: threading.Thread | None = None
+        self.ota_abort_requested = False
+        self.ota_progress = tk.DoubleVar(value=0.0)
+        self.ota_status_var = tk.StringVar(value="未选择固件")
+        self.ota_file_var = tk.StringVar(value="")
+        self.ota_version_var = tk.StringVar(value="0x00010000")
+        self.ota_image_id_var = tk.StringVar(value="1")
 
         # 构建 UI
         self._setup_styles()
@@ -586,11 +636,15 @@ class PinProbeApp:
         pressure_tab = ttk.Frame(right_nb)
         right_nb.add(pressure_tab, text="压力测试")
 
+        ota_tab = ttk.Frame(right_nb)
+        right_nb.add(ota_tab, text="固件升级")
+
         custom_tab = ttk.Frame(right_nb)
         right_nb.add(custom_tab, text="自定义命令")
 
         self._build_monitor_panel(monitor_tab)
         self._build_pressure_panel(pressure_tab)
+        self._build_ota_panel(ota_tab)
         self._build_custom_cmd_panel(custom_tab)
 
         # ---- 日志区域 ----
@@ -1013,6 +1067,48 @@ class PinProbeApp:
                                   font=("Consolas", 9))
         self.stats_text.pack(fill=tk.BOTH, expand=True, padx=3, pady=2)
 
+    def _build_ota_panel(self, parent: ttk.Frame):
+        """固件升级 OTA 面板"""
+        file_frame = ttk.LabelFrame(parent, text="固件文件")
+        file_frame.pack(fill=tk.X, padx=5, pady=5)
+
+        file_row = ttk.Frame(file_frame)
+        file_row.pack(fill=tk.X, padx=5, pady=5)
+        ttk.Entry(file_row, textvariable=self.ota_file_var).pack(
+            side=tk.LEFT, fill=tk.X, expand=True)
+        ttk.Button(file_row, text="选择...", command=self._ota_select_file).pack(
+            side=tk.LEFT, padx=(6, 0))
+
+        meta_row = ttk.Frame(file_frame)
+        meta_row.pack(fill=tk.X, padx=5, pady=(0, 5))
+        ttk.Label(meta_row, text="版本:").pack(side=tk.LEFT)
+        ttk.Entry(meta_row, textvariable=self.ota_version_var, width=14).pack(
+            side=tk.LEFT, padx=(4, 12))
+        ttk.Label(meta_row, text="Image ID:").pack(side=tk.LEFT)
+        ttk.Entry(meta_row, textvariable=self.ota_image_id_var, width=8).pack(
+            side=tk.LEFT, padx=(4, 12))
+        self.ota_info_label = ttk.Label(meta_row, text="Size: --  CRC32: --", foreground="gray")
+        self.ota_info_label.pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+        action_frame = ttk.LabelFrame(parent, text="上传控制")
+        action_frame.pack(fill=tk.X, padx=5, pady=5)
+
+        btn_row = ttk.Frame(action_frame)
+        btn_row.pack(fill=tk.X, padx=5, pady=5)
+        ttk.Button(btn_row, text="查询状态", command=self._ota_query_status).pack(side=tk.LEFT)
+        self.btn_ota_start = ttk.Button(btn_row, text="开始上传", command=self._ota_start_upload)
+        self.btn_ota_start.pack(side=tk.LEFT, padx=5)
+        self.btn_ota_abort = ttk.Button(btn_row, text="中止", command=self._ota_abort,
+                                        state=tk.DISABLED)
+        self.btn_ota_abort.pack(side=tk.LEFT, padx=5)
+        ttk.Button(btn_row, text="提交升级", command=self._ota_commit).pack(side=tk.LEFT, padx=5)
+
+        self.ota_progressbar = ttk.Progressbar(action_frame, variable=self.ota_progress,
+                                               maximum=100.0)
+        self.ota_progressbar.pack(fill=tk.X, padx=5, pady=(0, 5))
+        ttk.Label(action_frame, textvariable=self.ota_status_var).pack(
+            fill=tk.X, padx=5, pady=(0, 5))
+
     def _build_custom_cmd_panel(self, parent: ttk.Frame):
         """自定义命令面板"""
         # 命令输入
@@ -1176,6 +1272,138 @@ class PinProbeApp:
                 f.write(self.log_text.get("1.0", tk.END))
             self._log(f"日志已导出到: {filename}", "INFO")
 
+    # ── OTA 固件上传 ──────────────────────────────────────────────────
+    def _ota_select_file(self):
+        path = filedialog.askopenfilename(
+            title="选择固件文件",
+            filetypes=[("固件二进制", "*.bin"), ("所有文件", "*.*")]
+        )
+        if not path:
+            return
+
+        self.ota_file_path = Path(path)
+        self.ota_file_var.set(str(self.ota_file_path))
+        try:
+            data = self.ota_file_path.read_bytes()
+        except OSError as exc:
+            messagebox.showerror("读取失败", str(exc))
+            self.ota_file_path = None
+            return
+
+        crc = zlib.crc32(data) & 0xFFFFFFFF
+        self.ota_info_label.configure(
+            text=f"Size: {len(data)} bytes  CRC32: 0x{crc:08X}",
+            foreground="#4FC1FF")
+        self.ota_status_var.set("固件已选择")
+
+    @staticmethod
+    def _ota_parse_u32(text: str) -> int:
+        return int(text.strip(), 0)
+
+    def _ota_query_status(self):
+        self._send_scpi("SYSTem:OTA:STATus?")
+
+    def _ota_commit(self):
+        if not self.serial_worker.is_connected:
+            messagebox.showwarning("未连接", "请先连接串口")
+            return
+        if not messagebox.askyesno("确认提交", "确认提交升级? 设备将写入 OTA 提交标志，下一步由 Bootloader 执行搬运。"):
+            return
+        self._send_scpi("SYSTem:OTA:COMMit")
+
+    def _ota_abort(self):
+        self.ota_abort_requested = True
+        self.ota_status_var.set("正在中止...")
+
+    def _ota_start_upload(self):
+        if self.ota_running:
+            return
+        if not self.serial_worker.is_connected:
+            messagebox.showwarning("未连接", "请先连接串口")
+            return
+        if self.ota_file_path is None:
+            messagebox.showwarning("未选择固件", "请先选择固件文件")
+            return
+
+        try:
+            version = self._ota_parse_u32(self.ota_version_var.get())
+            image_id = self._ota_parse_u32(self.ota_image_id_var.get())
+        except ValueError:
+            messagebox.showerror("参数错误", "版本和 Image ID 支持十进制或 0x 前缀十六进制")
+            return
+
+        self._stop_polling()
+        self._stop_pressure()
+        self.ota_abort_requested = False
+        self.ota_running = True
+        self.btn_ota_start.configure(state=tk.DISABLED)
+        self.btn_ota_abort.configure(state=tk.NORMAL)
+        self.ota_progress.set(0.0)
+        self.ota_status_var.set("准备上传...")
+        self.ota_thread = threading.Thread(
+            target=self._ota_upload_thread,
+            args=(self.ota_file_path, version, image_id),
+            daemon=True)
+        self.ota_thread.start()
+
+    def _ota_upload_thread(self, path: Path, version: int, image_id: int):
+        self.serial_worker.ota_set_active(True)
+        start_time = time.time()
+        try:
+            data = path.read_bytes()
+            size = len(data)
+            crc = zlib.crc32(data) & 0xFFFFFFFF
+            self.serial_worker.rx_queue.put(("ota", f"BEGIN size={size} crc=0x{crc:08X}"))
+
+            begin = f"SYSTem:OTA:BEGIN {size},{crc},{version},{image_id}\r\n".encode("ascii")
+            resp = self.serial_worker.transact_raw(begin, timeout=5.0)
+            if not resp.startswith("OK"):
+                raise RuntimeError(resp or "BEGIN 无响应")
+
+            offset = 0
+            while offset < size:
+                if self.ota_abort_requested:
+                    try:
+                        self.serial_worker.transact_raw(b"SYSTem:OTA:ABORt\r\n", timeout=OTA_ACK_TIMEOUT)
+                    finally:
+                        raise RuntimeError("用户中止")
+
+                chunk = data[offset:offset + OTA_CHUNK_SIZE]
+                header = f"SYSTem:OTA:DATA {offset},#3{len(chunk):03d}".encode("ascii")
+                payload = header + chunk + SCPI_TERMINATOR.encode("ascii")
+
+                resp = ""
+                for _ in range(OTA_MAX_RETRIES):
+                    resp = self.serial_worker.transact_raw(payload, timeout=OTA_ACK_TIMEOUT)
+                    if resp.startswith("OK"):
+                        break
+                    time.sleep(0.05)
+                if not resp.startswith("OK"):
+                    raise RuntimeError(resp or f"DATA offset {offset} 无响应")
+
+                offset += len(chunk)
+                progress = (offset * 100.0) / size if size else 100.0
+                elapsed = max(time.time() - start_time, 0.001)
+                speed = offset / elapsed
+                self.serial_worker.rx_queue.put(("ota_progress", progress, offset, size, speed))
+
+            resp = self.serial_worker.transact_raw(b"SYSTem:OTA:END\r\n", timeout=5.0)
+            if not resp.startswith("OK"):
+                raise RuntimeError(resp or "END 无响应")
+
+            resp = self.serial_worker.transact_raw(b"SYSTem:OTA:VERify?\r\n", timeout=10.0)
+            if "STATE:READY" not in resp:
+                raise RuntimeError(resp or "VERIFY 无响应")
+
+            self.serial_worker.rx_queue.put(("ota_done", resp))
+        except Exception as exc:
+            self.serial_worker.rx_queue.put(("ota_error", str(exc)))
+        finally:
+            self.serial_worker.ota_set_active(False)
+            self.ota_running = False
+            self.root.after(0, lambda: self.btn_ota_start.configure(state=tk.NORMAL))
+            self.root.after(0, lambda: self.btn_ota_abort.configure(state=tk.DISABLED))
+
     # ── SCPI 命令发送 ────────────────────────────────────────────────
     # IDN 设置命令映射
     _IDN_SET_MAP = {
@@ -1189,6 +1417,9 @@ class PinProbeApp:
         """发送 SCPI 命令"""
         if not self.serial_worker.is_connected:
             messagebox.showwarning("未连接", "请先连接串口")
+            return
+        if self.ota_running:
+            messagebox.showwarning("OTA忙", "固件上传正在进行，请等待完成或先中止。")
             return
 
         # IDN 设置：弹窗输入值
@@ -1300,6 +1531,31 @@ class PinProbeApp:
                     _, cmd, err = msg
                     self._log(f"✗ [{cmd}] {err}", "ERROR")
                     self._update_monitor_row(cmd, f"ERROR: {err}")
+
+                elif msg_type == "ota":
+                    _, text = msg
+                    self._log(f"OTA {text}", "INFO")
+
+                elif msg_type == "ota_progress":
+                    _, progress, offset, size, speed = msg
+                    self.ota_progress.set(progress)
+                    speed_kib = speed / 1024.0
+                    self.ota_status_var.set(
+                        f"上传中 {offset}/{size} bytes ({progress:.1f}%, {speed_kib:.1f} KiB/s)")
+                    self.status_label.configure(text=f"OTA 上传中 {progress:.1f}%")
+
+                elif msg_type == "ota_done":
+                    _, resp = msg
+                    self.ota_progress.set(100.0)
+                    self.ota_status_var.set("固件已上传并校验通过")
+                    self.status_label.configure(text="OTA 固件已就绪")
+                    self._log(f"OTA 完成: {resp}", "OK")
+
+                elif msg_type == "ota_error":
+                    _, err = msg
+                    self.ota_status_var.set(f"OTA失败: {err}")
+                    self.status_label.configure(text="OTA 失败")
+                    self._log(f"OTA 失败: {err}", "ERROR")
 
         except queue.Empty:
             pass
@@ -1578,6 +1834,10 @@ class PinProbeApp:
     # ── 应用退出 ──────────────────────────────────────────────────────
     def on_close(self):
         """窗口关闭处理"""
+        if self.ota_running:
+            self.ota_abort_requested = True
+            if self.ota_thread and self.ota_thread.is_alive():
+                self.ota_thread.join(timeout=1.5)
         self._stop_pressure()
         self._stop_polling()
         if self.serial_worker.is_connected:

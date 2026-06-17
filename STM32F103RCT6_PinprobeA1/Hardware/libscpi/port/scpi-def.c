@@ -46,6 +46,7 @@
 #include "state_vector.h"
 #include "tim.h"
 #include "app_log.h"
+#include "ota_manager.h"
 
 /* 辅助: 推送 SCPI 错误并返回 ERR (附带描述信息) */
 #define PUSH_ERR(ctx, code, info) do { \
@@ -555,6 +556,116 @@ static scpi_result_t SCPI_SystemUpTimeQ(scpi_t *context)
     return SCPI_RES_OK;
 }
 
+/* ===== OTA 固件升级 ===== */
+
+static scpi_result_t scpi_ota_result(scpi_t *context, OTA_Error_t err)
+{
+    char buf[96];
+    if (err == OTA_OK) {
+        SCPI_ResultText(context, "OK");
+        return SCPI_RES_OK;
+    }
+
+    snprintf(buf, sizeof(buf), "ERR,%u,%s", (unsigned int)err, OTA_ErrorName((uint32_t)err));
+    SCPI_ResultText(context, buf);
+    return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_OtaStatusQ(scpi_t *context)
+{
+    OTA_Status_t status;
+    OTA_Error_t err = OTA_GetStatus(&status);
+    if (err != OTA_OK) {
+        return scpi_ota_result(context, err);
+    }
+
+    char buf[160];
+    snprintf(buf, sizeof(buf),
+             "STATE:%s SIZE:%lu RECV:%lu BLOCKS:%lu/%lu NEXT:%lu CRC:0x%08lX VER:0x%08lX IMG:%lu ERR:%lu",
+             OTA_StateName(status.state),
+             (unsigned long)status.image_size,
+             (unsigned long)status.received_size,
+             (unsigned long)status.received_blocks,
+             (unsigned long)status.total_blocks,
+             (unsigned long)status.next_offset,
+             (unsigned long)status.image_crc32,
+             (unsigned long)status.image_version,
+             (unsigned long)status.image_id,
+             (unsigned long)status.last_error);
+    SCPI_ResultText(context, buf);
+    return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_OtaBegin(scpi_t *context)
+{
+    uint32_t size;
+    uint32_t crc32;
+    uint32_t version;
+    uint32_t image_id;
+
+    if (!SCPI_ParamUInt32(context, &size, TRUE) ||
+        !SCPI_ParamUInt32(context, &crc32, TRUE) ||
+        !SCPI_ParamUInt32(context, &version, TRUE) ||
+        !SCPI_ParamUInt32(context, &image_id, TRUE)) {
+        return SCPI_RES_ERR;
+    }
+
+    return scpi_ota_result(context, OTA_Begin(size, crc32, version, image_id));
+}
+
+static scpi_result_t SCPI_OtaData(scpi_t *context)
+{
+    uint32_t offset;
+    const char *block;
+    size_t block_len;
+    uint32_t next_offset = 0UL;
+
+    if (!SCPI_ParamUInt32(context, &offset, TRUE)) {
+        return SCPI_RES_ERR;
+    }
+    if (!SCPI_ParamArbitraryBlock(context, &block, &block_len, TRUE)) {
+        return SCPI_RES_ERR;
+    }
+    if (block_len == 0U || block_len > OTA_SCPI_CHUNK_SIZE) {
+        return scpi_ota_result(context, OTA_ERR_BAD_PARAM);
+    }
+
+    OTA_Error_t err = OTA_WriteData(offset, (const uint8_t *)block, block_len, &next_offset);
+    if (err != OTA_OK) {
+        return scpi_ota_result(context, err);
+    }
+
+    char buf[32];
+    snprintf(buf, sizeof(buf), "OK,NEXT:%lu", (unsigned long)next_offset);
+    SCPI_ResultText(context, buf);
+    return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_OtaEnd(scpi_t *context)
+{
+    (void)context;
+    return scpi_ota_result(context, OTA_End());
+}
+
+static scpi_result_t SCPI_OtaVerifyQ(scpi_t *context)
+{
+    OTA_Error_t err = OTA_Verify();
+    if (err != OTA_OK) {
+        return scpi_ota_result(context, err);
+    }
+    return SCPI_OtaStatusQ(context);
+}
+
+static scpi_result_t SCPI_OtaAbort(scpi_t *context)
+{
+    return scpi_ota_result(context, OTA_Abort());
+}
+
+static scpi_result_t SCPI_OtaCommit(scpi_t *context)
+{
+    return scpi_ota_result(context, OTA_Commit());
+}
+
 /* ===== 调试开关 (运行时控制, 替代编译期宏) ===== */
 
 scpi_choice_def_t debug_on_off[] = {
@@ -835,6 +946,34 @@ const scpi_command_t scpi_commands[] = {
     {
         .pattern = "READ:SYSTem:STATe?",
         .callback = SCPI_ReadSystemState,
+    },
+    {
+        .pattern = "SYSTem:OTA:STATus?",
+        .callback = SCPI_OtaStatusQ,
+    },
+    {
+        .pattern = "SYSTem:OTA:BEGIN",
+        .callback = SCPI_OtaBegin,
+    },
+    {
+        .pattern = "SYSTem:OTA:DATA",
+        .callback = SCPI_OtaData,
+    },
+    {
+        .pattern = "SYSTem:OTA:END",
+        .callback = SCPI_OtaEnd,
+    },
+    {
+        .pattern = "SYSTem:OTA:VERify?",
+        .callback = SCPI_OtaVerifyQ,
+    },
+    {
+        .pattern = "SYSTem:OTA:COMMit",
+        .callback = SCPI_OtaCommit,
+    },
+    {
+        .pattern = "SYSTem:OTA:ABORt",
+        .callback = SCPI_OtaAbort,
     },
     {
         .pattern = "READ:IO:ALL?",

@@ -39,6 +39,7 @@
 #include "state_vector.h"
 #include "cmd_exec.h"
 #include "app_log.h"
+#include "ota_manager.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -244,6 +245,8 @@ int main(void)
 
   AppLog_Init(0);
   AppLog_SetSink(AppLog_UartSink);
+  OTA_ManagerInit();
+  (void)OTA_ConfirmRunningApp();
 
   /* 上电自检 */
   (void)PowerOnSelfTest();
