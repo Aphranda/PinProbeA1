@@ -349,17 +349,18 @@ static scpi_result_t SCPI_ReadCylinderState(scpi_t *context)
     SCPI_CommandNumbers(context, number, 0, 1);
     if(number[0] == 2) cylinder_id = 2;
 
-    const Vector_IOState_t* io = RamVector_GetLocalIO();
+    Vector_IOState_t io;
+    (void)RamVector_ReadLocalIO(&io);
     const char *name = "CYL ERR";
 
     if (cylinder_id == 1) {
         /* 气缸1: 限位优先, 未到位时再按输出命令判断运动方向 */
-        if (io->door_state == 1)      name = "OPENED";
-        else if (io->door_state == 0) name = "CLOSED";
-        else if (io->door_moving)     name = (io->cylinder_cmd[0] ? "OPENING" : "CLOSING");
+        if (io.door_state == 1)      name = "OPENED";
+        else if (io.door_state == 0) name = "CLOSED";
+        else if (io.door_moving)     name = (io.cylinder_cmd[0] ? "OPENING" : "CLOSING");
     } else {
         /* 气缸2 (USB): 基于 raw_out_lo bits 0x04/0x08 (usb_pne_in/usb_pne_out) */
-        uint8_t out = io->raw_out_lo;
+        uint8_t out = io.raw_out_lo;
         if (out & 0x04)           name = "OPENING";
         else if (out & 0x08)      name = "CLOSING";
         else                      name = "CLOSED";
@@ -393,8 +394,9 @@ static scpi_result_t SCPI_ConfigureLOCK(scpi_t *context)
 
 static scpi_result_t SCPI_ReadLOCKState(scpi_t *context)
 {
-    const Vector_IOState_t* io = RamVector_GetLocalIO();
-    const char *name = io->lock_state ? "UNLOCK" : "LOCKED";
+    Vector_IOState_t io;
+    (void)RamVector_ReadLocalIO(&io);
+    const char *name = io.lock_state ? "UNLOCK" : "LOCKED";
     SCPI_ResultCharacters(context, name, strlen(name));
     return SCPI_RES_OK;
 }
@@ -425,9 +427,10 @@ static scpi_result_t SCPI_ConfigureLED(scpi_t *context)
 
 static scpi_result_t SCPI_ReadLEDState(scpi_t *context)
 {
-    const Vector_IOState_t* io = RamVector_GetLocalIO();
+    Vector_IOState_t io;
+    (void)RamVector_ReadLocalIO(&io);
     const char *name;
-    switch (io->led_state) {
+    switch (io.led_state) {
         case 1: name = "GREEN"; break;
         case 2: name = "RED"; break;
         case 4: name = "YELLOW"; break;
@@ -526,10 +529,11 @@ static scpi_result_t SCPI_ReadRiskModeQ(scpi_t *context)
 static scpi_result_t SCPI_ReadIOAll(scpi_t *context)
 {
     /* 从向量表读缓存, 不走 RS485 (避免和 ModBusTask 冲突) */
-    const Vector_IOState_t* io = RamVector_GetLocalIO();
+    Vector_IOState_t io;
+    (void)RamVector_ReadLocalIO(&io);
     char buf[64];
     snprintf(buf, sizeof(buf), "IN:0x%02X,0x%02X OUT:0x%02X,0x%02X",
-             io->raw_in_lo, io->raw_in_hi, io->raw_out_lo, io->raw_out_hi);
+             io.raw_in_lo, io.raw_in_hi, io.raw_out_lo, io.raw_out_hi);
     SCPI_ResultCharacters(context, buf, strlen(buf));
     return SCPI_RES_OK;
 }

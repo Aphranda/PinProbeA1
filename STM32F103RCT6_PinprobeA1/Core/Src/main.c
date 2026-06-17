@@ -375,8 +375,7 @@ void ModBusTask(void *argument)
 
     /* 更新向量表 IO 镜像 */
     Vector_IOState_t io;
-    const Vector_IOState_t* old_io = RamVector_GetLocalIO();
-    memcpy(&io, old_io, sizeof(io));
+    (void)RamVector_ReadLocalIO(&io);
     io.raw_in_lo  = in_buf[0];
     io.raw_in_hi  = in_buf[1];
     io.raw_out_lo = out_buf[0];

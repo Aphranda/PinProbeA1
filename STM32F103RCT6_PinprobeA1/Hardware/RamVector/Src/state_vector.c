@@ -200,15 +200,16 @@ void StateVector_Input(void)
      *  ModBusTask 每周期更新 RamVector 中的 IO 数据,
      *  本状态机只读缓存, 不触发 RS485 通讯。
      * ══════════════════════════════════════════ */
-    const Vector_IOState_t* vio = RamVector_GetLocalIO();
-    uint8_t in_lo  = vio->raw_in_lo;    /* IN[0]: 传感器 (限位/激光/气压) */
-    uint8_t in_hi  = vio->raw_in_hi;    /* IN[1]: 按钮 (门/急停/电源) */
-    uint8_t out_lo = vio->raw_out_lo;   /* OUT[0]: 执行器 (门/LED/电源) */
-    uint8_t out_hi = vio->raw_out_hi;   /* OUT[1]: 预留, 当前未使用 */
+    Vector_IOState_t vio;
+    (void)RamVector_ReadLocalIO(&vio);
+    uint8_t in_lo  = vio.raw_in_lo;    /* IN[0]: 传感器 (限位/激光/气压) */
+    uint8_t in_hi  = vio.raw_in_hi;    /* IN[1]: 按钮 (门/急停/电源) */
+    uint8_t out_lo = vio.raw_out_lo;   /* OUT[0]: 执行器 (门/LED/电源) */
+    uint8_t out_hi = vio.raw_out_hi;   /* OUT[1]: 预留, 当前未使用 */
     (void)out_hi;
     (void)door_close_time_learned;      /* 调试/风险模式引用, 消除警告 */
 
-    bool io_ok = (vio->rs485_ok != 0);
+    bool io_ok = (vio.rs485_ok != 0);
 
     /* ══════════════════════════════════════════
      *  步骤 1b: RS485 故障保护

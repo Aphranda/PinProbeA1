@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GTS PPT 模板 — 设计系统与复用指南</title>
+<style>
+  /* ============================================================
+     GTS PPT Design System v1.0
+     本文件作为可复用模板，包含完整的样式定义与页面示例
+     使用方法：复制 <style> 整体到新 HTML 中，按需组装页面组件
+     ============================================================ */
+
+  /* ===== 1. 全局重置与基础 ===== */
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  body {
+    font-family:"等线","SimSun","Microsoft YaHei",sans-serif;
+    background:#d0d0d0;
+    display:flex; flex-direction:column; align-items:center; padding:20px; gap:24px;
+  }
+  @media print {
+    body { background:#fff; padding:0; gap:0; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    .page {
+      box-shadow:none; margin:0;
+      break-after: page;              /* 每页后强制分页 */
+      break-inside: avoid;            /* 禁止页内截断：页眉/内容/页尾绑定在一起 */
+      page-break-after: always;       /* 兼容旧浏览器 */
+      page-break-inside: avoid;
+    }
+  }
+
+  /* ===== 2. 页面容器 ===== */
+  .page {
+    background:#fff;
+    width:1120px;           /* 固定宽度，16:9 比例 */
+    min-height:630px;       /* 1120 × 9/16 = 630 */
+    box-shadow:0 2px 8px rgba(0,0,0,.15);
+    display:flex;
+    flex-direction:column;
+  }
+
+  /* ===== 3. 页眉 =====
+     使用方式：<div class="page-header"><img src="logo.png" alt="GTS"></div>
+     特点：logo 右对齐，底部浅灰分隔条 8px
+     ============================================================ */
+  .page-header {
+    padding:16px 44px 12px;
+    display:flex;
+    justify-content:flex-end;
+    align-items:center;
+    border-bottom:8px solid #d0d6e4;
+  }
+  .page-header img { height:28px; }
+
+  /* ===== 4. 内容区 =====
+     使用方式：<div class="main"> ... </div>
+     特点：flex 列布局，垂直居中，左右 44px 内边距
+     ============================================================ */
+  .main {
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    padding:16px 44px;
+  }
+
+  /* ===== 5. 页尾 =====
+     使用方式：<div class="page-footer">
+                <span>左侧文字</span>
+                <span>内部文件 | <span class="page-num">X / 20</span></span>
+              </div>
+     特点：顶部浅灰分隔条 8px，两端对齐，字号 9px 浅灰
+     ============================================================ */
+  .page-footer {
+    padding:10px 44px 14px;
+    border-top:8px solid #d0d6e4;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    font-size:9px;
+    color:#aaa;
+  }
+  .page-num { font-size:10px; color:#999; }
+
+  /* ===== 6. 标题体系 ===== */
+  .h1 { font-size:24px; font-weight:700; color:#1a1a1a; margin-bottom:4px; }
+  .sub  { font-size:13px; color:#666; margin-bottom:22px; }
+  .h2 {
+    font-size:16px;
+    font-weight:700;
+    color:#1F3864;
+    margin:18px 0 10px;
+    padding-bottom:6px;
+    border-bottom:2px solid #1F3864;
+  }
+  .h2:first-of-type { margin-top:0; }
+
+  /* ===== 7. 表格 ===== */
+  table {
+    width:100%;
+    border-collapse:collapse;
+    font-size:13px;
+    border:1.5px solid #333;
+    margin-bottom:14px;
+  }
+  thead th {
+    background:#1F3864;
+    color:#fff;
+    font-size:13px;
+    font-weight:600;
+    padding:9px 12px;
+    text-align:left;
+    border:1px solid #1a2e52;
+  }
+  thead th.c { text-align:center; }
+  tbody td {
+    padding:8px 12px;
+    border:1px solid #bbb;
+    color:#1a1a1a;
+    vertical-align:top;
+    line-height:1.55;
+  }
+  tbody td.c { text-align:center; }
+  tbody tr:nth-child(even) td { background:#f2f6fc; }
+  td.b { font-weight:700; }
+
+  /* ===== 8. 状态标签 =====
+     使用方式：<span class="tag-r">高</span>
+     tag-r: 红色 (高风险/必须换)
+     tag-y: 橙色 (中风险/待评估)
+     tag-g: 绿色 (低风险/可复用)
+     tag-b: 蓝色 (信息)
+     ============================================================ */
+  .tag-r { display:inline-block; background:#d32f2f; color:#fff; padding:2px 10px; border-radius:3px; font-size:11px; font-weight:700; }
+  .tag-y { display:inline-block; background:#f57c00; color:#fff; padding:2px 10px; border-radius:3px; font-size:11px; font-weight:700; }
+  .tag-g { display:inline-block; background:#388e3c; color:#fff; padding:2px 10px; border-radius:3px; font-size:11px; font-weight:700; }
+  .tag-b { display:inline-block; background:#1565c0; color:#fff; padding:2px 10px; border-radius:3px; font-size:11px; font-weight:700; }
+
+  /* ===== 9. Flex 栅格 ===== */
+  .row2 { display:flex; gap:20px; }
+  .col2 { flex:1; }
+  .row3 { display:flex; gap:16px; }
+  .col3 { flex:1; }
+  .row4 { display:flex; gap:14px; }
+  .col4 { flex:1; }
+
+  /* ===== 10. 卡片组件 =====
+     颜色主题：
+     cr (红): .cr .card-h { background:#d32f2f; }
+     co (橙): .co .card-h { background:#e65100; }
+     cg (绿): .cg .card-h { background:#2e7d32; }
+     cb (蓝): .cb .card-h { background:#1565c0; }
+     使用方式：<div class="card cg">
+                <div class="card-h">标题</div>
+                <div class="card-b">内容</div>
+              </div>
+     ============================================================ */
+  .card { border:1px solid #ddd; border-radius:6px; overflow:hidden; flex:1; }
+  .card-h { padding:10px 14px; font-size:13px; font-weight:700; color:#fff; display:flex; align-items:center; gap:8px; }
+  .card-b { padding:14px; background:#fafafa; font-size:12px; line-height:1.6; }
+  .card-b ul { list-style:none; padding:0; }
+  .card-b li { padding:4px 0; padding-left:14px; position:relative; }
+  .card-b li::before { content:'▸'; position:absolute; left:0; font-size:10px; }
+
+  .cr .card-h { background:#d32f2f; } .cr li::before { color:#d32f2f; }
+  .co .card-h { background:#e65100; } .co li::before { color:#e65100; }
+  .cg .card-h { background:#2e7d32; } .cg li::before { color:#2e7d32; }
+  .cb .card-h { background:#1565c0; } .cb li::before { color:#1565c0; }
+
+  /* ===== 11. 流程图 =====
+     使用方式：<div class="flow">
+                <div class="step">
+                  <div class="step-num">1</div>
+                  <div class="step-title">步骤名称</div>
+                  <div class="step-desc">步骤描述</div>
+                  <div class="step-time">时间/指标</div>
+                </div>
+                <div class="arrow"><div class="arrow-l"></div><div class="arrow-h"></div></div>
+                ...
+              </div>
+     ============================================================ */
+  .flow { display:flex; align-items:flex-start; gap:0; padding:10px 0 20px; }
+  .step { flex:1; text-align:center; }
+  .step-num { width:40px;height:40px;border-radius:50%;background:#1F3864;color:#fff;font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center;margin:0 auto 8px; }
+  .step-title { font-size:13px; font-weight:700; color:#1a1a1a; margin-bottom:4px; }
+  .step-desc { font-size:11px; color:#555; line-height:1.4; padding:0 6px; }
+  .step-time { display:inline-block; margin-top:4px; font-size:10px; color:#d84315; font-weight:600; background:#fff3e0; padding:1px 7px; border-radius:10px; }
+  .arrow { display:flex; align-items:center; padding-top:6px; flex-shrink:0; }
+  .arrow-l { width:36px; height:3px; background:#1F3864; }
+  .arrow-h { width:0;height:0; border-top:6px solid transparent; border-bottom:6px solid transparent; border-left:11px solid #1F3864; }
+
+  /* ===== 12. 底部强调条 =====
+     使用方式：<div class="bar">关键结论 <span>数字</span></div>
+     ============================================================ */
+  .bar { margin-top:14px; padding:13px 20px; background:linear-gradient(90deg,#1F3864,#283593); color:#fff; border-radius:4px; text-align:center; font-size:14px; font-weight:600; }
+  .bar span { color:#ffcc80; font-size:18px; }
+
+  /* ===== 13. 统计徽章 =====
+     使用方式：<div class="badges">
+                <div class="badge bo"><span class="n">6</span>改造项</div>
+                <div class="badge bg"><span class="n">3</span>自研项</div>
+                ...
+              </div>
+     颜色：bo(橙) bg(绿) bb(蓝) bp(紫)
+     ============================================================ */
+  .badges { display:flex; gap:12px; margin-top:8px; }
+  .badge { flex:1; text-align:center; padding:12px 10px; border-radius:5px; font-size:13px; font-weight:700; color:#fff; }
+  .badge .n { font-size:24px; display:block; }
+  .bo { background:#e65100; } .bg { background:#2e7d32; } .bb { background:#1565c0; } .bp { background:#6a1b9a; }
+
+  /* ===== 14. 图片容器 =====
+     使用方式：<div class="img-wrap"><img src="path" style="max-height:340px;"></div>
+     ============================================================ */
+  .img-wrap { text-align:center; margin-bottom:14px; border:1px solid #e0e0e0; border-radius:4px; padding:8px; background:#fafafa; }
+  .img-wrap img { max-width:100%; max-height:340px; object-fit:contain; }
+
+  /* ===== 15. 文字高亮 ===== */
+  .hl { background:#e8f5e9; padding:1px 5px; border-radius:2px; color:#2e7d32; font-weight:700; }
+  .hv { font-family:"Consolas","Courier New",monospace; font-weight:700; }
+
+  /* ===== 16. 原则条 =====
+     使用方式：<div class="principles"><span>原则1</span><span>原则2</span></div>
+     ============================================================ */
+  .principles { padding:14px 18px; background:linear-gradient(90deg,#e8eaf6,#f5f5f5); border-left:5px solid #1F3864; border-radius:4px; display:flex; gap:24px; justify-content:center; flex-wrap:wrap; }
+  .principles span { font-size:13px; font-weight:600; color:#1F3864; }
+
+  /* ===== 17. 结论框 =====
+     使用方式：<div class="conc"><p>结论内容</p></div>
+     ============================================================ */
+  .conc { background:linear-gradient(90deg,#e8f5e9,#f1f8e9); border-left:4px solid #2e7d32; border-radius:4px; padding:12px 16px; margin-top:12px; }
+  .conc h3 { font-size:14px; color:#2e7d32; margin-bottom:5px; }
+  .conc p { font-size:12px; color:#333; line-height:1.55; }
+
+  /* ===== 18. 场景卡片 =====
+     使用方式：<div class="scen-grid">
+                <div class="scen sp"><div class="scen-h">标题</div><div class="scen-b">内容</div></div>
+              </div>
+     颜色：sp(绿) sw(橙) sf(红)
+     ============================================================ */
+  .scen-grid { display:flex; gap:14px; }
+  .scen { flex:1; border:1px solid #ddd; border-radius:6px; overflow:hidden; }
+  .scen-h { padding:10px 14px; font-size:13px; font-weight:700; color:#fff; text-align:center; }
+  .scen-b { padding:12px; background:#fafafa; font-size:12px; line-height:1.6; text-align:center; }
+  .sp .scen-h { background:#388e3c; } .sp { border-color:#388e3c; }
+  .sw .scen-h { background:#f57c00; } .sw { border-color:#f57c00; }
+  .sf .scen-h { background:#d32f2f; } .sf { border-color:#d32f2f; }
+
+  /* ===== 19. 等宽数值 ===== */
+  .val { font-family:"Consolas","Courier New",monospace; font-weight:700; }
+
+  /* ===== 20. 注释 ===== */
+  .note { font-size:10px; color:#999; margin-top:12px; line-height:1.5; }
+
+  /* ===== 21. 封面专用 ===== */
+  .cover-page { justify-content:center; align-items:center; text-align:center; }
+  .cover-page .page-header { padding-top:48px; }
+  .cover-page .page-header img { height:48px; }
+  .cover-title { font-size:32px; font-weight:800; color:#1a1a1a; margin-bottom:12px; }
+  .cover-divider { width:80px; height:4px; background:#1F3864; margin:30px auto; }
+  .cover-subtitle { font-size:16px; color:#1F3864; margin-bottom:60px; }
+  .cover-info { font-size:14px; color:#666; line-height:2; }
+
+  /* ===== 设计系统文档样式 ===== */
+  .doc-section { margin:20px 0; padding:16px; border:1px solid #e0e0e0; border-radius:6px; background:#fcfcfc; }
+  .doc-section h3 { color:#1F3864; font-size:17px; margin-bottom:10px; border-bottom:1px solid #ddd; padding-bottom:6px; }
+  .color-swatch { display:inline-block; width:60px; height:24px; border-radius:3px; margin:0 4px; vertical-align:middle; }
+  pre { background:#f5f5f5; padding:12px; border-radius:4px; font-size:12px; overflow-x:auto; line-height:1.5; border:1px solid #e0e0e0; }
+  code { font-family:"Consolas","Courier New",monospace; font-size:12px; }
+</style>
+</head>
+<body>
+
+<!-- ============================================================ -->
+<!-- P1 封面模板 -->
+<!-- ============================================================ -->
+<div class="page cover-page">
+  <div class="page-header"><img src="logo.png" alt="GTS" style="height:48px;"></div>
+  <div class="main">
+    <h1 class="cover-title">项目主标题<br>副标题（可选）</h1>
+    <div class="cover-divider"></div>
+    <div class="cover-subtitle">关键词1 &nbsp;·&nbsp; 关键词2 &nbsp;·&nbsp; 关键词3 &nbsp;·&nbsp; 关键词4</div>
+    <div class="cover-info">部门 / 汇报人 &nbsp;|&nbsp; 2026 年 X 月</div>
+  </div>
+  <div class="page-footer"><span>Accurate · Simple · Fast · Agile &nbsp;|&nbsp; &copy; General Test Systems Inc. All rights reserved.</span><span>内部文件 &nbsp;|&nbsp; <span class="page-num">1 / N</span></span></div>
+</div>
+
+<!-- ============================================================ -->
+<!-- P2 目录模板 -->
+<!-- ============================================================ -->
+<div class="page">
+  <div class="page-header"><img src="logo.png" alt="GTS"></div>
+  <div class="main">
+    <div class="h1">目 录</div>
+    <div class="row2" style="margin-top:16px;">
+      <div class="col2">
+        <div style="margin-bottom:20px;">
+          <div style="font-size:15px; font-weight:700; color:#1F3864; padding-bottom:6px; border-bottom:2px solid #1F3864; margin-bottom:10px;">Part 1 &nbsp; 章节名</div>
+          <div style="font-size:13px; line-height:2.2; color:#333;">
+            <span style="color:#999; margin-right:8px;">P1</span> 页面标题<br>
+            <span style="color:#999; margin-right:8px;">P2</span> 页面标题<br>
+          </div>
+        </div>
+        <div style="margin-bottom:20px;">
+          <div style="font-size:15px; font-weight:700; color:#1F3864; padding-bottom:6px; border-bottom:2px solid #1F3864; margin-bottom:10px;">Part 2 &nbsp; 章节名</div>
+          <div style="font-size:13px; line-height:2.2; color:#333;">
+            <span style="color:#999; margin-right:8px;">P3</span> 页面标题<br>
+          </div>
+        </div>
+      </div>
+      <div class="col2">
+        <div style="margin-bottom:20px;">
+          <div style="font-size:15px; font-weight:700; color:#1F3864; padding-bottom:6px; border-bottom:2px solid #1F3864; margin-bottom:10px;">Part 3 &nbsp; 章节名</div>
+          <div style="font-size:13px; line-height:2.2; color:#333;">
+            <span style="color:#999; margin-right:8px;">P4</span> 页面标题<br>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="page-footer"><span>Accurate · Simple · Fast · Agile &nbsp;|&nbsp; &copy; General Test Systems Inc. All rights reserved.</span><span>内部文件 &nbsp;|&nbsp; <span class="page-num">2 / N</span></span></div>
+</div>
+
+<!-- ============================================================ -->
+<!-- P3 标准内容页模板：标题 + 副标题 + 表格 -->
+<!-- ============================================================ -->
+<div class="page">
+  <div class="page-header"><img src="logo.png" alt="GTS"></div>
+  <div class="main">
+    <div class="h1">页面标题（一级）</div>
+    <div class="sub">副标题说明 &nbsp;|&nbsp; 关键词1 &nbsp;|&nbsp; 关键词2</div>
+    <table>
+      <thead><tr><th>列1</th><th style="text-align:center;">列2</th><th>列3</th></tr></thead>
+      <tbody>
+        <tr><td class="b">数据1</td><td class="c">数据2</td><td>数据3</td></tr>
+        <tr><td class="b">数据4</td><td class="c">数据5</td><td>数据6</td></tr>
+      </tbody>
+    </table>
+    <div class="note">注：注释文字。</div>
+  </div>
+  <div class="page-footer"><span>Accurate · Simple · Fast · Agile &nbsp;|&nbsp; &copy; General Test Systems Inc. All rights reserved.</span><span>内部文件 &nbsp;|&nbsp; <span class="page-num">3 / N</span></span></div>
+</div>
+
+<!-- ============================================================ -->
+<!-- P4 卡片布局模板：三列卡片 -->
+<!-- ============================================================ -->
+<div class="page">
+  <div class="page-header"><img src="logo.png" alt="GTS"></div>
+  <div class="main">
+    <div class="h1">卡片布局示例</div>
+    <div class="sub">三列卡片 &nbsp;|&nbsp; 可用于方案对比、要点展示</div>
+    <div class="row3">
+      <div class="card cr"><div class="card-h">&#9312; 红色卡片</div><div class="card-b"><ul>
+        <li>要点一</li><li>要点二</li><li>要点三</li>
+      </ul></div></div>
+      <div class="card co"><div class="card-h">&#9313; 橙色卡片</div><div class="card-b"><ul>
+        <li>要点一</li><li>要点二</li><li>要点三</li>
+      </ul></div></div>
+      <div class="card cg"><div class="card-h">&#9314; 绿色卡片</div><div class="card-b"><ul>
+        <li>要点一</li><li>要点二</li><li>要点三</li>
+      </ul></div></div>
+    </div>
+    <div class="badges">
+      <div class="badge bo"><span class="n">N</span>类别1</div>
+      <div class="badge bg"><span class="n">N</span>类别2</div>
+      <div class="badge bb"><span class="n">N</span>类别3</div>
+      <div class="badge bp"><span class="n">N</span>类别4</div>
+    </div>
+  </div>
+  <div class="page-footer"><span>Accurate · Simple · Fast · Agile &nbsp;|&nbsp; &copy; General Test Systems Inc. All rights reserved.</span><span>内部文件 &nbsp;|&nbsp; <span class="page-num">4 / N</span></span></div>
+</div>
+
+<!-- ============================================================ -->
+<!-- P5 流程图模板 -->
+<!-- ============================================================ -->
+<div class="page">
+  <div class="page-header"><img src="logo.png" alt="GTS"></div>
+  <div class="main">
+    <div class="h1">流程图示例</div>
+    <div class="sub">流程说明 &nbsp;|&nbsp; 关键词</div>
+    <div class="flow">
+      <div class="step"><div class="step-num">1</div><div class="step-title">步骤一</div><div class="step-desc">描述文字</div></div>
+      <div class="arrow"><div class="arrow-l"></div><div class="arrow-h"></div></div>
+      <div class="step"><div class="step-num">2</div><div class="step-title">步骤二</div><div class="step-desc">描述文字</div><div class="step-time">≤ 30s</div></div>
+      <div class="arrow"><div class="arrow-l"></div><div class="arrow-h"></div></div>
+      <div class="step"><div class="step-num">3</div><div class="step-title">步骤三</div><div class="step-desc">描述文字</div></div>
+      <div class="arrow"><div class="arrow-l"></div><div class="arrow-h"></div></div>
+      <div class="step"><div class="step-num">4</div><div class="step-title">步骤四</div><div class="step-desc">描述文字</div></div>
+    </div>
+    <div class="bar">关键结论 &nbsp;≤&nbsp; <span>N</span></div>
+  </div>
+  <div class="page-footer"><span>Accurate · Simple · Fast · Agile &nbsp;|&nbsp; &copy; General Test Systems Inc. All rights reserved.</span><span>内部文件 &nbsp;|&nbsp; <span class="page-num">5 / N</span></span></div>
+</div>
+
+<!-- ============================================================ -->
+<!-- P6 两列布局模板：图片 + 参数表 -->
+<!-- ============================================================ -->
+<div class="page">
+  <div class="page-header"><img src="logo.png" alt="GTS"></div>
+  <div class="main">
+    <div class="h1">两列布局示例</div>
+    <div class="sub">左图右表 &nbsp;|&nbsp; 适用于产品参数展示</div>
+    <div class="row2" style="gap:20px;">
+      <div class="col2" style="flex:0 0 420px; text-align:center;">
+        <div class="img-wrap"><img src="logo.png" style="max-height:200px;"></div>
+        <div style="font-size:11px; font-weight:700; color:#1F3864;">图片说明</div>
+      </div>
+      <div class="col2">
+        <div class="h2">参数表</div>
+        <table style="font-size:12px;">
+          <thead><tr><th style="width:100px;">参数</th><th>数值</th></tr></thead>
+          <tbody>
+            <tr><td class="b">参数1</td><td>数值1</td></tr>
+            <tr><td class="b">参数2</td><td>数值2</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="page-footer"><span>Accurate · Simple · Fast · Agile &nbsp;|&nbsp; &copy; General Test Systems Inc. All rights reserved.</span><span>内部文件 &nbsp;|&nbsp; <span class="page-num">6 / N</span></span></div>
+</div>
+
+<!-- ============================================================ -->
+<!-- P7 场景卡片模板 -->
+<!-- ============================================================ -->
+<div class="page">
+  <div class="page-header"><img src="logo.png" alt="GTS"></div>
+  <div class="main">
+    <div class="h1">场景分析示例</div>
+    <div class="sub">三场景判断 &nbsp;|&nbsp; 根据条件分流</div>
+    <div class="scen-grid">
+      <div class="scen sp"><div class="scen-h">&#10003; 场景A</div><div class="scen-b"><b>方案A</b><br>条件满足时采用</div></div>
+      <div class="scen sw"><div class="scen-h">&#9888; 场景B</div><div class="scen-b"><b>方案B</b><br>条件部分满足时采用</div></div>
+      <div class="scen sf"><div class="scen-h">&#10007; 场景C</div><div class="scen-b"><b>方案C</b><br>条件不满足时采用</div></div>
+    </div>
+    <div class="note">注：条件说明。</div>
+  </div>
+  <div class="page-footer"><span>Accurate · Simple · Fast · Agile &nbsp;|&nbsp; &copy; General Test Systems Inc. All rights reserved.</span><span>内部文件 &nbsp;|&nbsp; <span class="page-num">7 / N</span></span></div>
+</div>
+
+<!-- ============================================================ -->
+<!-- P8 结论框 + 原则条模板 -->
+<!-- ============================================================ -->
+<div class="page">
+  <div class="page-header"><img src="logo.png" alt="GTS"></div>
+  <div class="main">
+    <div class="h1">结论与原则示例</div>
+    <div class="sub">关键结论展示 &nbsp;|&nbsp; 核心原则</div>
+    <div class="principles"><span>原则A</span><span>原则B</span><span>原则C</span><span>原则D</span></div>
+    <div class="conc" style="margin-top:16px;">
+      <h3>结论标题</h3>
+      <p>结论内容描述，<b>关键信息加粗</b>，支持多行文本。结论框为绿色渐变背景，左侧绿色边框。</p>
+    </div>
+    <div class="bar" style="margin-top:16px;">核心结论总结 &nbsp;<span>关键数字</span></div>
+  </div>
+  <div class="page-footer"><span>Accurate · Simple · Fast · Agile &nbsp;|&nbsp; &copy; General Test Systems Inc. All rights reserved.</span><span>内部文件 &nbsp;|&nbsp; <span class="page-num">8 / N</span></span></div>
+</div>
+
+<!-- ============================================================ -->
+<!-- P9 致谢/末页模板 -->
+<!-- ============================================================ -->
+<div class="page cover-page">
+  <div class="page-header"><img src="logo.png" alt="GTS" style="height:48px;"></div>
+  <div class="main">
+    <h1 style="font-size:32px; font-weight:800; color:#1a1a1a;">感谢聆听</h1>
+    <div class="cover-divider"></div>
+    <div style="font-size:16px; color:#1F3864;">项目名称 / 方案名称</div>
+    <div style="font-size:14px; color:#666; margin-top:30px; line-height:1.8;">
+      结语第一行<br>结语第二行
+    </div>
+    <div style="margin-top:40px; font-size:13px; color:#999;">联系方式 &nbsp;|&nbsp; 2026 年 X 月</div>
+  </div>
+  <div class="page-footer"><span>Accurate · Simple · Fast · Agile &nbsp;|&nbsp; &copy; General Test Systems Inc. All rights reserved.</span><span>内部文件 &nbsp;|&nbsp; <span class="page-num">N / N</span></span></div>
+</div>
+
+<!-- ============================================================ -->
+<!-- 设计系统文档 -->
+<!-- ============================================================ -->
+<div class="page" style="min-height:auto; padding-bottom:40px;">
+  <div class="page-header"><img src="logo.png" alt="GTS"></div>
+  <div class="main" style="justify-content:flex-start; padding-top:20px;">
+    <div class="h1">设计系统文档</div>
+    <div class="sub">GTS PPT Design System v1.0 &nbsp;|&nbsp; 完整规范与使用指南</div>
+
+    <!-- 色彩规范 -->
+    <div class="doc-section">
+      <h3>1. 色彩规范</h3>
+      <table style="font-size:12px;">
+        <thead><tr><th>用途</th><th>色值</th><th>色样</th><th>CSS 变量/类名</th></tr></thead>
+        <tbody>
+          <tr>
+            <td class="b">主色（深蓝）</td>
+            <td class="val">#1F3864</td>
+            <td><span class="color-swatch" style="background:#1F3864;"></span></td>
+            <td>表头、页眉页尾分隔条、步骤圆、h2 下划线</td>
+          </tr>
+          <tr>
+            <td class="b">页面背景</td>
+            <td class="val">#d0d0d0</td>
+            <td><span class="color-swatch" style="background:#d0d0d0;"></span></td>
+            <td>body background</td>
+          </tr>
+          <tr>
+            <td class="b">卡片白底</td>
+            <td class="val">#ffffff</td>
+            <td><span class="color-swatch" style="background:#fff; border:1px solid #ddd;"></span></td>
+            <td>.page background</td>
+          </tr>
+          <tr>
+            <td class="b">页眉页尾分隔条</td>
+            <td class="val">#d0d6e4</td>
+            <td><span class="color-swatch" style="background:#d0d6e4;"></span></td>
+            <td>border-bottom/top: 8px solid</td>
+          </tr>
+          <tr>
+            <td class="b">红色（高风险）</td>
+            <td class="val">#d32f2f</td>
+            <td><span class="color-swatch" style="background:#d32f2f;"></span></td>
+            <td>.tag-r, .cr .card-h, .sf .scen-h</td>
+          </tr>
+          <tr>
+            <td class="b">橙色（中风险/警告）</td>
+            <td class="val">#e65100 / #f57c00</td>
+            <td><span class="color-swatch" style="background:#e65100;"></span></td>
+            <td>.tag-y, .co .card-h, .sw .scen-h, .bo</td>
+          </tr>
+          <tr>
+            <td class="b">绿色（低风险/通过）</td>
+            <td class="val">#2e7d32 / #388e3c</td>
+            <td><span class="color-swatch" style="background:#2e7d32;"></span></td>
+            <td>.tag-g, .cg .card-h, .sp .scen-h, .bg, .conc</td>
+          </tr>
+          <tr>
+            <td class="b">蓝色（信息）</td>
+            <td class="val">#1565c0</td>
+            <td><span class="color-swatch" style="background:#1565c0;"></span></td>
+            <td>.tag-b, .cb .card-h, .bb</td>
+          </tr>
+          <tr>
+            <td class="b">紫色（采购/新增）</td>
+            <td class="val">#6a1b9a</td>
+            <td><span class="color-swatch" style="background:#6a1b9a;"></span></td>
+            <td>.bp</td>
+          </tr>
+          <tr>
+            <td class="b">表格斑马纹</td>
+            <td class="val">#f2f6fc</td>
+            <td><span class="color-swatch" style="background:#f2f6fc; border:1px solid #ddd;"></span></td>
+            <td>tbody tr:nth-child(even) td</td>
+          </tr>
+          <tr>
+            <td class="b">结论框渐变</td>
+            <td class="val">#e8f5e9 → #f1f8e9</td>
+            <td><span class="color-swatch" style="background:linear-gradient(90deg,#e8f5e9,#f1f8e9);"></span></td>
+            <td>.conc background</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 字体规范 -->
+    <div class="doc-section">
+      <h3>2. 字体规范</h3>
+      <table style="font-size:12px;">
+        <thead><tr><th>层级</th><th>字号</th><th>字重</th><th>颜色</th><th>类名</th></tr></thead>
+        <tbody>
+          <tr><td class="b">封面标题</td><td class="val">32px</td><td>800</td><td>#1a1a1a</td><td>.cover-title</td></tr>
+          <tr><td class="b">一级标题</td><td class="val">24px</td><td>700</td><td>#1a1a1a</td><td>.h1</td></tr>
+          <tr><td class="b">二级标题</td><td class="val">16px</td><td>700</td><td>#1F3864</td><td>.h2</td></tr>
+          <tr><td class="b">副标题</td><td class="val">13px</td><td>400</td><td>#666</td><td>.sub</td></tr>
+          <tr><td class="b">正文/表格</td><td class="val">12–13px</td><td>400</td><td>#1a1a1a</td><td>table, tbody td</td></tr>
+          <tr><td class="b">卡片标题</td><td class="val">13px</td><td>700</td><td>#fff</td><td>.card-h</td></tr>
+          <tr><td class="b">卡片正文</td><td class="val">12px</td><td>400</td><td>—</td><td>.card-b</td></tr>
+          <tr><td class="b">底部栏</td><td class="val">14px</td><td>600</td><td>#fff</td><td>.bar</td></tr>
+          <tr><td class="b">页尾</td><td class="val">9px</td><td>400</td><td>#aaa</td><td>.page-footer</td></tr>
+          <tr><td class="b">注释</td><td class="val">10px</td><td>400</td><td>#999</td><td>.note</td></tr>
+        </tbody>
+      </table>
+      <div class="note" style="margin-top:8px;">字体族：等线 → SimSun → Microsoft YaHei → sans-serif（优先级递减）</div>
+    </div>
+
+    <!-- 页面结构 -->
+    <div class="doc-section">
+      <h3>3. 页面结构</h3>
+      <pre><code>&lt;div class="page"&gt;                          &lt;!-- 1120×630 白底卡片 --&gt;
+  &lt;div class="page-header"&gt;                &lt;!-- 页眉：logo 右对齐，底部分隔条 8px --&gt;
+    &lt;img src="logo.png" alt="GTS"&gt;
+  &lt;/div&gt;
+  &lt;div class="main"&gt;                       &lt;!-- 内容区：flex 列，垂直居中，padding:16px 44px --&gt;
+    &lt;!-- 页面内容 --&gt;
+  &lt;/div&gt;
+  &lt;div class="page-footer"&gt;                &lt;!-- 页尾：顶部分隔条 8px，两端对齐 --&gt;
+    &lt;span&gt;标语 &amp;nbsp;|&amp;nbsp; &amp;copy; 公司名&lt;/span&gt;
+    &lt;span&gt;内部文件 &amp;nbsp;|&amp;nbsp; &lt;span class="page-num"&gt;X / N&lt;/span&gt;&lt;/span&gt;
+  &lt;/div&gt;
+&lt;/div&gt;</code></pre>
+    </div>
+
+    <!-- 组件速查 -->
+    <div class="doc-section">
+      <h3>4. 组件速查表</h3>
+      <table style="font-size:11px;">
+        <thead><tr><th style="width:100px;">组件</th><th style="width:120px;">CSS 类名</th><th>用途</th><th>变体</th></tr></thead>
+        <tbody>
+          <tr><td class="b">状态标签</td><td>.tag-r / .tag-y / .tag-g / .tag-b</td><td>风险评估、状态标注</td><td>红/橙/绿/蓝 四色</td></tr>
+          <tr><td class="b">卡片</td><td>.card + .cr/.co/.cg/.cb</td><td>内容分组、要点展示</td><td>红/橙/绿/蓝 四色主题</td></tr>
+          <tr><td class="b">流程步骤</td><td>.flow > .step + .arrow</td><td>流程可视化</td><td>.step-time 时间标注</td></tr>
+          <tr><td class="b">统计徽章</td><td>.badges > .badge</td><td>数量统计展示</td><td>.bo/.bg/.bb/.bp 四色</td></tr>
+          <tr><td class="b">强调条</td><td>.bar</td><td>底部关键结论</td><td>深蓝渐变，span 橙色数字</td></tr>
+          <tr><td class="b">结论框</td><td>.conc</td><td>正面结论/总结</td><td>绿色渐变背景</td></tr>
+          <tr><td class="b">原则条</td><td>.principles</td><td>核心原则展示</td><td>蓝色左边框</td></tr>
+          <tr><td class="b">场景卡片</td><td>.scen + .sp/.sw/.sf</td><td>条件分流/场景判断</td><td>绿/橙/红 三色</td></tr>
+          <tr><td class="b">图片容器</td><td>.img-wrap</td><td>图片带边框展示</td><td>—</td></tr>
+          <tr><td class="b">Flex 栅格</td><td>.row2/.row3/.row4 + .col2/.col3/.col4</td><td>多列布局</td><td>2/3/4 列</td></tr>
+          <tr><td class="b">等宽数值</td><td>.val</td><td>技术参数展示</td><td>Consolas 等宽字体</td></tr>
+          <tr><td class="b">文字高亮</td><td>.hl</td><td>绿色高亮</td><td>—</td></tr>
+          <tr><td class="b">注释</td><td>.note</td><td>页尾注释</td><td>灰色小字</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 页面类型 -->
+    <div class="doc-section">
+      <h3>5. 标准页面类型</h3>
+      <table style="font-size:11px;">
+        <thead><tr><th style="width:80px;">类型</th><th>关键特征</th><th>适用场景</th></tr></thead>
+        <tbody>
+          <tr><td class="b">封面</td><td>.cover-page，logo 48px，大标题，分隔线，关键词行，部门/日期</td><td>PPT 首页</td></tr>
+          <tr><td class="b">目录</td><td>.h1 "目 录"，两列 .row2，Part 分组，虚线页码</td><td>PPT 第二页</td></tr>
+          <tr><td class="b">标准内容</td><td>.h1 + .sub + table/.row2/.row3</td><td>数据表格、文字说明</td></tr>
+          <tr><td class="b">卡片布局</td><td>.row3 > .card，配合 .badges 统计</td><td>要点对比、方案展示</td></tr>
+          <tr><td class="b">流程图</td><td>.flow > .step + .arrow，底部 .bar 结论</td><td>流程、步骤说明</td></tr>
+          <tr><td class="b">图文混排</td><td>.row2：左 .img-wrap + 右 table/.card</td><td>产品参数、示意图</td></tr>
+          <tr><td class="b">场景分析</td><td>.scen-grid > .scen(.sp/.sw/.sf)</td><td>条件判断、风险评估</td></tr>
+          <tr><td class="b">结论页</td><td>.principles + .conc + .bar</td><td>总结、关键要点</td></tr>
+          <tr><td class="b">致谢/末页</td><td>.cover-page 样式，感谢语，联系方式</td><td>PPT 末页</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 导出脚本 -->
+    <div class="doc-section">
+      <h3>6. 导出脚本</h3>
+      <pre><code>// 依赖 html2canvas CDN
+&lt;script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"&gt;&lt;/script&gt;
+
+// 导出全部页面为 PNG
+async function downloadAllPages() {
+  const pages = document.querySelectorAll('.page');
+  for (let i = 0; i &lt; pages.length; i++) {
+    const canvas = await html2canvas(pages[i], {
+      scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false
+    });
+    const link = document.createElement('a');
+    link.download = `P${String(i+1).padStart(2,'0')}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    await new Promise(r => setTimeout(r, 300));
+  }
+}
+
+// 导出当前可见页
+async function downloadSinglePage() { /* ... */ }</code></pre>
+    </div>
+
+    <!-- 使用流程 -->
+    <div class="doc-section">
+      <h3>7. 新建 PPT 快速流程</h3>
+      <div class="flow" style="padding:8px 0;">
+        <div class="step"><div class="step-num" style="width:28px;height:28px;font-size:13px;">1</div><div class="step-title" style="font-size:12px;">复制模板</div><div class="step-desc" style="font-size:10px;">复制完整 &lt;style&gt; 到新 HTML</div></div>
+        <div class="arrow" style="padding-top:2px;"><div class="arrow-l" style="width:20px;"></div><div class="arrow-h" style="border-left-width:7px;border-top-width:4px;border-bottom-width:4px;"></div></div>
+        <div class="step"><div class="step-num" style="width:28px;height:28px;font-size:13px;">2</div><div class="step-title" style="font-size:12px;">准备资源</div><div class="step-desc" style="font-size:10px;">logo.png 及图片放入对应文件夹</div></div>
+        <div class="arrow" style="padding-top:2px;"><div class="arrow-l" style="width:20px;"></div><div class="arrow-h" style="border-left-width:7px;border-top-width:4px;border-bottom-width:4px;"></div></div>
+        <div class="step"><div class="step-num" style="width:28px;height:28px;font-size:13px;">3</div><div class="step-title" style="font-size:12px;">组装页面</div><div class="step-desc" style="font-size:10px;">按需复制页面模板，替换内容</div></div>
+        <div class="arrow" style="padding-top:2px;"><div class="arrow-l" style="width:20px;"></div><div class="arrow-h" style="border-left-width:7px;border-top-width:4px;border-bottom-width:4px;"></div></div>
+        <div class="step"><div class="step-num" style="width:28px;height:28px;font-size:13px;">4</div><div class="step-title" style="font-size:12px;">更新页码</div><div class="step-desc" style="font-size:10px;">调整 .page-num 和 TOC</div></div>
+        <div class="arrow" style="padding-top:2px;"><div class="arrow-l" style="width:20px;"></div><div class="arrow-h" style="border-left-width:7px;border-top-width:4px;border-bottom-width:4px;"></div></div>
+        <div class="step"><div class="step-num" style="width:28px;height:28px;font-size:13px;">5</div><div class="step-title" style="font-size:12px;">导出发布</div><div class="step-desc" style="font-size:10px;">浏览器打开 → 调用 downloadAllPages()</div></div>
+      </div>
+    </div>
+
+  </div>
+  <div class="page-footer"><span>Accurate · Simple · Fast · Agile &nbsp;|&nbsp; &copy; General Test Systems Inc. All rights reserved.</span><span>设计系统 &nbsp;|&nbsp; <span class="page-num">v1.0</span></span></div>
+</div>
+
+</body>
+</html>

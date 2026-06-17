@@ -66,6 +66,12 @@ typedef struct __attribute__((packed)) {
     uint8_t  priority;
 } CmdSlot_t;
 
+typedef struct {
+    Vector_Cmd_t lock;
+    Vector_Cmd_t cylinder;
+    Vector_Cmd_t led;
+} Vector_CmdSnapshot_t;
+
 /* ========================================================================== */
 /*              节点状态 (每节点 8B)                                           */
 /* ========================================================================== */
@@ -195,10 +201,12 @@ Vector_Cmd_t RamVector_GetLockCmd(void);
 Vector_Cmd_t RamVector_GetCylinderCmd(void);
 Vector_Cmd_t RamVector_GetLEDCmd(void);
 void RamVector_ClearCmd(void);
+bool RamVector_TakeCmds(Vector_CmdSnapshot_t *out);
 
 /* IO 状态更新 (执行层/IO读取后调用) */
 void        RamVector_UpdateLocalIO(const Vector_IOState_t *io);
 const Vector_IOState_t* RamVector_GetLocalIO(void);
+bool        RamVector_ReadLocalIO(Vector_IOState_t *out);
 
 /* 状态同步 */
 void        RamVector_SetState(Vector_SysState_t s);

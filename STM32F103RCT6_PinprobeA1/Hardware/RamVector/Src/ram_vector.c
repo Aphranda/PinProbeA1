@@ -6,6 +6,8 @@
  */
 
 #include "ram_vector.h"
+#include "FreeRTOS.h"
+#include "task.h"
 #include <string.h>
 
 /* ===== 固定地址向量表 ===== */
@@ -38,54 +40,135 @@ RAM_Vector_t* RamVector_Get(void)
 /* ===== 命令 — 三通道独立, 低优先级不覆盖高优先级 ===== */
 void RamVector_PostLock(Vector_Cmd_t cmd, uint8_t prio)
 {
+    taskENTER_CRITICAL();
     if (prio >= ram_vector.cmd_lock.priority) {
         ram_vector.cmd_lock.cmd      = (uint16_t)cmd;
         ram_vector.cmd_lock.priority = prio;
     }
+    taskEXIT_CRITICAL();
 }
 
 void RamVector_PostCylinder(Vector_Cmd_t cmd, uint8_t prio)
 {
+    taskENTER_CRITICAL();
     if (prio >= ram_vector.cmd_cylinder.priority) {
         ram_vector.cmd_cylinder.cmd      = (uint16_t)cmd;
         ram_vector.cmd_cylinder.priority = prio;
     }
+    taskEXIT_CRITICAL();
 }
 
 void RamVector_PostLED(Vector_Cmd_t cmd, uint8_t prio)
 {
+    taskENTER_CRITICAL();
     if (prio >= ram_vector.cmd_led.priority) {
         ram_vector.cmd_led.cmd      = (uint16_t)cmd;
         ram_vector.cmd_led.priority = prio;
     }
+    taskEXIT_CRITICAL();
 }
 
 Vector_Cmd_t RamVector_GetLockCmd(void)
-    { return (Vector_Cmd_t)ram_vector.cmd_lock.cmd; }
+{
+    Vector_Cmd_t cmd;
+    taskENTER_CRITICAL();
+    cmd = (Vector_Cmd_t)ram_vector.cmd_lock.cmd;
+    taskEXIT_CRITICAL();
+    return cmd;
+}
+
 Vector_Cmd_t RamVector_GetCylinderCmd(void)
-    { return (Vector_Cmd_t)ram_vector.cmd_cylinder.cmd; }
+{
+    Vector_Cmd_t cmd;
+    taskENTER_CRITICAL();
+    cmd = (Vector_Cmd_t)ram_vector.cmd_cylinder.cmd;
+    taskEXIT_CRITICAL();
+    return cmd;
+}
+
 Vector_Cmd_t RamVector_GetLEDCmd(void)
-    { return (Vector_Cmd_t)ram_vector.cmd_led.cmd; }
+{
+    Vector_Cmd_t cmd;
+    taskENTER_CRITICAL();
+    cmd = (Vector_Cmd_t)ram_vector.cmd_led.cmd;
+    taskEXIT_CRITICAL();
+    return cmd;
+}
 
 void RamVector_ClearCmd(void)
 {
+    taskENTER_CRITICAL();
     ram_vector.cmd_lock.cmd      = VCMD_NONE;
     ram_vector.cmd_lock.priority = 0;
     ram_vector.cmd_cylinder.cmd  = VCMD_NONE;
     ram_vector.cmd_cylinder.priority = 0;
     ram_vector.cmd_led.cmd       = VCMD_NONE;
     ram_vector.cmd_led.priority  = 0;
+    taskEXIT_CRITICAL();
+}
+
+bool RamVector_TakeCmds(Vector_CmdSnapshot_t *out)
+{
+    bool has_cmd = false;
+
+    if (out == NULL) {
+        return false;
+    }
+
+    taskENTER_CRITICAL();
+    out->lock     = (Vector_Cmd_t)ram_vector.cmd_lock.cmd;
+    out->cylinder = (Vector_Cmd_t)ram_vector.cmd_cylinder.cmd;
+    out->led      = (Vector_Cmd_t)ram_vector.cmd_led.cmd;
+
+    if (out->lock != VCMD_NONE) {
+        has_cmd = true;
+    }
+    if (out->cylinder != VCMD_NONE) {
+        has_cmd = true;
+    }
+    if (out->led != VCMD_NONE) {
+        has_cmd = true;
+    }
+
+    ram_vector.cmd_lock.cmd      = VCMD_NONE;
+    ram_vector.cmd_lock.priority = 0;
+    ram_vector.cmd_cylinder.cmd  = VCMD_NONE;
+    ram_vector.cmd_cylinder.priority = 0;
+    ram_vector.cmd_led.cmd       = VCMD_NONE;
+    ram_vector.cmd_led.priority  = 0;
+    taskEXIT_CRITICAL();
+
+    return has_cmd;
 }
 
 /* ===== IO 状态 ===== */
 void RamVector_UpdateLocalIO(const Vector_IOState_t *io)
 {
+    if (io == NULL) {
+        return;
+    }
+
+    taskENTER_CRITICAL();
     memcpy(&ram_vector.io_state[node_idx()], io, sizeof(Vector_IOState_t));
+    taskEXIT_CRITICAL();
 }
 
 const Vector_IOState_t* RamVector_GetLocalIO(void)
 {
     return &ram_vector.io_state[node_idx()];
+}
+
+bool RamVector_ReadLocalIO(Vector_IOState_t *out)
+{
+    if (out == NULL) {
+        return false;
+    }
+
+    taskENTER_CRITICAL();
+    memcpy(out, &ram_vector.io_state[node_idx()], sizeof(Vector_IOState_t));
+    taskEXIT_CRITICAL();
+
+    return true;
 }
 
 /* ===== 状态 ===== */

@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 生成 PPT 操作手册 — GTS 设计系统</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  body {
+    font-family:"等线","SimSun","Microsoft YaHei",sans-serif;
+    background:#d0d0d0;
+    display:flex; flex-direction:column; align-items:center; padding:20px; gap:24px;
+  }
+  @media print {
+    body { background:#fff; padding:0; gap:0; }
+    .page { box-shadow:none; margin:0; break-after: page; break-inside: avoid; page-break-after: always; page-break-inside: avoid; }
+  }
+  .page { background:#fff; width:1120px; min-height:630px; box-shadow:0 2px 8px rgba(0,0,0,.15); display:flex; flex-direction:column; }
+  .page-header { padding:16px 44px 12px; display:flex; justify-content:flex-end; align-items:center; border-bottom:8px solid #d0d6e4; }
+  .page-header img { height:28px; }
+  .main { flex:1; display:flex; flex-direction:column; justify-content:center; padding:16px 44px; }
+  .page-footer { padding:10px 44px 14px; border-top:8px solid #d0d6e4; display:flex; justify-content:space-between; align-items:center; font-size:9px; color:#aaa; }
+  .page-num { font-size:10px; color:#999; }
+  .h1 { font-size:24px; font-weight:700; color:#1a1a1a; margin-bottom:4px; }
+  .sub  { font-size:13px; color:#666; margin-bottom:22px; }
+  .h2 { font-size:16px; font-weight:700; color:#1F3864; margin:18px 0 10px; padding-bottom:6px; border-bottom:2px solid #1F3864; }
+  .h2:first-of-type { margin-top:0; }
+  table { width:100%; border-collapse:collapse; font-size:13px; border:1.5px solid #333; margin-bottom:14px; }
+  thead th { background:#1F3864; color:#fff; font-size:13px; font-weight:600; padding:9px 12px; text-align:left; border:1px solid #1a2e52; }
+  thead th.c { text-align:center; }
+  tbody td { padding:8px 12px; border:1px solid #bbb; color:#1a1a1a; vertical-align:top; line-height:1.55; }
+  tbody td.c { text-align:center; }
+  tbody tr:nth-child(even) td { background:#f2f6fc; }
+  td.b { font-weight:700; }
+  .tag-r { display:inline-block; background:#d32f2f; color:#fff; padding:2px 10px; border-radius:3px; font-size:11px; font-weight:700; }
+  .tag-y { display:inline-block; background:#f57c00; color:#fff; padding:2px 10px; border-radius:3px; font-size:11px; font-weight:700; }
+  .tag-g { display:inline-block; background:#388e3c; color:#fff; padding:2px 10px; border-radius:3px; font-size:11px; font-weight:700; }
+  .tag-b { display:inline-block; background:#1565c0; color:#fff; padding:2px 10px; border-radius:3px; font-size:11px; font-weight:700; }
+  .row2 { display:flex; gap:20px; } .col2 { flex:1; }
+  .row3 { display:flex; gap:16px; } .col3 { flex:1; }
+  .card { border:1px solid #ddd; border-radius:6px; overflow:hidden; flex:1; }
+  .card-h { padding:10px 14px; font-size:13px; font-weight:700; color:#fff; display:flex; align-items:center; gap:8px; }
+  .card-b { padding:14px; background:#fafafa; font-size:12px; line-height:1.6; }
+  .card-b ul { list-style:none; padding:0; }
+  .card-b li { padding:4px 0; padding-left:14px; position:relative; }
+  .card-b li::before { content:'▸'; position:absolute; left:0; font-size:10px; }
+  .cr .card-h { background:#d32f2f; } .cr li::before { color:#d32f2f; }
+  .co .card-h { background:#e65100; } .co li::before { color:#e65100; }
+  .cg .card-h { background:#2e7d32; } .cg li::before { color:#2e7d32; }
+  .cb .card-h { background:#1565c0; } .cb li::before { color:#1565c0; }
+  .flow { display:flex; align-items:flex-start; gap:0; padding:10px 0 20px; }
+  .step { flex:1; text-align:center; }
+  .step-num { width:40px;height:40px;border-radius:50%;background:#1F3864;color:#fff;font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center;margin:0 auto 8px; }
+  .step-title { font-size:13px; font-weight:700; color:#1a1a1a; margin-bottom:4px; }
+  .step-desc { font-size:11px; color:#555; line-height:1.4; padding:0 6px; }
+  .step-time { display:inline-block; margin-top:4px; font-size:10px; color:#d84315; font-weight:600; background:#fff3e0; padding:1px 7px; border-radius:10px; }
+  .arrow { display:flex; align-items:center; padding-top:6px; flex-shrink:0; }
+  .arrow-l { width:36px; height:3px; background:#1F3864; }
+  .arrow-h { width:0;height:0; border-top:6px solid transparent; border-bottom:6px solid transparent; border-left:11px solid #1F3864; }
+  .bar { margin-top:14px; padding:13px 20px; background:linear-gradient(90deg,#1F3864,#283593); color:#fff; border-radius:4px; text-align:center; font-size:14px; font-weight:600; }
+  .bar span { color:#ffcc80; font-size:18px; }
+  .badges { display:flex; gap:12px; margin-top:8px; }
+  .badge { flex:1; text-align:center; padding:12px 10px; border-radius:5px; font-size:13px; font-weight:700; color:#fff; }
+  .badge .n { font-size:24px; display:block; }
+  .bo { background:#e65100; } .bg { background:#2e7d32; } .bb { background:#1565c0; } .bp { background:#6a1b9a; }
+  .principles { padding:14px 18px; background:linear-gradient(90deg,#e8eaf6,#f5f5f5); border-left:5px solid #1F3864; border-radius:4px; display:flex; gap:24px; justify-content:center; flex-wrap:wrap; }
+  .principles span { font-size:13px; font-weight:600; color:#1F3864; }
+  .conc { background:linear-gradient(90deg,#e8f5e9,#f1f8e9); border-left:4px solid #2e7d32; border-radius:4px; padding:12px 16px; margin-top:12px; }
+  .conc h3 { font-size:14px; color:#2e7d32; margin-bottom:5px; }
+  .conc p { font-size:12px; color:#333; line-height:1.55; }
+  .scen-grid { display:flex; gap:14px; }
+  .scen { flex:1; border:1px solid #ddd; border-radius:6px; overflow:hidden; }
+  .scen-h { padding:10px 14px; font-size:13px; font-weight:700; color:#fff; text-align:center; }
+  .scen-b { padding:12px; background:#fafafa; font-size:12px; line-height:1.6; text-align:center; }
+  .sp .scen-h { background:#388e3c; } .sp { border-color:#388e3c; }
+  .sw .scen-h { background:#f57c00; } .sw { border-color:#f57c00; }
+  .sf .scen-h { background:#d32f2f; } .sf { border-color:#d32f2f; }
+  .val { font-family:"Consolas","Courier New",monospace; font-weight:700; }
+  .note { font-size:10px; color:#999; margin-top:12px; line-height:1.5; }
+  .cover-page { justify-content:center; align-items:center; text-align:center; }
+  .cover-page .page-header { padding-top:48px; }
+  .cover-page .page-header img { height:48px; }
+  .cover-title { font-size:32px; font-weight:800; color:#1a1a1a; margin-bottom:12px; }
+  .cover-divider { width:80px; height:4px; background:#1F3864; margin:30px auto; }
+  .cover-subtitle { font-size:16px; color:#1F3864; margin-bottom:60px; }
+  .cover-info { font-size:14px; color:#666; line-height:2; }
+  .img-wrap { text-align:center; margin-bottom:14px; border:1px solid #e0e0e0; border-radius:4px; padding:8px; background:#fafafa; }
+  .img-wrap img { max-width:100%; max-height:340px; object-fit:contain; }
+  .hl { background:#e8f5e9; padding:1px 5px; border-radius:2px; color:#2e7d32; font-weight:700; }
+  .hv { font-family:"Consolas","Courier New",monospace; font-weight:700; }
+  pre { background:#f5f5f5; padding:12px; border-radius:4px; font-size:11px; overflow-x:auto; line-height:1.5; border:1px solid #e0e0e0; }
+  code { font-family:"Consolas","Courier New",monospace; font-size:11px; }
+  .doc-section { margin:20px 0; padding:16px; border:1px solid #e0e0e0; border-radius:6px; background:#fcfcfc; }
+  .doc-section h3 { color:#1F3864; font-size:17px; margin-bottom:10px; border-bottom:1px solid #ddd; padding-bottom:6px; }
+  .color-swatch { display:inline-block; width:60px; height:24px; border-radius:3px; margin:0 4px; vertical-align:middle; }
+</style>
+</head>
+<body>
+
+<!-- P1 封面 -->
+<div class="page cover-page">
+  <div class="page-header"><img src="logo.png" alt="GTS" style="height:48px;"></div>
+  <div class="main">
+    <h1 class="cover-title">AI 生成 PPT 报告<br>操作手册</h1>
+    <div class="cover-divider"></div>
+    <div class="cover-subtitle">基于 GTS HTML 设计系统 &nbsp;·&nbsp; v1.0 &nbsp;·&nbsp; 零代码 &nbsp;·&nbsp; 一键导出</div>
+    <div class="cover-info">前沿部 / 产线组 &nbsp;|&nbsp; 2026 年 6 月</div>
+  </div>
+  <div class="page-footer"><span>Accurate · Simple · Fast · Agile &nbsp;|&nbsp; &copy; General Test Systems Inc. All rights reserved.</span><span>内部文件 &nbsp;|&nbsp; <span class="page-num">1 / 14</span></span></div>
+</div>
+
+<!-- P2 概述 -->
+<div class="page">
+  <div class="page-header"><img src="logo.png" alt="GTS"></div>
+  <div class="main">
+    <div class="h1">概述：为什么用 AI + HTML 生成 PPT？</div>
+    <div class="sub">传统 PPT 痛点 &nbsp;|&nbsp; AI 方案优势 &nbsp;|&nbsp; 适用场景</div>
+    <div class="row2">
+      <div class="col2">
+        <div class="card cr"><div class="card-h">&#10007; 传统 PPT 痛点</div><div class="card-b"><ul>
+          <li>手动排版耗时，一套报告需数小时</li>
+          <li>格式不统一，每次需重新调整样式</li>
+          <li>数据变更后需逐页修改</li>
+          <li>多人协作时版本混乱</li>
+          <li>批量生成困难，无法自动化</li>
+        </ul></div></div>
+      </div>
+      <div class="col2">
+        <div class="card cg"><div class="card-h">&#10003; AI + HTML 方案</div><div class="card-b"><ul>
+          <li>AI 从数据源自动填充内容，几分钟出报告</li>
+          <li>CSS 设计系统保证全报告风格统一</li>
+          <li>数据源变更 → 重新生成即可，无手工调整</li>
+          <li>单文件 HTML，版本可 Git 追溯</li>
+          <li>html2canvas 一键导出 PNG，批量自动化</li>
+        </ul></div></div>
+      </div>
+    </div>
+    <div class="conc" style="margin-top:16px;">
+      <h3>核心理念</h3>
+      <p>把 PPT 的<b>「格式与样式」</b>交给设计系统（template.html），把<b>「内容生产」</b>交给 AI，把<b>「导出」</b>交给脚本。人只负责<b>审核与决策</b>。</p>
+    </div>
+  </div>
+  <div class="page-footer"><span>Accurate · Simple · Fast · Agile &nbsp;|&nbsp; &copy; General Test Systems Inc. All rights reserved.</span><span>内部文件 &nbsp;|&nbsp; <span class="page-num">2 / 14</span></span></div>
+</div>
+
+<!-- P3 整体流程 -->
+<div class="page">
+  <div class="page-header"><img src="logo.png" alt="GTS"></div>
+  <div class="main">
+    <div class="h1">整体工作流程</div>
+    <div class="sub">从需求到成品 &nbsp;|&nbsp; 5 步完成</div>
+    <div class="flow">
+      <div class="step"><div class="step-num">1</div><div class="step-title">准备内容</div><div class="step-desc">收集数据源<br>（Excel/数据库/文档）</div><div class="step-time">人工</div></div>
+      <div class="arrow"><div class="arrow-l"></div><div class="arrow-h"></div></div>
+      <div class="step"><div class="step-num">2</div><div class="step-title">编写 Prompt</div><div class="step-desc">向 AI 描述报告结构<br>指定页面类型和数据映射</div><div class="step-time">5–15 min</div></div>
+      <div class="arrow"><div class="arrow-l"></div><div class="arrow-h"></div></div>
+      <div class="step"><div class="step-num">3</div><div class="step-title">AI 生成 HTML</div><div class="step-desc">AI 组装页面组件<br>填充数据内容</div><div class="step-time">1–5 min</div></div>
+      <div class="arrow"><div class="arrow-l"></div><div class="arrow-h"></div></div>
+      <div class="step"><div class="step-num">4</div><div class="step-title">浏览器预览</div><div class="step-desc">打开 HTML 检查<br>微调样式/数据</div><div class="step-time">5–10 min</div></div>
+      <div class="arrow"><div class="arrow-l"></div><div class="arrow-h"></div></div>
+      <div class="step"><div class="step-num">5</div><div class="step-title">导出/发布</div><div class="step-desc">html2canvas 导出 PNG<br>或直接打印 PDF</div><div class="step-time">1 min</div></div>
+    </div>
+    <div class="bar">总耗时 &nbsp;<span>10–30 min</span>&nbsp; vs 传统手工 &nbsp;<span>3–6 h</span></div>
+  </div>
+  <div class="page-footer"><span>Accurate · Simple · Fast · Agile &nbsp;|&nbsp; &copy; General Test Systems Inc. All rights reserved.</span><span>内部文件 &nbsp;|&nbsp; <span class="page-num">3 / 14</span></span></div>
+</div>
+
+<!-- P4 设计系统概述 -->
+<div class="page">
+  <div class="page-header"><img src="logo.png" alt="GTS"></div>
+  <div class="main">
+    <div class="h1">前置知识：GTS 设计系统</div>
+    <div class="sub">template.html 包含完整的 CSS 样式库 + 页面模板 &nbsp;|&nbsp; 1120×630 固定画布</div>
+    <div class="h2">核心概念：页面 = 页眉 + 内容区 + 页尾</div>
+    <table>
+      <thead><tr><th style="width:100px;">区域</th><th style="width:150px;">CSS 类名</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td class="b">页眉</td><td>.page-header</td><td>Logo 右对齐 / 底部 8px 浅灰分隔条 / padding: 16px 44px</td></tr>
+        <tr><td class="b">内容区</td><td>.main</td><td>Flex 列布局 垂直居中 / padding: 16px 44px / 所有组件在此组装</td></tr>
+        <tr><td class="b">页尾</td><td>.page-footer</td><td>顶部 8px 浅灰分隔条 / 两端对齐 / 左侧标语 右侧页码</td></tr>
+      </tbody>
+    </table>
+    <div class="h2">页面容器</div>
+    <pre><code>&lt;div class="page"&gt;                          &lt;!-- 1120×630 白底卡片 --&gt;
+  &lt;div class="page-header"&gt;                &lt;!-- 页眉 --&gt;
+    &lt;img src="logo.png" alt="GTS"&gt;
+  &lt;/div&gt;
+  &lt;div class="main"&gt;                       &lt;!-- 内容区 --&gt;
+    &lt;!-- 标题 + 表格 / 卡片 / 流程图 ... --&gt;
+  &lt;/div&gt;
+  &lt;div class="page-footer"&gt;                &lt;!-- 页尾 --&gt;
+    &lt;span&gt;Accurate · Simple · Fast · Agile &amp;nbsp;|&amp;nbsp; &amp;copy; General Test Systems Inc.&lt;/span&gt;
+    &lt;span&gt;内部文件 &amp;nbsp;|&amp;nbsp; &lt;span class="page-num"&gt;X / N&lt;/span&gt;&lt;/span&gt;
+  &lt;/div&gt;
+&lt;/div&gt;</code></pre>
+    <div class="note">注：所有页面必须放在 &lt;body&gt; 内，页与页之间用空行分隔。打印时自动分页。</div>
+  </div>
+  <div class="page-footer"><span>Accurate · Simple · Fast · Agile &nbsp;|&nbsp; &copy; General Test Systems Inc. All rights reserved.</span><span>内部文件 &nbsp;|&nbsp; <span class="page-num">4 / 14</span></span></div>
+</div>
+
+<!-- P5 组件速查表 -->
+<div class="page">
+  <div class="page-header"><img src="logo.png" alt="GTS"></div>
+  <div class="main">
+    <div class="h1">可用组件速查表</div>
+    <div class="sub">AI 可直接引用以下组件 &nbsp;|&nbsp; 所有组件在 template.html 中预定义</div>
+    <table style="font-size:11px;">
+      <thead><tr><th style="width:85px;">组件</th><th style="width:140px;">CSS 类名</th><th>用途</th><th>变体/颜色</th></tr></thead>
+      <tbody>
+        <tr><td class="b">状态标签</td><td>.tag-r / .tag-y / .tag-g / .tag-b</td><td>风险等级、状态标注、优先级</td><td><span class="tag-r">红</span> <span class="tag-y">橙</span> <span class="tag-g">绿</span> <span class="tag-b">蓝</span></td></tr>
+        <tr><td class="b">卡片</td><td>.card + .cr / .co / .cg / .cb</td><td>内容分组、要点对比、方案展示</td><td>红 / 橙 / 绿 / 蓝 四色主题</td></tr>
+        <tr><td class="b">流程步骤</td><td>.flow > .step + .arrow</td><td>流程可视化、实施路径</td><td>.step-time 标注时间</td></tr>
+        <tr><td class="b">统计徽章</td><td>.badges > .badge</td><td>数量汇总、分类统计</td><td>.bo(橙) .bg(绿) .bb(蓝) .bp(紫)</td></tr>
+        <tr><td class="b">强调条</td><td>.bar</td><td>底部关键结论、核心数字</td><td>深蓝渐变，span 橙色高亮</td></tr>
+        <tr><td class="b">结论框</td><td>.conc</td><td>正面结论、总结</td><td>绿色渐变背景 + 左边框</td></tr>
+        <tr><td class="b">原则条</td><td>.principles</td><td>核心原则、设计准则</td><td>蓝色左边框，居中排列</td></tr>
+        <tr><td class="b">场景卡片</td><td>.scen + .sp / .sw / .sf</td><td>条件分流、多场景判断</td><td>绿(通过) 橙(警告) 红(不通过)</td></tr>
+        <tr><td class="b">图片容器</td><td>.img-wrap</td><td>图片/截图/示意图展示</td><td>—</td></tr>
+        <tr><td class="b">Flex 栅格</td><td>.row2/.row3/.row4 + .col2/.col3/.col4</td><td>多列并排布局</td><td>2 / 3 / 4 列</td></tr>
+        <tr><td class="b">等宽数值</td><td>.val</td><td>技术参数、频率、尺寸</td><td>Consolas 等宽字体</td></tr>
+        <tr><td class="b">文字高亮</td><td>.hl</td><td>绿色背景高亮关键信息</td><td>—</td></tr>
+        <tr><td class="b">注释</td><td>.note</td><td>页尾注释、数据来源</td><td>灰色 10px</td></tr>
+      </tbody>
+    </table>
+    <div class="note">注：以上组件在 template.html 的 &lt;style&gt; 中全部定义完毕，复制即用。</div>
+  </div>
+  <div class="page-footer"><span>Accurate · Simple · Fast · Agile &nbsp;|&nbsp; &copy; General Test Systems Inc. All rights reserved.</span><span>内部文件 &nbsp;|&nbsp; <span class="page-num">5 / 14</span></span></div>
+</div>
+
+<!-- P6 9 种标准页面类型 -->
+<div class="page">
+  <div class="page-header"><img src="logo.png" alt="GTS"></div>
+  <div class="main">
+    <div class="h1">9 种标准页面类型</div>
+    <div class="sub">每种类型都有完整 HTML 代码在 template.html 中 &nbsp;|&nbsp; AI 可直接复制使用</div>
+    <table style="font-size:11px;">
+      <thead><tr><th style="width:30px;text-align:center;">#</th><th style="width:90px;">页面类型</th><th style="width:120px;">关键 CSS</th><th>适用场景</th><th style="width:100px;">template 参考行</th></tr></thead>
+      <tbody>
+        <tr><td class="c b">1</td><td class="b">封面</td><td>.cover-page</td><td>PPT 首页：项目名称、关键词、部门日期</td><td>P1 (L276-285)</td></tr>
+        <tr><td class="c b">2</td><td class="b">目录</td><td>.row2 + Part 分组</td><td>PPT 第二页：章节导航</td><td>P2 (L290-321)</td></tr>
+        <tr><td class="c b">3</td><td class="b">标准内容</td><td>.h1 + .sub + table</td><td>数据表格展示，使用最频繁</td><td>P3 (L326-341)</td></tr>
+        <tr><td class="c b">4</td><td class="b">卡片布局</td><td>.row3 > .card + .badges</td><td>要点对比、方案优劣、多维度展示</td><td>P4 (L346-370)</td></tr>
+        <tr><td class="c b">5</td><td class="b">流程图</td><td>.flow > .step + .arrow + .bar</td><td>实施流程、步骤说明、路径展示</td><td>P5 (L375-392)</td></tr>
+        <tr><td class="c b">6</td><td class="b">图文混排</td><td>.row2：左 .img-wrap + 右 table</td><td>产品参数 + 示意图并排</td><td>P6 (L397-420)</td></tr>
+        <tr><td class="c b">7</td><td class="b">场景分析</td><td>.scen-grid > .scen(.sp/.sw/.sf)</td><td>条件判断、风险评估、方案选择</td><td>P7 (L425-438)</td></tr>
+        <tr><td class="c b">8</td><td class="b">结论页</td><td>.principles + .conc + .bar</td><td>总结页：原则 + 结论 + 关键数字</td><td>P8 (L443-456)</td></tr>
+        <tr><td class="c b">9</td><td class="b">致谢末页</td><td>.cover-page 样式</td><td>PPT 末页：感谢语 + 联系方式</td><td>P9 (L461-473)</td></tr>
+      </tbody>
+    </table>
+    <div class="conc" style="margin-top:14px;">
+      <h3>使用方式</h3>
+      <p>AI 从 template.html 中<b>复制对应页面的完整 HTML 代码块</b>（从 &lt;!-- Px ... --&gt; 到 &lt;/div&gt;），替换其中的占位文字为实际数据，即可生成一页完整 PPT。</p>
+    </div>
+  </div>
+  <div class="page-footer"><span>Accurate · Simple · Fast · Agile &nbsp;|&nbsp; &copy; General Test Systems Inc. All rights reserved.</span><span>内部文件 &nbsp;|&nbsp; <span class="page-num">6 / 14</span></span></div>
+</div>
+
+<!-- P7 Prompt 编写方法 -->
+<div class="page">
+  <div class="page-header"><img src="logo.png" alt="GTS"></div>
+  <div class="main">
+    <div class="h1">如何编写 Prompt：给 AI 的指令模板</div>
+    <div class="sub">高质量 Prompt = 角色 + 模板引用 + 页面清单 + 数据源 + 规则约束</div>
+    <div class="h2">标准 Prompt 模板（5 要素）</div>
+    <table style="font-size:12px;">
+      <thead><tr><th style="width:100px;">要素</th><th style="width:140px;">说明</th><th>示例</th></tr></thead>
+      <tbody>
+        <tr><td class="b">1. 角色设定</td><td>明确 AI 的身份</td><td>"你是一个PPT报告生成助手，使用GTS HTML设计系统..."</td></tr>
+        <tr><td class="b">2. 模板引用</td><td>指向 template.html</td><td>"请先阅读 release/model/template.html，理解其CSS组件体系..."</td></tr>
+        <tr><td class="b">3. 页面清单</td><td>列出每页的类型和内容</td><td>"P1 封面，标题《XXX》；P2 标准内容，表格数据来自 Excel..."</td></tr>
+        <tr><td class="b">4. 数据源</td><td>指定数据来源</td><td>"从 BOM/data/xxx.xlsx 读取第1-10行，映射到表格..."</td></tr>
+        <tr><td class="b">5. 规则约束</td><td>限制格式和行为</td><td>"每页不超过15行；P0用红色底色；子件缩进24px..."</td></tr>
+      </tbody>
+    </table>
+    <div class="h2">实战示例</div>
+    <pre><code>请从 05_实施管理/BOM/data/毫米波Ka频段改造_静区扫描组件_初始BOM申请.xlsx
+读取数据，参考 release/model/template.html 的设计系统风格，
+生成一份静区扫描组件 BOM 报告 HTML，要求：
+
+1. 页面结构（共 3 页）：
+   - P1：封面，标题"静区扫描组件 BOM"，副标题含项目编码和日期
+   - P2：BOM 明细表，7 列表头（物料编码/名称/规格/数量/来源/交期/备注）
+   - P3：汇总统计，用徽章组件展示各类别数量
+
+2. 数据映射：
+   - Excel 的"物料编码"→ 物料编码列，加粗
+   - Excel 的"物料名称"→ 部件名称列
+   - 子件行背景色用 #ffebee，父级行用 #fff3e0
+
+3. 导出：在页面底部加一个导出按钮，调用 downloadAllPages()</code></pre>
+  </div>
+  <div class="page-footer"><span>Accurate · Simple · Fast · Agile &nbsp;|&nbsp; &copy; General Test Systems Inc. All rights reserved.</span><span>内部文件 &nbsp;|&nbsp; <span class="page-num">7 / 14</span></span></div>
+</div>
+
+<!-- P8 数据源对接 -->
+<div class="page">
+  <div class="page-header"><img src="logo.png" alt="GTS"></div>
+  <div class="main">
+    <div class="h1">数据源对接方式</div>
+    <div class="sub">支持多种数据格式 &nbsp;|&nbsp; AI 自动解析映射</div>
+    <div class="row3">
+      <div class="card cr"><div class="card-h">&#9312; Excel (.xlsx)</div><div class="card-b"><ul>
+        <li>最常用方式</li>
+        <li>AI 用 openpyxl 读取</li>
+        <li>按 Sheet/行/列映射</li>
+        <li>适合结构化 BOM 数据</li>
+        <li>示例：BOM 申请 Excel → 内部 BOM HTML</li>
+      </ul></div></div>
+      <div class="card co"><div class="card-h">&#9313; 文本/文档</div><div class="card-b"><ul>
+        <li>技术规格书、测试报告</li>
+        <li>AI 直接读取关键信息</li>
+        <li>人工摘要后输入 Prompt</li>
+        <li>适合非结构化内容</li>
+        <li>示例：规格书 → 参数对比表</li>
+      </ul></div></div>
+      <div class="card cb"><div class="card-h">&#9314; 对话输入</div><div class="card-b"><ul>
+        <li>直接在 Prompt 中描述</li>
+        <li>适合少量数据和快速原型</li>
+        <li>可以自然语言描述表格</li>
+        <li>示例："3个组件：A/B/C..."</li>
+        <li>AI 自动格式化为 HTML 表格</li>
+      </ul></div></div>
+    </div>
+    <div class="h2">Excel 映射最佳实践</div>
+    <pre><code>// 告诉 AI 的映射规则示例：
+Excel 列 → HTML 表格列映射：
+  Item    → （忽略，仅用于排序）
+  物料编码 → 第1列 "物料编码"，左对齐，加粗
+  物料名称 → 第2列 "部件名称"，左对齐
+  规格型号 → 第3列 "规格型号"，左对齐
+  数量    → 第4列 "数量"，居中
+  备注    → 第7列 "关键技术指标"
+
+特殊规则：
+  - 如果"物料编码"以 601 开头 → 父级行，橙色背景
+  - 如果"物料编码"以 401 开头 → 子件行，红色背景，缩进
+  - "数量"列如果 &gt; 1，用红色字体</code></pre>
+  </div>
+  <div class="page-footer"><span>Accurate · Simple · Fast · Agile &nbsp;|&nbsp; &copy; General Test Systems Inc. All rights reserved.</span><span>内部文件 &nbsp;|&nbsp; <span class="page-num">8 / 14</span></span></div>
+</div>
+
+<!-- P9 样式规则 -->
+<div class="page">
+  <div class="page-header"><img src="logo.png" alt="GTS"></div>
+  <div class="main">
+    <div class="h1">样式与布局规则</div>
+    <div class="sub">AI 生成 HTML 时必须遵循的约定 &nbsp;|&nbsp; 保证全报告视觉统一</div>
+    <div class="h2">关键硬规则</div>
+    <table style="font-size:12px;">
+      <thead><tr><th style="width:40px;text-align:center;">#</th><th style="width:130px;">规则</th><th>说明</th><th style="width:150px;">错误示例 vs 正确示例</th></tr></thead>
+      <tbody>
+        <tr><td class="c"><span class="tag-r">1</span></td><td class="b">CSS 必须完整复制</td><td>新 HTML 的 &lt;style&gt; 必须包含 template.html 的全部 CSS。缺组件则显示异常。</td><td><span class="tag-r">缺 .card</span> → 卡片无样式 vs <span class="tag-g">完整复制</span></td></tr>
+        <tr><td class="c"><span class="tag-r">2</span></td><td class="b">页面固定尺寸</td><td>.page 宽度 1120px、最小高度 630px。不可修改，否则打印裁切异常。</td><td>width:auto → <span class="tag-r">错</span> vs width:1120px <span class="tag-g">正确</span></td></tr>
+        <tr><td class="c"><span class="tag-r">3</span></td><td class="b">内容区不溢出</td><td>.main 中表格行数控制在 15 行以内。超过则分页或缩小字号。</td><td>25行挤一页 → <span class="tag-r">溢出不美观</span></td></tr>
+        <tr><td class="c"><span class="tag-r">4</span></td><td class="b">页码必须连续</td><td>每页 .page-num 必须是 "X / N" 格式，X 从 1 到 N 连续递增。</td><td>2/3 → 3/5 → <span class="tag-r">不连续</span> vs 1/5 → 2/5 <span class="tag-g">正确</span></td></tr>
+        <tr><td class="c"><span class="tag-r">5</span></td><td class="b">颜色语义一致</td><td>红色=高风险/P0/外发 ；橙色=中风险/警告/P1 ；绿色=低风险/完成/通过 ；蓝色=信息/采购/待办</td><td>.tag-r 标"已完成" → <span class="tag-r">语义错误</span> vs <span class="tag-g">.tag-g 标"已完成"</span></td></tr>
+        <tr><td class="c"><span class="tag-r">6</span></td><td class="b">子件缩进一致</td><td>子件行 td 第一个单元格用 padding-left:24px，名称列用 padding-left:8px。</td><td>无缩进 → <span class="tag-r">层级不清</span></td></tr>
+        <tr><td class="c"><span class="tag-y">7</span></td><td class="b">字体不混用</td><td>全部使用设计系统字体族：等线 → SimSun → Microsoft YaHei → sans-serif。不引入外部字体。</td><td>font-family:"Arial" → <span class="tag-y">不一致</span></td></tr>
+        <tr><td class="c"><span class="tag-y">8</span></td><td class="b">图片路径正确</td><td>logo 路径用相对路径 "../logo.png" 或 "../../release/logo.png"，检查文件层级。</td><td>src="logo.png" → <span class="tag-y">路径错误</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="page-footer"><span>Accurate · Simple · Fast · Agile &nbsp;|&nbsp; &copy; General Test Systems Inc. All rights reserved.</span><span>内部文件 &nbsp;|&nbsp; <span class="page-num">9 / 14</span></span></div>
+</div>
+
+<!-- P10 常见页面组合 -->
+<div class="page">
+  <div class="page-header"><img src="logo.png" alt="GTS"></div>
+  <div class="main">
+    <div class="h1">常见报告类型的页面组合</div>
+    <div class="sub">按报告目的，选择合适的页面序列 &nbsp;|&nbsp; 开箱即用</div>
+    <div class="row2">
+      <div class="col2">
+        <div class="h2">类型A：BOM 清单报告</div>
+        <table style="font-size:11px;">
+          <thead><tr><th style="width:30px;text-align:center;">页</th><th>类型</th><th>内容</th></tr></thead>
+          <tbody>
+            <tr><td class="c b">1</td><td>封面</td><td>BOM 编号、项目编码、日期</td></tr>
+            <tr><td class="c b">2–N</td><td>标准内容</td><td>每页一个组件大类，父级+子件表格</td></tr>
+            <tr><td class="c b">末页</td><td>结论页</td><td>用 .badges 统计数量，.bar 汇总交期</td></tr>
+          </tbody>
+        </table>
+        <div class="note" style="margin-top:6px;">示例：内部 BOM.html (P1–P5)</div>
+      </div>
+      <div class="col2">
+        <div class="h2">类型B：技术方案报告</div>
+        <table style="font-size:11px;">
+          <thead><tr><th style="width:30px;text-align:center;">页</th><th>类型</th><th>内容</th></tr></thead>
+          <tbody>
+            <tr><td class="c b">1</td><td>封面</td><td>方案名称、版本、作者</td></tr>
+            <tr><td class="c b">2</td><td>目录</td><td>章节导航</td></tr>
+            <tr><td class="c b">3</td><td>流程</td><td>实施路径、关键节点</td></tr>
+            <tr><td class="c b">4</td><td>卡片</td><td>多方案对比</td></tr>
+            <tr><td class="c b">5</td><td>场景</td><td>条件判断/风险评估</td></tr>
+            <tr><td class="c b">6</td><td>结论</td><td>推荐方案 + 原则</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="row2" style="margin-top:12px;">
+      <div class="col2">
+        <div class="h2">类型C：测试/验收报告</div>
+        <table style="font-size:11px;">
+          <thead><tr><th style="width:30px;text-align:center;">页</th><th>类型</th><th>内容</th></tr></thead>
+          <tbody>
+            <tr><td class="c b">1</td><td>封面</td><td>测试项目、日期、人员</td></tr>
+            <tr><td class="c b">2</td><td>图文</td><td>测试配置图 + 参数表</td></tr>
+            <tr><td class="c b">3–5</td><td>标准内容</td><td>测试结果表格，每频段一页</td></tr>
+            <tr><td class="c b">6</td><td>结论</td><td>通过/不通过判定 + 统计</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="col2">
+        <div class="h2">类型D：进度汇报</div>
+        <table style="font-size:11px;">
+          <thead><tr><th style="width:30px;text-align:center;">页</th><th>类型</th><th>内容</th></tr></thead>
+          <tbody>
+            <tr><td class="c b">1</td><td>封面</td><td>项目名称、汇报周期</td></tr>
+            <tr><td class="c b">2</td><td>流程</td><td>进度甘特图/里程碑</td></tr>
+            <tr><td class="c b">3</td><td>标准内容</td><td>各组件状态表（含状态标签）</td></tr>
+            <tr><td class="c b">4</td><td>卡片</td><td>风险项、应对措施</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="page-footer"><span>Accurate · Simple · Fast · Agile &nbsp;|&nbsp; &copy; General Test Systems Inc. All rights reserved.</span><span>内部文件 &nbsp;|&nbsp; <span class="page-num">10 / 14</span></span></div>
+</div>
+
+<!-- P11 导出方法 -->
+<div class="page">
+  <div class="page-header"><img src="logo.png" alt="GTS"></div>
+  <div class="main">
+    <div class="h1">导出与发布</div>
+    <div class="sub">HTML → PNG（逐页）/ PDF（浏览器打印）</div>
+    <div class="h2">方式一：html2canvas 批量导出 PNG（推荐）</div>
+    <pre><code>// 在 HTML 末尾 &lt;/body&gt; 前加入以下脚本
+&lt;script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"&gt;&lt;/script&gt;
+&lt;script&gt;
+async function downloadAllPages() {
+  const pages = document.querySelectorAll('.page');
+  for (let i = 0; i &lt; pages.length; i++) {
+    const canvas = await html2canvas(pages[i], {
+      scale: 2,              // 2x 高清输出（约 2240×1260）
+      useCORS: true,         // 允许跨域图片
+      backgroundColor: '#ffffff',
+      logging: false
+    });
+    const link = document.createElement('a');
+    link.download = `P${String(i+1).padStart(2,'0')}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    await new Promise(r =&gt; setTimeout(r, 300));  // 间隔 300ms 防浏览器阻塞
+  }
+}
+// 在浏览器 Console 中调用：downloadAllPages()
+&lt;/script&gt;
+
+// 也可以加一个按钮
+&lt;button onclick="downloadAllPages()"
+  style="position:fixed;bottom:20px;right:20px;z-index:999;
+         background:#1F3864;color:#fff;border:none;padding:12px 20px;
+         border-radius:6px;cursor:pointer;font-size:14px;"&gt;
+  ⬇ 导出全部页面为 PNG
+&lt;/button&gt;</code></pre>
+    <div class="h2">方式二：浏览器打印 PDF</div>
+    <div class="row2">
+      <div class="col2"><div class="card cg"><div class="card-h">步骤</div><div class="card-b"><ol style="padding-left:18px; line-height:1.8;">
+        <li>浏览器打开 HTML</li><li>Ctrl+P 打印</li><li>目标：另存为 PDF</li><li>布局：纵向</li><li>边距：无</li><li>勾选"背景图形"</li>
+      </ol></div></div></div>
+      <div class="col2"><div class="card cb"><div class="card-h">适用场景</div><div class="card-b"><ul>
+        <li>需要可搜索文本的 PDF</li><li>不需要逐页 PNG 时</li><li>直接分享给客户</li>
+      </ul></div></div></div>
+    </div>
+  </div>
+  <div class="page-footer"><span>Accurate · Simple · Fast · Agile &nbsp;|&nbsp; &copy; General Test Systems Inc. All rights reserved.</span><span>内部文件 &nbsp;|&nbsp; <span class="page-num">11 / 14</span></span></div>
+</div>
+
+<!-- P12 AI 指令速查 -->
+<div class="page">
+  <div class="page-header"><img src="logo.png" alt="GTS"></div>
+  <div class="main">
+    <div class="h1">常用 AI 指令速查</div>
+    <div class="sub">直接复制使用 &nbsp;|&nbsp; 替换 [ ] 中的占位符</div>
+    <table style="font-size:11px;">
+      <thead><tr><th style="width:160px;">场景</th><th>Prompt 指令</th></tr></thead>
+      <tbody>
+        <tr><td class="b">新建 BOM 报告</td><td>"从 [Excel路径] 读取数据，参考 template.html 生成 BOM 报告，父级橙色背景子件红色缩进，含封面+明细+汇总共 [N] 页"</td></tr>
+        <tr><td class="b">更新已有报告</td><td>"从 [Excel路径] 获取最新数据，更新 [HTML路径] 中 [组件名] 的 BOM 明细，交期改为 [日期]"</td></tr>
+        <tr><td class="b">添加状态列</td><td>"在 [HTML路径] 的优先级表格中加一列'状态'，[组件A] 和 [组件B] 标为'已外发'绿色标签，其余标为'待下单'蓝色"</td></tr>
+        <tr><td class="b">拆分独立页面</td><td>"将 [HTML路径] 中的 [组件名] 拆到独立一页，作为 P[序号]，调整后续页码"</td></tr>
+        <tr><td class="b">调整列宽</td><td>"将 [HTML路径] 中所有表格的 [列名] 列宽扩大到 [数值]px"</td></tr>
+        <tr><td class="b">修改规格参数</td><td>"将 [HTML路径] 中 [物料名] 的行程从 [旧值] 改为 [新值]"</td></tr>
+        <tr><td class="b">添加导出按钮</td><td>"在 [HTML路径] 页面添加一个固定位置的导出按钮，点击导出所有页面为 PNG"</td></tr>
+        <tr><td class="b">批量生成周报</td><td>"基于以下本周进度数据，用卡片+表格生成一页周报：[数据]。P0 红色标签，P1 橙色标签，完成项绿色标签"</td></tr>
+        <tr><td class="b">生成方案对比</td><td>"根据以下三个方案的数据，用三列卡片布局生成对比页：[方案A/B/C 数据]。推荐方案用绿色卡片"</td></tr>
+        <tr><td class="b">技术参数页</td><td>"从 [规格书路径] 提取技术参数，用图文混排布局生成参数页，左侧贴产品图，右侧参数表"</td></tr>
+        <tr><td class="b">风险/问题清单</td><td>"整理以下风险和问题，用表格生成风险清单页，高风险红色标签，中风险橙色，已解决绿色"</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="page-footer"><span>Accurate · Simple · Fast · Agile &nbsp;|&nbsp; &copy; General Test Systems Inc. All rights reserved.</span><span>内部文件 &nbsp;|&nbsp; <span class="page-num">12 / 14</span></span></div>
+</div>
+
+<!-- P13 最佳实践 -->
+<div class="page">
+  <div class="page-header"><img src="logo.png" alt="GTS"></div>
+  <div class="main">
+    <div class="h1">最佳实践与注意事项</div>
+    <div class="sub">提升生成质量 &nbsp;|&nbsp; 减少返工</div>
+    <div class="row3">
+      <div class="card cg"><div class="card-h">&#9312; 先少后多</div><div class="card-b"><ul>
+        <li>首次让 AI 生成 2-3 页验证风格</li>
+        <li>确认样式无误后再扩展全量</li>
+        <li>用「更新已有报告」指令增量修改</li>
+        <li>避免一次性生成 20+ 页再排查</li>
+      </ul></div></div>
+      <div class="card cb"><div class="card-h">&#9313; 数据先行</div><div class="card-b"><ul>
+        <li>Excel 数据整理好再喂给 AI</li>
+        <li>表头清晰、无合并单元格</li>
+        <li>避免 AI 猜测数据含义</li>
+        <li>大数据集先做筛选和聚合</li>
+      </ul></div></div>
+      <div class="card co"><div class="card-h">&#9314; 模板即规范</div><div class="card-b"><ul>
+        <li>template.html 是唯一样式来源</li>
+        <li>不随意添加自定义 CSS</li>
+        <li>新增样式需同步到 template</li>
+        <li>颜色严格按语义使用</li>
+      </ul></div></div>
+    </div>
+    <div class="h2">常见问题排查</div>
+    <table style="font-size:11px;">
+      <thead><tr><th style="width:180px;">现象</th><th style="width:100px;">可能原因</th><th>解决方法</th></tr></thead>
+      <tbody>
+        <tr><td>页面无样式</td><td>CSS 未完整复制</td><td>检查 &lt;style&gt; 是否包含所有组件 CSS。从 template.html L7-268 完整复制。</td></tr>
+        <tr><td>图片不显示</td><td>路径错误</td><td>检查 img src 路径。相对路径相对于 HTML 文件所在目录。</td></tr>
+        <tr><td>内容溢出页面</td><td>表格行太多</td><td>超过 15 行时分页；或缩小字号到 11px。</td></tr>
+        <tr><td>打印分页错误</td><td>打印样式缺失</td><td>检查 @media print 中的 break-after: page 是否存在。</td></tr>
+        <tr><td>中文乱码</td><td>编码问题</td><td>确保 &lt;meta charset="UTF-8"&gt; 在 &lt;head&gt; 第一行。</td></tr>
+        <tr><td>导出按钮无效</td><td>html2canvas CDN 未加载</td><td>检查 script 标签是否正确，网络是否可达 CDN。</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="page-footer"><span>Accurate · Simple · Fast · Agile &nbsp;|&nbsp; &copy; General Test Systems Inc. All rights reserved.</span><span>内部文件 &nbsp;|&nbsp; <span class="page-num">13 / 14</span></span></div>
+</div>
+
+<!-- P14 致谢 -->
+<div class="page cover-page">
+  <div class="page-header"><img src="logo.png" alt="GTS" style="height:48px;"></div>
+  <div class="main">
+    <h1 style="font-size:32px; font-weight:800; color:#1a1a1a;">开始使用</h1>
+    <div class="cover-divider"></div>
+    <div style="font-size:16px; color:#1F3864;">AI 生成 PPT 报告 &nbsp;·&nbsp; GTS HTML 设计系统 v1.0</div>
+    <div style="font-size:14px; color:#666; margin-top:30px; line-height:1.8;">
+      模板文件：release/model/template.html<br>
+      只需向 AI 描述你的需求和数据来源，即可生成专业 PPT 报告
+    </div>
+    <div class="principles" style="margin-top:30px; max-width:600px; margin-left:auto; margin-right:auto;">
+      <span>描述需求</span><span>指定数据</span><span>选择模板</span><span>一键生成</span>
+    </div>
+    <div style="margin-top:40px; font-size:13px; color:#999;">前沿部 / 产线组 &nbsp;|&nbsp; 2026 年 6 月</div>
+  </div>
+  <div class="page-footer"><span>Accurate · Simple · Fast · Agile &nbsp;|&nbsp; &copy; General Test Systems Inc. All rights reserved.</span><span>内部文件 &nbsp;|&nbsp; <span class="page-num">14 / 14</span></span></div>
+</div>
+
+</body>
+</html>

@@ -32,8 +32,9 @@ static void CmdExec_Lock(Vector_Cmd_t cmd)
 
 static void CmdExec_Cylinder(Vector_Cmd_t cmd)
 {
-    const Vector_IOState_t *io = RamVector_GetLocalIO();
-    uint8_t out_lo = io->raw_out_lo;
+    Vector_IOState_t io;
+    (void)RamVector_ReadLocalIO(&io);
+    uint8_t out_lo = io.raw_out_lo;
 
     switch (cmd) {
     case VCMD_CYLINDER_OPEN:
@@ -63,8 +64,9 @@ static void CmdExec_Cylinder(Vector_Cmd_t cmd)
 
 static void CmdExec_LED(Vector_Cmd_t cmd)
 {
-    const Vector_IOState_t *io = RamVector_GetLocalIO();
-    uint8_t out_lo = io->raw_out_lo;
+    Vector_IOState_t io;
+    (void)RamVector_ReadLocalIO(&io);
+    uint8_t out_lo = io.raw_out_lo;
 
     switch (cmd) {
     case VCMD_LED_OFF:
@@ -94,16 +96,15 @@ static void CmdExec_LED(Vector_Cmd_t cmd)
 /* 三通道依次执行, 执行后清零对应槽位 */
 void CmdExec_ExecuteAll(void)
 {
-    Vector_Cmd_t cmd;
+    Vector_CmdSnapshot_t cmds;
 
-    cmd = RamVector_GetLockCmd();
-    if (cmd != VCMD_NONE) CmdExec_Lock(cmd);
+    if (!RamVector_TakeCmds(&cmds)) {
+        return;
+    }
 
-    cmd = RamVector_GetCylinderCmd();
-    if (cmd != VCMD_NONE) CmdExec_Cylinder(cmd);
+    if (cmds.lock != VCMD_NONE) CmdExec_Lock(cmds.lock);
 
-    cmd = RamVector_GetLEDCmd();
-    if (cmd != VCMD_NONE) CmdExec_LED(cmd);
+    if (cmds.cylinder != VCMD_NONE) CmdExec_Cylinder(cmds.cylinder);
 
-    RamVector_ClearCmd();
+    if (cmds.led != VCMD_NONE) CmdExec_LED(cmds.led);
 }
