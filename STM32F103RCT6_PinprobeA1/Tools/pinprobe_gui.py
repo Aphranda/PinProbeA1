@@ -31,8 +31,27 @@ SERIAL_TIMEOUT = 0.5
 OTA_CHUNK_SIZE = 128
 OTA_ACK_TIMEOUT = 1.0
 OTA_MAX_RETRIES = 3
+OTA_POST_TIMEOUT = 45.0
 MAX_LOG_LINES = 2000
 STATS_HISTORY = 1000
+
+OTA_APP_BASE_ADDR = 0x08006000
+OTA_APP_MAX_SIZE = 230 * 1024
+OTA_SRAM_BASE = 0x20000000
+OTA_SRAM_SIZE = 0x0000C000
+
+OTA_BOOT_MARKERS = ("R", "S", "I", "F", "C", "P", "D", "J")
+OTA_BOOT_FAIL_MARKERS = ("w", "W", "X", "V", "Q", "N", "s", "i")
+OTA_BOOT_FAIL_REASONS = {
+    "w": "BootFlags WRITING 写入失败, 未擦APP",
+    "W": "APP已写入, 但BootFlags WRITTEN写入失败",
+    "X": "Bootloader搬运失败",
+    "V": "固件向量表非法, 可能选择了Factory/Bootloader镜像而不是APP bin",
+    "Q": "OTA sequence不匹配",
+    "N": "BootFlags/Manifest无效",
+    "s": "Bootloader SPI初始化失败",
+    "i": "W25Q128识别失败",
+}
 
 BAUD_RATES = [9600, 19200, 38400, 57600, 115200, 230400, 460800]
 
@@ -335,6 +354,25 @@ class SerialWorker:
                     continue
                 return decoded
         return ""
+
+    def read_raw_lines(self, timeout: float, stop_text: str | None = None) -> list[str]:
+        """读取原始串口行, OTA 提交后收集 Bootloader/POST 输出。"""
+        lines: list[str] = []
+        with self._lock:
+            if not self.is_connected:
+                raise serial.SerialException("串口未连接")
+            deadline = time.time() + timeout
+            while time.time() < deadline:
+                raw = self.serial_port.read_until(b'\n', size=512)
+                if not raw:
+                    continue
+                decoded = raw.decode("utf-8", errors="replace").strip()
+                if not decoded:
+                    continue
+                lines.append(decoded)
+                if stop_text and stop_text in decoded:
+                    break
+        return lines
 
     def _worker_loop(self) -> None:
         """后台工作循环: 发送 SCPI 命令 → 读取响应 (过滤固件调试输出)"""
@@ -1102,6 +1140,8 @@ class PinProbeApp:
         ttk.Button(btn_row, text="查询Boot", command=self._ota_query_boot).pack(side=tk.LEFT, padx=(5, 0))
         self.btn_ota_start = ttk.Button(btn_row, text="开始上传", command=self._ota_start_upload)
         self.btn_ota_start.pack(side=tk.LEFT, padx=5)
+        self.btn_ota_verify_flow = ttk.Button(btn_row, text="完整验证", command=self._ota_start_verify_flow)
+        self.btn_ota_verify_flow.pack(side=tk.LEFT, padx=5)
         self.btn_ota_abort = ttk.Button(btn_row, text="中止", command=self._ota_abort,
                                         state=tk.DISABLED)
         self.btn_ota_abort.pack(side=tk.LEFT, padx=5)
@@ -1295,14 +1335,53 @@ class PinProbeApp:
             return
 
         crc = zlib.crc32(data) & 0xFFFFFFFF
+        image_ok, image_msg = self._ota_validate_app_image(data)
         self.ota_info_label.configure(
-            text=f"Size: {len(data)} bytes  CRC32: 0x{crc:08X}",
-            foreground="#4FC1FF")
-        self.ota_status_var.set("固件已选择")
+            text=f"Size: {len(data)} bytes  CRC32: 0x{crc:08X}  {image_msg}",
+            foreground="#4FC1FF" if image_ok else "#F44747")
+        self.ota_status_var.set("固件已选择" if image_ok else "固件向量表非法")
 
     @staticmethod
     def _ota_parse_u32(text: str) -> int:
         return int(text.strip(), 0)
+
+    @staticmethod
+    def _ota_validate_app_image(data: bytes) -> tuple[bool, str]:
+        if len(data) < 8:
+            return False, "文件太小, 缺少向量表"
+        if len(data) > OTA_APP_MAX_SIZE:
+            return False, f"文件超过APP最大尺寸 {OTA_APP_MAX_SIZE} bytes"
+
+        stack = int.from_bytes(data[0:4], "little")
+        reset = int.from_bytes(data[4:8], "little")
+        sram_end = OTA_SRAM_BASE + OTA_SRAM_SIZE
+        app_end = OTA_APP_BASE_ADDR + OTA_APP_MAX_SIZE
+
+        if not (OTA_SRAM_BASE <= stack <= sram_end):
+            return False, f"首字栈指针非法: 0x{stack:08X}"
+        if not (OTA_APP_BASE_ADDR <= reset < app_end) or (reset & 1) == 0:
+            return False, (
+                f"Reset向量非法: 0x{reset:08X}; "
+                "请确认选择的是APP bin, 不是Factory/Bootloader镜像"
+            )
+        return True, f"APP向量 OK SP=0x{stack:08X} Reset=0x{reset:08X}"
+
+    def _ota_selected_file_is_valid(self) -> bool:
+        if self.ota_file_path is None:
+            messagebox.showwarning("未选择固件", "请先选择固件文件")
+            return False
+        try:
+            data = self.ota_file_path.read_bytes()
+        except OSError as exc:
+            messagebox.showerror("读取失败", str(exc))
+            return False
+
+        image_ok, image_msg = self._ota_validate_app_image(data)
+        if not image_ok:
+            messagebox.showerror("固件文件错误", image_msg)
+            self.ota_status_var.set("固件向量表非法")
+            return False
+        return True
 
     def _ota_query_status(self):
         self._send_scpi("SYSTem:OTA:STATus?")
@@ -1337,6 +1416,8 @@ class PinProbeApp:
         if self.ota_file_path is None:
             messagebox.showwarning("未选择固件", "请先选择固件文件")
             return
+        if not self._ota_selected_file_is_valid():
+            return
 
         try:
             version = self._ota_parse_u32(self.ota_version_var.get())
@@ -1359,18 +1440,55 @@ class PinProbeApp:
             daemon=True)
         self.ota_thread.start()
 
+    def _ota_start_verify_flow(self):
+        if self.ota_running:
+            return
+        if not self.serial_worker.is_connected:
+            messagebox.showwarning("未连接", "请先连接串口")
+            return
+        if self.ota_file_path is None:
+            messagebox.showwarning("未选择固件", "请先选择固件文件")
+            return
+        if not self._ota_selected_file_is_valid():
+            return
+
+        try:
+            version = self._ota_parse_u32(self.ota_version_var.get())
+            image_id = self._ota_parse_u32(self.ota_image_id_var.get())
+        except ValueError:
+            messagebox.showerror("参数错误", "版本和 Image ID 支持十进制或 0x 前缀十六进制")
+            return
+
+        self._stop_polling()
+        self._stop_pressure()
+        self.ota_abort_requested = False
+        self.ota_running = True
+        self.btn_ota_start.configure(state=tk.DISABLED)
+        self.btn_ota_verify_flow.configure(state=tk.DISABLED)
+        self.btn_ota_abort.configure(state=tk.NORMAL)
+        self.ota_progress.set(0.0)
+        self.ota_status_var.set("准备完整验证...")
+        self.ota_thread = threading.Thread(
+            target=self._ota_verify_flow_thread,
+            args=(self.ota_file_path, version, image_id),
+            daemon=True)
+        self.ota_thread.start()
+
     def _ota_upload_thread(self, path: Path, version: int, image_id: int):
         self.serial_worker.ota_set_active(True)
         start_time = time.time()
         try:
             data = path.read_bytes()
+            image_ok, image_msg = self._ota_validate_app_image(data)
+            if not image_ok:
+                raise RuntimeError(image_msg)
             size = len(data)
             crc = zlib.crc32(data) & 0xFFFFFFFF
             self.serial_worker.rx_queue.put(("ota", f"BEGIN size={size} crc=0x{crc:08X}"))
 
             begin = f"SYSTem:OTA:BEGIN {size},{crc},{version},{image_id}\r\n".encode("ascii")
-            resp = self.serial_worker.transact_raw(begin, timeout=5.0)
-            if not resp.startswith("OK"):
+            resp = self._ota_begin_with_busy_recovery(begin, timeout=5.0)
+            if not self._ota_response_ok(resp):
                 raise RuntimeError(resp or "BEGIN 无响应")
 
             offset = 0
@@ -1388,10 +1506,10 @@ class PinProbeApp:
                 resp = ""
                 for _ in range(OTA_MAX_RETRIES):
                     resp = self.serial_worker.transact_raw(payload, timeout=OTA_ACK_TIMEOUT)
-                    if resp.startswith("OK"):
+                    if self._ota_response_ok(resp):
                         break
                     time.sleep(0.05)
-                if not resp.startswith("OK"):
+                if not self._ota_response_ok(resp):
                     raise RuntimeError(resp or f"DATA offset {offset} 无响应")
 
                 offset += len(chunk)
@@ -1401,7 +1519,7 @@ class PinProbeApp:
                 self.serial_worker.rx_queue.put(("ota_progress", progress, offset, size, speed))
 
             resp = self.serial_worker.transact_raw(b"SYSTem:OTA:END\r\n", timeout=5.0)
-            if not resp.startswith("OK"):
+            if not self._ota_response_ok(resp):
                 raise RuntimeError(resp or "END 无响应")
 
             resp = self.serial_worker.transact_raw(b"SYSTem:OTA:VERify?\r\n", timeout=10.0)
@@ -1415,6 +1533,144 @@ class PinProbeApp:
             self.serial_worker.ota_set_active(False)
             self.ota_running = False
             self.root.after(0, lambda: self.btn_ota_start.configure(state=tk.NORMAL))
+            self.root.after(0, lambda: self.btn_ota_verify_flow.configure(state=tk.NORMAL))
+            self.root.after(0, lambda: self.btn_ota_abort.configure(state=tk.DISABLED))
+
+    @staticmethod
+    def _ota_response_ok(resp: str) -> bool:
+        return resp.strip().strip('"').startswith("OK")
+
+    def _ota_transact_checked(self, payload: bytes, label: str, timeout: float) -> str:
+        resp = self.serial_worker.transact_raw(payload, timeout=timeout)
+        self.serial_worker.rx_queue.put(("ota", f"{label} => {resp or '<timeout>'}"))
+        if not self._ota_response_ok(resp):
+            raise RuntimeError(f"{label} failed: {resp or 'timeout'}")
+        return resp
+
+    def _ota_begin_with_busy_recovery(self, begin_payload: bytes, timeout: float) -> str:
+        resp = self.serial_worker.transact_raw(begin_payload, timeout=timeout)
+        self.serial_worker.rx_queue.put(("ota", f"BEGIN => {resp or '<timeout>'}"))
+        if "ERR,1,BUSY" not in resp:
+            return resp
+
+        self.serial_worker.rx_queue.put(("ota", "BEGIN busy, abort current runtime state and retry"))
+        abort_resp = self.serial_worker.transact_raw(b"SYSTem:OTA:ABORt\r\n", timeout=3.0)
+        self.serial_worker.rx_queue.put(("ota", f"ABORT => {abort_resp or '<timeout>'}"))
+        if not self._ota_response_ok(abort_resp):
+            return resp
+
+        resp = self.serial_worker.transact_raw(begin_payload, timeout=timeout)
+        self.serial_worker.rx_queue.put(("ota", f"BEGIN retry => {resp or '<timeout>'}"))
+        return resp
+
+    def _ota_upload_image_raw(self, data: bytes, version: int, image_id: int, start_time: float) -> str:
+        size = len(data)
+        crc = zlib.crc32(data) & 0xFFFFFFFF
+        self.serial_worker.rx_queue.put(("ota", f"BEGIN size={size} crc=0x{crc:08X}"))
+
+        begin = f"SYSTem:OTA:BEGIN {size},{crc},{version},{image_id}\r\n".encode("ascii")
+        begin_resp = self._ota_begin_with_busy_recovery(begin, timeout=10.0)
+        if not self._ota_response_ok(begin_resp):
+            raise RuntimeError(f"BEGIN failed: {begin_resp or 'timeout'}")
+
+        offset = 0
+        while offset < size:
+            if self.ota_abort_requested:
+                try:
+                    self.serial_worker.transact_raw(b"SYSTem:OTA:ABORt\r\n", timeout=OTA_ACK_TIMEOUT)
+                finally:
+                    raise RuntimeError("用户中止")
+
+            chunk = data[offset:offset + OTA_CHUNK_SIZE]
+            header = f"SYSTem:OTA:DATA {offset},#3{len(chunk):03d}".encode("ascii")
+            payload = header + chunk + SCPI_TERMINATOR.encode("ascii")
+
+            resp = ""
+            for _ in range(OTA_MAX_RETRIES):
+                resp = self.serial_worker.transact_raw(payload, timeout=OTA_ACK_TIMEOUT)
+                if self._ota_response_ok(resp):
+                    break
+                time.sleep(0.05)
+            if not self._ota_response_ok(resp):
+                raise RuntimeError(resp or f"DATA offset {offset} 无响应")
+
+            offset += len(chunk)
+            progress = (offset * 100.0) / size if size else 100.0
+            elapsed = max(time.time() - start_time, 0.001)
+            speed = offset / elapsed
+            self.serial_worker.rx_queue.put(("ota_progress", progress, offset, size, speed))
+
+        self._ota_transact_checked(b"SYSTem:OTA:END\r\n", "END", 8.0)
+        verify_resp = self.serial_worker.transact_raw(b"SYSTem:OTA:VERify?\r\n", timeout=15.0)
+        self.serial_worker.rx_queue.put(("ota", f"VERIFY => {verify_resp or '<timeout>'}"))
+        if "STATE:READY" not in verify_resp:
+            raise RuntimeError(verify_resp or "VERIFY 无响应")
+        return verify_resp
+
+    def _ota_verify_flow_thread(self, path: Path, version: int, image_id: int):
+        self.serial_worker.ota_set_active(True)
+        start_time = time.time()
+        try:
+            data = path.read_bytes()
+            image_ok, image_msg = self._ota_validate_app_image(data)
+            if not image_ok:
+                raise RuntimeError(image_msg)
+
+            for raw in (b"*IDN?\r\n",
+                        b"SYSTem:FLASH:ID?\r\n",
+                        b"CONFigure:BOOT:DIAG ON\r\n",
+                        b"CONFigure:BOOT:DIAG?\r\n"):
+                label = raw.decode("ascii").strip()
+                resp = self.serial_worker.transact_raw(raw, timeout=5.0)
+                self.serial_worker.rx_queue.put(("ota", f"{label} => {resp or '<timeout>'}"))
+                if not resp:
+                    raise RuntimeError(f"{label} 无响应")
+
+            verify_resp = self._ota_upload_image_raw(data, version, image_id, start_time)
+            boot_before = self.serial_worker.transact_raw(b"SYSTem:OTA:BOOT?\r\n", timeout=5.0)
+            self.serial_worker.rx_queue.put(("ota", f"BOOT? before commit => {boot_before or '<timeout>'}"))
+
+            commit_resp = self.serial_worker.transact_raw(b"SYSTem:OTA:COMMit\r\n", timeout=3.0)
+            self.serial_worker.rx_queue.put(("ota", f"COMMIT => {commit_resp or '<timeout>'}"))
+            if not self._ota_response_ok(commit_resp):
+                raise RuntimeError(commit_resp or "COMMIT 无响应")
+
+            lines = self.serial_worker.read_raw_lines(OTA_POST_TIMEOUT, stop_text="[POST] === PASSED")
+            for line in lines:
+                self.serial_worker.rx_queue.put(("ota_line", line))
+            line_set = set(lines)
+            missing = [marker for marker in OTA_BOOT_MARKERS if marker not in line_set]
+            failures = [marker for marker in OTA_BOOT_FAIL_MARKERS if marker in line_set]
+            if failures:
+                reasons = [OTA_BOOT_FAIL_REASONS.get(marker, marker) for marker in failures]
+                raise RuntimeError(f"Bootloader失败阶段 {','.join(failures)}: {'; '.join(reasons)}")
+            if missing:
+                raise RuntimeError(f"Bootloader阶段缺失: {','.join(missing)}")
+            if not any("[POST] === PASSED" in line for line in lines):
+                raise RuntimeError("未收到POST通过")
+
+            for raw in (b"*IDN?\r\n",
+                        b"SYSTem:OTA:BOOT?\r\n",
+                        b"CONFigure:BOOT:DIAG OFF\r\n",
+                        b"CONFigure:BOOT:DIAG?\r\n"):
+                label = raw.decode("ascii").strip()
+                resp = self.serial_worker.transact_raw(raw, timeout=5.0)
+                self.serial_worker.rx_queue.put(("ota", f"{label} => {resp or '<timeout>'}"))
+                if not resp:
+                    raise RuntimeError(f"{label} 无响应")
+
+            self.serial_worker.rx_queue.put(("ota_done", f"完整验证通过: {verify_resp}"))
+        except Exception as exc:
+            self.serial_worker.rx_queue.put(("ota_error", str(exc)))
+            try:
+                self.serial_worker.transact_raw(b"CONFigure:BOOT:DIAG OFF\r\n", timeout=3.0)
+            except Exception:
+                pass
+        finally:
+            self.serial_worker.ota_set_active(False)
+            self.ota_running = False
+            self.root.after(0, lambda: self.btn_ota_start.configure(state=tk.NORMAL))
+            self.root.after(0, lambda: self.btn_ota_verify_flow.configure(state=tk.NORMAL))
             self.root.after(0, lambda: self.btn_ota_abort.configure(state=tk.DISABLED))
 
     # ── SCPI 命令发送 ────────────────────────────────────────────────
@@ -1556,6 +1812,11 @@ class PinProbeApp:
                 elif msg_type == "ota":
                     _, text = msg
                     self._log(f"OTA {text}", "INFO")
+
+                elif msg_type == "ota_line":
+                    _, text = msg
+                    tag = "OK" if "[POST] === PASSED" in text else "INFO"
+                    self._log(f"OTA {text}", tag)
 
                 elif msg_type == "ota_progress":
                     _, progress, offset, size, speed = msg

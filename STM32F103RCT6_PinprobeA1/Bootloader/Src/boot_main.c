@@ -34,7 +34,9 @@ static void Boot_KickWatchdog(void);
 static bool Boot_ReadDiagConfig(void);
 static uint32_t Boot_ConfigCrc32(const uint32_t *data, size_t word_count);
 static uint32_t Boot_GetOtaRequest(void);
+static bool Boot_IsValidVector(uint32_t stack, uint32_t reset);
 static bool Boot_IsValidApp(uint32_t app_base);
+static bool Boot_IsValidSlotImage(const OTA_Manifest_t *manifest);
 static void Boot_JumpToApp(void);
 static bool Boot_LoadPending(OTA_BootFlags_t *flags, OTA_Manifest_t *manifest);
 static bool Boot_VerifySlotCrc(const OTA_Manifest_t *manifest);
@@ -70,23 +72,47 @@ int main(void)
                     bool copy_started = false;
                     bool copy_ok = false;
                     flags.attempt_count++;
-                    (void)Boot_UpdateFlags(&flags, OTA_BOOT_STATE_WRITING, OTA_OK);
 
-                    Boot_Diag("C\r\n");
-                    bool crc_ok = Boot_VerifySlotCrc(&manifest);
-                    if (crc_ok) {
-                        Boot_Diag("P\r\n");
-                        copy_started = true;
-                        copy_ok = Boot_CopySlotToApp(&manifest);
-                    }
-                    if (crc_ok && copy_ok) {
-                        (void)Boot_UpdateFlags(&flags, OTA_BOOT_STATE_WRITTEN, OTA_OK);
-                        Boot_Diag("D\r\n");
-                        OTA_BootRequestClear();
+                    bool writing_flags_ok = Boot_UpdateFlags(&flags, OTA_BOOT_STATE_WRITING, OTA_OK);
+                    bool crc_ok = false;
+                    bool slot_ok = false;
+                    if (!writing_flags_ok) {
+                        Boot_Diag("w\r\n");
                     } else {
-                        (void)Boot_UpdateFlags(&flags, OTA_BOOT_STATE_FAILED, OTA_ERR_BOOT_FAIL);
+                        Boot_Diag("C\r\n");
+                        crc_ok = Boot_VerifySlotCrc(&manifest);
+                        if (crc_ok) {
+                            slot_ok = Boot_IsValidSlotImage(&manifest);
+                            if (slot_ok) {
+                                Boot_Diag("P\r\n");
+                                copy_started = true;
+                                copy_ok = Boot_CopySlotToApp(&manifest);
+                            } else {
+                                Boot_Diag("V\r\n");
+                            }
+                        }
+                    }
+                    if (writing_flags_ok && crc_ok && slot_ok && copy_ok) {
+                        if (Boot_UpdateFlags(&flags, OTA_BOOT_STATE_WRITTEN, OTA_OK)) {
+                            Boot_Diag("D\r\n");
+                            OTA_BootRequestClear();
+                        } else {
+                            Boot_Diag("W\r\n");
+                        }
+                    } else {
+                        uint32_t error = OTA_ERR_BOOT_FAIL;
+                        if (!writing_flags_ok) {
+                            error = OTA_ERR_FLASH_FAIL;
+                        } else if (!crc_ok) {
+                            error = OTA_ERR_CRC_FAIL;
+                        } else if (!slot_ok) {
+                            error = OTA_ERR_BAD_MANIFEST;
+                        }
                         Boot_Diag("X\r\n");
-                        if (!copy_started) {
+                        if (copy_started) {
+                            (void)error;
+                        } else {
+                            (void)Boot_UpdateFlags(&flags, OTA_BOOT_STATE_FAILED, error);
                             OTA_BootRequestClear();
                         }
                     }
@@ -307,6 +333,11 @@ static bool Boot_IsValidApp(uint32_t app_base)
     uint32_t stack = *(const uint32_t *)app_base;
     uint32_t reset = *(const uint32_t *)(app_base + 4UL);
 
+    return Boot_IsValidVector(stack, reset);
+}
+
+static bool Boot_IsValidVector(uint32_t stack, uint32_t reset)
+{
     if (stack < BOOT_SRAM_BASE || stack > (BOOT_SRAM_BASE + BOOT_SRAM_SIZE)) {
         return false;
     }
@@ -314,6 +345,21 @@ static bool Boot_IsValidApp(uint32_t app_base)
         return false;
     }
     return true;
+}
+
+static bool Boot_IsValidSlotImage(const OTA_Manifest_t *manifest)
+{
+    uint32_t vector[2];
+
+    if (manifest == NULL ||
+        manifest->image_size < sizeof(vector) ||
+        manifest->slot_addr != OTA_SLOT_A_ADDR) {
+        return false;
+    }
+    if (W25Q128_Read(manifest->slot_addr, vector, sizeof(vector)) != W25Q128_OK) {
+        return false;
+    }
+    return Boot_IsValidVector(vector[0], vector[1]);
 }
 
 static void Boot_JumpToApp(void)
@@ -355,13 +401,16 @@ static bool Boot_LoadPending(OTA_BootFlags_t *flags, OTA_Manifest_t *manifest)
         return false;
     }
     if (flags->pending_slot != (uint8_t)OTA_SLOT_A ||
-        flags->active_manifest_sequence != manifest->sequence ||
-        flags->attempt_count >= flags->max_attempts) {
+        flags->active_manifest_sequence != manifest->sequence) {
         return false;
     }
     if (flags->update_state != (uint8_t)OTA_BOOT_STATE_PENDING &&
         flags->update_state != (uint8_t)OTA_BOOT_STATE_WRITING &&
         flags->update_state != (uint8_t)OTA_BOOT_STATE_WRITTEN) {
+        return false;
+    }
+    if (flags->update_state != (uint8_t)OTA_BOOT_STATE_WRITING &&
+        flags->attempt_count >= flags->max_attempts) {
         return false;
     }
     return true;
