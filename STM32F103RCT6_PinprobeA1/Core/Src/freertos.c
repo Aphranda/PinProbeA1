@@ -35,7 +35,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define MODBUS_POLL_DIV 2U
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -255,15 +255,8 @@ __weak void StateVectorTask(void *argument)
 __weak void SysTimerCallback(void *argument)
 {
   /* USER CODE BEGIN SysTimerCallback */
-  static uint8_t modbus_div = 0U;
-  (void)argument;
-
-  osThreadFlagsSet(StateVectorHandle, 0x01);  /* 25ms state machine */
-
-  if (++modbus_div >= MODBUS_POLL_DIV) {
-    modbus_div = 0U;
-    osThreadFlagsSet(ModBusHandle, 0x01);     /* 50ms RS485 polling */
-  }
+  osThreadFlagsSet(ModBusHandle, 0x01);
+  osThreadFlagsSet(StateVectorHandle, 0x01);
   /* USER CODE END SysTimerCallback */
 }
 

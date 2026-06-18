@@ -4,6 +4,7 @@ type: ARM
 deviceName: STM32F103RC
 packDir: .pack/Keil/STM32F1xx_DFP.2.3.0
 srcDirs:
+  - App
   - Hardware
   - Core
 virtualFolder:
@@ -47,6 +48,10 @@ virtualFolder:
               files:
                 - path: Hardware/AppLog/Src/app_log.c
                 - path: Hardware/AppLog/Src/app_log_uart.c
+              folders: []
+            - name: App
+              files:
+                - path: App/Src/app_tasks.c
               folders: []
     - name: Drivers
       files: []
@@ -124,6 +129,7 @@ targets:
         - Hardware/OTA/Inc
         - Hardware/RamVector/Inc
         - Hardware/AppLog/Inc
+        - App/Inc
       libList: []
     excludeList: []
     settings:

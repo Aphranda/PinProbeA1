@@ -35,9 +35,6 @@
 #include "scpi/scpi.h"
 #include "scpi-def.h"
 #include "flash.h"
-#include "ram_vector.h"
-#include "state_vector.h"
-#include "cmd_exec.h"
 #include "app_log.h"
 #include "ota_manager.h"
 #include "ota_manifest.h"
@@ -319,109 +316,7 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
-/**
-  * @brief SCPI命令处理任务
-  * 
-  * 该任务循环检测串口1接收缓冲区(Uart1_BuffIsReady)是否有SCPI命令数据，
-  * 如果有，则调用SCPI_Input进行命令解析和处理，处理完成后清空缓冲区。
-  * 每次循环结束后延时10ms。
-  */
-void SCPITask(void *argument)
-{
-  /* USER CODE BEGIN SCPITask */
-  /* 无限循环 */
-  for(;;)
-  {
-    uint32_t len;
-    const char *buf;
 
-    taskENTER_CRITICAL();           // 关中断, 原子快照长度+指针
-    if (Uart1_RxLength > 3)        // 至少4字节（如 *IDN? + 换行）
-    {
-      len = Uart1_RxLength;
-      buf = (const char *)Uart1_BuffIsReady;
-      Uart1_RxLength = 0;          // 立即消费, 防ISR覆盖
-    }
-    else
-    {
-      len = 0;
-      buf = NULL;
-    }
-    taskEXIT_CRITICAL();
-
-    if (buf && len > 0)
-    {
-      SCPI_Input(&scpi_context, buf, len);
-    }
-    AppLog_PumpRealtime(4);
-    osDelay(10);                   // 任务延时10ms
-  }
-  /* USER CODE END SCPITask */
-}
-
-/**
-  * @brief ModBus及主状态机处理任务
-  *
-  * IO 读取 + RamVector 命令执行 + 向量表同步, SysTimer 控制周期。
-  * (旧 StateMachine_Input 已废弃, 现由 StateVectorTask 驱动 state_vector.c)
-  * RS485 IO 读取 + 向量表命令执行, SysTimer 控制周期。
-  */
-void ModBusTask(void *argument)
-{
-  /* USER CODE BEGIN ModBusTask */
-  (void)argument;
-  osDelay(500);  /* 等 IO 拓展板启动 */
-
-  for(;;)
-  {
-    osThreadFlagsWait(0x01, osFlagsWaitAny, osWaitForever);
-
-    uint8_t in_buf[2] = {0}, out_buf[2] = {0};
-    bool ok = IO_Read(5, 2, in_buf);
-    ok = IO_Read(5, 1, out_buf) && ok;
-    SetRS485_Ok(ok);
-
-    /* 更新向量表 IO 镜像 */
-    Vector_IOState_t io;
-    (void)RamVector_ReadLocalIO(&io);
-    io.raw_in_lo  = in_buf[0];
-    io.raw_in_hi  = in_buf[1];
-    io.raw_out_lo = out_buf[0];
-    io.raw_out_hi = out_buf[1];
-    io.rs485_ok   = ok ? 1 : 0;
-    /* 从原始 IO 推导状态字段, 供 SCPI 查询 */
-    if (in_buf[0] & 0x01)      io.door_state = 1;
-    else if (in_buf[0] & 0x02) io.door_state = 0;
-    else                       io.door_state = 2;
-    io.door_moving    = (out_buf[0] & 0x03) ? 1 : 0;
-    io.cylinder_cmd[0]= (out_buf[0] & 0x01) ? 1 : 0;
-    io.cylinder_cmd[1]= (out_buf[0] & 0x02) ? 1 : 0;
-    io.lock_state     = (out_buf[0] & 0x80) ? 1 : 0;
-    if (out_buf[0] & 0x10)      io.led_state = 1;
-    else if (out_buf[0] & 0x20) io.led_state = 2;
-    else if (out_buf[0] & 0x40) io.led_state = 4;
-    else                        io.led_state = 0;
-    RamVector_UpdateLocalIO(&io);
-
-    /* 执行待处理命令 (三通道) */
-    CmdExec_ExecuteAll();
-
-    /* 周期由 SysTimer 控制 */
-  }
-  /* USER CODE END ModBusTask */
-}
-
-/* StateVectorTask — 覆盖 freertos.c 中的 __weak 空壳 */
-void StateVectorTask(void *argument)
-{
-  (void)argument;
-  RamVector_Init(0);  /* 单机出厂模式 */
-  osDelay(700);        /* 晚于 ModBusTask(500ms), 确保首帧 IO 已就绪 */
-  for(;;) {
-    osThreadFlagsWait(0x01, osFlagsWaitAny, osWaitForever);
-    StateVector_Input();
-  }
-}
 /* USER CODE END 4 */
 
 /**
