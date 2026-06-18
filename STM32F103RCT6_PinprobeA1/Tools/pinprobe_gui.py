@@ -28,6 +28,7 @@ APP_TITLE = "PinProbeA1 调试工具 v1.0"
 DEFAULT_BAUD = 115200
 SCPI_TERMINATOR = "\r\n"
 SERIAL_TIMEOUT = 0.5
+MIN_POLL_INTERVAL_MS = 500
 OTA_CHUNK_SIZE = 128
 OTA_ACK_TIMEOUT = 1.0
 OTA_MAX_RETRIES = 3
@@ -53,7 +54,8 @@ OTA_BOOT_FAIL_REASONS = {
     "i": "W25Q128识别失败",
 }
 
-BAUD_RATES = [9600, 19200, 38400, 57600, 115200, 230400, 460800]
+BAUD_RATES = [115200]
+SCPI_NO_RESPONSE_COMMANDS = {"*CLS", "*RST", "*WAI"}
 
 # ── SCPI 命令面板定义 ────────────────────────────────────────────────
 SCPI_COMMANDS = {
@@ -333,27 +335,38 @@ class SerialWorker:
                 decoded.startswith("Door_Emerge") or
                 decoded.startswith("Intake air"))
 
+    @staticmethod
+    def _expects_response(cmd: str) -> bool:
+        return cmd.strip() not in SCPI_NO_RESPONSE_COMMANDS
+
+    def _read_scpi_response_locked(self, timeout: float) -> str:
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            line = self.serial_port.read_until(b'\n', size=512)
+            if not line:
+                continue
+            decoded = line.decode("utf-8", errors="replace").strip()
+            if not decoded:
+                continue
+            if self._is_debug_line(decoded):
+                self.rx_queue.put(("debug", "", decoded, 0))
+                continue
+            return decoded
+        return ""
+
+    def _clear_stale_input_locked(self) -> None:
+        if self.serial_port and self.serial_port.is_open:
+            self.serial_port.reset_input_buffer()
+
     def transact_raw(self, payload: bytes, timeout: float = OTA_ACK_TIMEOUT) -> str:
         """直接发送 bytes 并读取一行 SCPI 响应, OTA 上传线程使用。"""
         with self._lock:
             if not self.is_connected:
                 raise serial.SerialException("串口未连接")
-            self.serial_port.reset_input_buffer()
+            self._clear_stale_input_locked()
             self.serial_port.write(payload)
             self.serial_port.flush()
-            deadline = time.time() + timeout
-            while time.time() < deadline:
-                line = self.serial_port.read_until(b'\n', size=512)
-                if not line:
-                    continue
-                decoded = line.decode("utf-8", errors="replace").strip()
-                if not decoded:
-                    continue
-                if self._is_debug_line(decoded):
-                    self.rx_queue.put(("debug", "", decoded, 0))
-                    continue
-                return decoded
-        return ""
+            return self._read_scpi_response_locked(timeout)
 
     def read_raw_lines(self, timeout: float, stop_text: str | None = None) -> list[str]:
         """读取原始串口行, OTA 提交后收集 Bootloader/POST 输出。"""
@@ -390,35 +403,18 @@ class SerialWorker:
 
                     full_cmd = cmd.strip() + SCPI_TERMINATOR
                     send_time = time.perf_counter()
+                    self._clear_stale_input_locked()
                     self.serial_port.write(full_cmd.encode("utf-8"))
                     time.sleep(0.03)
 
-                if expect_response:
-                    deadline = time.time() + SERIAL_TIMEOUT
-                    scpi_resp = ""
-                    while time.time() < deadline:
-                        line = self.serial_port.read_until(b'\n', size=512)
-                        if not line:
-                            break
-                        decoded = line.decode("utf-8", errors="replace").strip()
-                        if not decoded:
-                            continue
-                        # 跳过固件调试输出 (与 state_vector.c 中 printf 前缀对齐)
-                        if self._is_debug_line(decoded):
-                            self.rx_queue.put(("debug", "", decoded, 0))
-                            continue
-                        if decoded.startswith("**ERROR") or decoded.startswith("**SRQ"):
-                            scpi_resp = decoded
-                            break
-                        scpi_resp = decoded
-                        break
-
-                    elapsed_us = int((time.perf_counter() - send_time) * 1_000_000)
-                    resp_text = scpi_resp if scpi_resp else "(无响应)"
-                    self.rx_queue.put(("response", cmd, resp_text, elapsed_us))
-                else:
-                    elapsed_us = int((time.perf_counter() - send_time) * 1_000_000)
-                    self.rx_queue.put(("sent", cmd, "(无需响应)", elapsed_us))
+                    if expect_response:
+                        scpi_resp = self._read_scpi_response_locked(SERIAL_TIMEOUT)
+                        elapsed_us = int((time.perf_counter() - send_time) * 1_000_000)
+                        resp_text = scpi_resp if scpi_resp else "(无响应)"
+                        self.rx_queue.put(("response", cmd, resp_text, elapsed_us))
+                    else:
+                        elapsed_us = int((time.perf_counter() - send_time) * 1_000_000)
+                        self.rx_queue.put(("sent", cmd, "(无需响应)", elapsed_us))
 
             except serial.SerialException as e:
                 self.rx_queue.put(("ERROR", cmd, str(e)))
@@ -839,7 +835,7 @@ class PinProbeApp:
         self.poll_cb.pack(side=tk.LEFT)
 
         ttk.Label(ctrl_frame, text="间隔(ms):").pack(side=tk.LEFT, padx=(10, 2))
-        self.poll_interval_spin = ttk.Spinbox(ctrl_frame, from_=100, to=10000,
+        self.poll_interval_spin = ttk.Spinbox(ctrl_frame, from_=MIN_POLL_INTERVAL_MS, to=10000,
                                               increment=100, width=7,
                                               textvariable=self.poll_interval_ms)
         self.poll_interval_spin.pack(side=tk.LEFT)
@@ -1690,6 +1686,9 @@ class PinProbeApp:
         if self.ota_running:
             messagebox.showwarning("OTA忙", "固件上传正在进行，请等待完成或先中止。")
             return
+        if self.pressure_running:
+            messagebox.showwarning("压力测试中", "压力测试正在运行，请先停止测试。")
+            return
 
         # IDN 设置：弹窗输入值
         if cmd in self._IDN_SET_MAP:
@@ -1703,11 +1702,7 @@ class PinProbeApp:
             cmd = f'{scpi_cmd} "{value}"'
 
         self._log(f">>> {cmd}", "CMD")
-        expect_response = (
-            cmd.endswith("?") or
-            cmd.startswith("SYSTem:OTA:") or
-            cmd.strip() == "SYSTem:REBoot"
-        )
+        expect_response = self.serial_worker._expects_response(cmd)
         self.serial_worker.send_command(cmd, expect_response=expect_response)
         self._add_to_history(cmd)
 
@@ -1865,11 +1860,13 @@ class PinProbeApp:
         if self.polling_enabled.get() and self.serial_worker.is_connected:
             self._do_poll_round()
         # 调度下一次
-        interval = max(100, self.poll_interval_ms.get())
+        interval = max(MIN_POLL_INTERVAL_MS, self.poll_interval_ms.get())
         self._poll_job_id = self.root.after(interval, self._poll_timer)
 
     def _do_poll_round(self):
         """执行一轮状态轮询"""
+        if self.pressure_running:
+            return
         for name, cmd in AUTO_POLL_COMMANDS:
             self.serial_worker.send_command(cmd, expect_response=True)
 
@@ -1956,6 +1953,10 @@ class PinProbeApp:
             messagebox.showwarning("无命令", "请添加至少一条测试命令")
             return
 
+        if self.polling_enabled.get():
+            self.polling_enabled.set(False)
+            self.poll_status_label.configure(text="压力测试中，轮询已停止", foreground="#cc0000")
+
         # 重置统计
         self.pressure_stats = {
             "total": 0, "success": 0, "fail": 0, "timeout": 0,
@@ -1993,7 +1994,7 @@ class PinProbeApp:
         self._log("压力测试已停止", "WARN")
 
     def _pressure_loop(self, commands: list[str]):
-        """压力测试工作循环 (后台线程, 直接操作串口以降低延迟)"""
+        """压力测试工作循环 (后台线程, 独占一次 SCPI 事务后释放串口)"""
         interval_s = self.pressure_interval.get() / 1000.0
         max_loops = self.pressure_loops.get()
         timeout_s = self.pressure_timeout.get() / 1000.0
@@ -2006,48 +2007,25 @@ class PinProbeApp:
 
             try:
                 full_cmd = cmd.strip() + SCPI_TERMINATOR
-                self.serial_worker.serial_port.write(full_cmd.encode("utf-8"))
-                time.sleep(0.03)
+                expect_response = self.serial_worker._expects_response(cmd)
 
-                if cmd.endswith("?"):
-                    deadline = time.time() + timeout_s
+                with self.serial_worker._lock:
+                    if not self.serial_worker.is_connected:
+                        raise serial.SerialException("串口未连接")
+
+                    self.serial_worker._clear_stale_input_locked()
+                    self.serial_worker.serial_port.write(full_cmd.encode("utf-8"))
+                    time.sleep(0.03)
                     scpi_resp = ""
-                    while time.time() < deadline:
-                        line = self.serial_worker.serial_port.read_until(b'\n', size=512)
-                        if not line:
-                            break
-                        decoded = line.decode("utf-8", errors="replace").strip()
-                        if not decoded:
-                            continue
-                        if (decoded.startswith("[STATE]") or
-                            decoded.startswith("[CLOSE]") or
-                            decoded.startswith("[EVENT]") or
-                            decoded.startswith("[RISK]") or
-                            decoded.startswith("[IO]") or
-                            decoded.startswith("[RS485]") or
-                            decoded.startswith("[LOCK]") or
-                            decoded.startswith("[UNLOCK]") or
-                            decoded.startswith("[CLOSE_START]") or
-                            decoded.startswith("[CLOSE_DONE]") or
-                            decoded.startswith("[OPEN_START]") or
-                            decoded.startswith("[OPEN_DONE]") or
-                            decoded.startswith("E-STOP") or
-                            decoded.startswith("Door_Emerge") or
-                            decoded.startswith("Intake air")):
-                            continue
-                        scpi_resp = decoded
-                        break
+                    if expect_response:
+                        scpi_resp = self.serial_worker._read_scpi_response_locked(timeout_s)
 
-                    elapsed_us = int((time.perf_counter() - send_time) * 1_000_000)
-                    if scpi_resp:
-                        self.pressure_stats["success"] += 1
-                    else:
-                        self.pressure_stats["timeout"] += 1
-                    self.pressure_stats["latencies"].append(elapsed_us)
+                elapsed_us = int((time.perf_counter() - send_time) * 1_000_000)
+                if expect_response and not scpi_resp:
+                    self.pressure_stats["timeout"] += 1
                 else:
-                    elapsed_us = int((time.perf_counter() - send_time) * 1_000_000)
                     self.pressure_stats["success"] += 1
-                    self.pressure_stats["latencies"].append(elapsed_us)
+                self.pressure_stats["latencies"].append(elapsed_us)
 
             except Exception as e:
                 self.pressure_stats["fail"] += 1
