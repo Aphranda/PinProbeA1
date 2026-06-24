@@ -58,6 +58,10 @@ uint8_t LED_Write(scpi_choice_def_t led_value);
 
 scpi_choice_def_t LED_Status();
 
+uint16_t LED_GetMask(uint8_t led_tag);
+uint16_t LED_GetAllMask(void);
+uint8_t LED_DecodeState(uint16_t out_bits);
+
 scpi_choice_def_t SYS_Status();
 
 bool IO_Read(uint8_t checkNum, uint8_t direction, uint8_t* trueData);

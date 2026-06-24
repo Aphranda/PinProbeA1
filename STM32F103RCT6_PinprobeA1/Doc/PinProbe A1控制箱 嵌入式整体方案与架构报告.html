@@ -84,9 +84,9 @@
     <h1 class="cover-title">PinProbe A1控制箱<br>嵌入式整体方案与架构报告</h1>
     <div class="cover-divider"></div>
     <div class="cover-subtitle">单机控制主线 · RamVector 数据总线 · 状态机安全逻辑 · 多机扩展路线</div>
-    <div class="cover-info">STM32F103RCT6 / FreeRTOS / SCPI + Modbus RTU &nbsp;|&nbsp; 2026 年 6 月</div>
+    <div class="cover-info">STM32F103RCT6 / FreeRTOS / SCPI + Modbus RTU / OTA Bootloader &nbsp;|&nbsp; 2026 年 6 月</div>
   </div>
-  <div class="page-footer"><span>Accurate · Simple · Fast · Agile &nbsp;|&nbsp; &copy; General Test Systems Inc. All rights reserved.</span><span>内部文件 &nbsp;|&nbsp; <span class="page-num">1 / 14</span></span></div>
+  <div class="page-footer"><span>Accurate · Simple · Fast · Agile &nbsp;|&nbsp; &copy; General Test Systems Inc. All rights reserved.</span><span>内部文件 &nbsp;|&nbsp; <span class="page-num">1 / 15</span></span></div>
 </div>
 
 <div class="page">
@@ -111,6 +111,7 @@
             <tr><td class="b">P8</td><td>IO 监视反馈闭环</td></tr>
             <tr><td class="b">P9</td><td>通讯、诊断与持久化</td></tr>
             <tr><td class="b">P10</td><td>AppLog 结构化诊断黑匣子</td></tr>
+            <tr><td class="b">P11</td><td>OTA 固件升级与 Bootloader 更新链路</td></tr>
           </tbody>
         </table>
       </div>
@@ -118,21 +119,21 @@
         <div class="h2">Part 3 &nbsp; 价值评估</div>
         <table>
           <tbody>
-            <tr><td class="b">P11</td><td>核心优势总结</td></tr>
-            <tr><td class="b">P12</td><td>当前加固清单</td></tr>
+            <tr><td class="b">P12</td><td>核心优势总结</td></tr>
+            <tr><td class="b">P13</td><td>当前加固清单</td></tr>
           </tbody>
         </table>
         <div class="h2">Part 4 &nbsp; 演进路线</div>
         <table>
           <tbody>
-            <tr><td class="b">P13</td><td>后续扩展方向</td></tr>
-            <tr><td class="b">P14</td><td>最终结论</td></tr>
+            <tr><td class="b">P14</td><td>后续扩展方向</td></tr>
+            <tr><td class="b">P15</td><td>最终结论</td></tr>
           </tbody>
         </table>
       </div>
     </div>
   </div>
-  <div class="page-footer"><span>Accurate · Simple · Fast · Agile &nbsp;|&nbsp; &copy; General Test Systems Inc. All rights reserved.</span><span>内部文件 &nbsp;|&nbsp; <span class="page-num">2 / 14</span></span></div>
+  <div class="page-footer"><span>Accurate · Simple · Fast · Agile &nbsp;|&nbsp; &copy; General Test Systems Inc. All rights reserved.</span><span>内部文件 &nbsp;|&nbsp; <span class="page-num">2 / 15</span></span></div>
 </div>
 
 <div class="page">
@@ -152,17 +153,18 @@
         <li>SCPI 命令写入 RamVector 命令槽，状态查询读取 IO 镜像</li>
         <li>RS485 故障保护、门限位消抖、急停/激光防夹、风险模式</li>
         <li>Flash 配置、POST 自检、固件版本/运行时间/日志查询</li>
+        <li>单机 OTA 接收、W25Q128 暂存、Bootloader 搬运与 App 确认</li>
       </ul></div></div>
       <div class="card co"><div class="card-h">明确不混入当前阶段</div><div class="card-b"><ul>
         <li>CAN 多机同步仍属于后续阶段，不视为单机已落地功能</li>
-        <li>W25Q128 快照、OTA、跨节点仲裁按多机方案统一规划</li>
+        <li>W25Q128 快照、CAN OTA 跨节点分发、跨节点仲裁按多机方案统一规划</li>
         <li>波特率配置是出厂/维护动作，不作为运行期控制链路</li>
         <li>旧 StateMachine.c 已废弃，只保留历史参考</li>
       </ul></div></div>
     </div>
     <div class="bar">当前主线目标：把单机箱体控制做成 <span>低耦合、可诊断、可扩展</span> 的工业控制内核</div>
   </div>
-  <div class="page-footer"><span>Accurate · Simple · Fast · Agile &nbsp;|&nbsp; &copy; General Test Systems Inc. All rights reserved.</span><span>内部文件 &nbsp;|&nbsp; <span class="page-num">3 / 14</span></span></div>
+  <div class="page-footer"><span>Accurate · Simple · Fast · Agile &nbsp;|&nbsp; &copy; General Test Systems Inc. All rights reserved.</span><span>内部文件 &nbsp;|&nbsp; <span class="page-num">3 / 15</span></span></div>
 </div>
 
 <div class="page">
@@ -191,7 +193,7 @@
       </tbody>
     </table>
   </div>
-  <div class="page-footer"><span>Accurate · Simple · Fast · Agile &nbsp;|&nbsp; &copy; General Test Systems Inc. All rights reserved.</span><span>内部文件 &nbsp;|&nbsp; <span class="page-num">4 / 14</span></span></div>
+  <div class="page-footer"><span>Accurate · Simple · Fast · Agile &nbsp;|&nbsp; &copy; General Test Systems Inc. All rights reserved.</span><span>内部文件 &nbsp;|&nbsp; <span class="page-num">4 / 15</span></span></div>
 </div>
 
 <div class="page">
@@ -217,7 +219,7 @@
       <div class="badge bp"><span class="n">76</span>日志容量</div>
     </div>
   </div>
-  <div class="page-footer"><span>Accurate · Simple · Fast · Agile &nbsp;|&nbsp; &copy; General Test Systems Inc. All rights reserved.</span><span>内部文件 &nbsp;|&nbsp; <span class="page-num">5 / 14</span></span></div>
+  <div class="page-footer"><span>Accurate · Simple · Fast · Agile &nbsp;|&nbsp; &copy; General Test Systems Inc. All rights reserved.</span><span>内部文件 &nbsp;|&nbsp; <span class="page-num">5 / 15</span></span></div>
 </div>
 
 <div class="page">
@@ -255,7 +257,7 @@
     </div>
     <div class="bar">RamVector 是当前项目的核心边界：<span>外部命令、现场 IO、系统状态</span> 都在这里汇合</div>
   </div>
-  <div class="page-footer"><span>Accurate · Simple · Fast · Agile &nbsp;|&nbsp; &copy; General Test Systems Inc. All rights reserved.</span><span>内部文件 &nbsp;|&nbsp; <span class="page-num">6 / 14</span></span></div>
+  <div class="page-footer"><span>Accurate · Simple · Fast · Agile &nbsp;|&nbsp; &copy; General Test Systems Inc. All rights reserved.</span><span>内部文件 &nbsp;|&nbsp; <span class="page-num">6 / 15</span></span></div>
 </div>
 
 <div class="page">
@@ -287,7 +289,7 @@
       </tbody>
     </table>
   </div>
-  <div class="page-footer"><span>Accurate · Simple · Fast · Agile &nbsp;|&nbsp; &copy; General Test Systems Inc. All rights reserved.</span><span>内部文件 &nbsp;|&nbsp; <span class="page-num">7 / 14</span></span></div>
+  <div class="page-footer"><span>Accurate · Simple · Fast · Agile &nbsp;|&nbsp; &copy; General Test Systems Inc. All rights reserved.</span><span>内部文件 &nbsp;|&nbsp; <span class="page-num">7 / 15</span></span></div>
 </div>
 
 <div class="page">
@@ -318,7 +320,7 @@
     </table>
     <div class="bar">核心逻辑：<span>命令只是意图，IO 反馈才是事实</span></div>
   </div>
-  <div class="page-footer"><span>Accurate · Simple · Fast · Agile &nbsp;|&nbsp; &copy; General Test Systems Inc. All rights reserved.</span><span>内部文件 &nbsp;|&nbsp; <span class="page-num">8 / 14</span></span></div>
+  <div class="page-footer"><span>Accurate · Simple · Fast · Agile &nbsp;|&nbsp; &copy; General Test Systems Inc. All rights reserved.</span><span>内部文件 &nbsp;|&nbsp; <span class="page-num">8 / 15</span></span></div>
 </div>
 
 <div class="page">
@@ -336,6 +338,7 @@
             <tr><td class="b">DMA 接收</td><td>UART DMA 双缓冲 + IDLE 中断</td><td>降低串口接收阻塞，提高帧边界处理确定性</td></tr>
             <tr><td class="b">AppLog</td><td>独立 RAM 日志区 0x2000A400</td><td>记录状态、动作、事件、IO，可实时 UART 输出或 SCPI 拉取</td></tr>
             <tr><td class="b">Flash 配置</td><td>内部 Flash 最后一页 2KB</td><td>保存 IDN、急停类型、风险模式、波特率等配置，带 CRC 校验</td></tr>
+            <tr><td class="b">OTA 维护</td><td>SCPI + W25Q128 + Bootloader</td><td>128B binary block 接收固件，CRC 校验后复位进入 Bootloader 刷写 App 区</td></tr>
           </tbody>
         </table>
       </div>
@@ -354,7 +357,7 @@
       </div>
     </div>
   </div>
-  <div class="page-footer"><span>Accurate · Simple · Fast · Agile &nbsp;|&nbsp; &copy; General Test Systems Inc. All rights reserved.</span><span>内部文件 &nbsp;|&nbsp; <span class="page-num">9 / 14</span></span></div>
+  <div class="page-footer"><span>Accurate · Simple · Fast · Agile &nbsp;|&nbsp; &copy; General Test Systems Inc. All rights reserved.</span><span>内部文件 &nbsp;|&nbsp; <span class="page-num">9 / 15</span></span></div>
 </div>
 
 <div class="page">
@@ -398,7 +401,57 @@
     </div>
     <div class="note">注：实时 UART 是 best-effort 诊断输出，不承诺全量；需要完整读取时以 SCPI 拉取通道和 drop_count 为准。</div>
   </div>
-  <div class="page-footer"><span>Accurate · Simple · Fast · Agile &nbsp;|&nbsp; &copy; General Test Systems Inc. All rights reserved.</span><span>内部文件 &nbsp;|&nbsp; <span class="page-num">10 / 14</span></span></div>
+  <div class="page-footer"><span>Accurate · Simple · Fast · Agile &nbsp;|&nbsp; &copy; General Test Systems Inc. All rights reserved.</span><span>内部文件 &nbsp;|&nbsp; <span class="page-num">10 / 15</span></span></div>
+</div>
+
+<div class="page">
+  <div class="page-header"><img src="model/logo.png" alt="GTS"></div>
+  <div class="main">
+    <div class="h1">OTA 固件升级与 Bootloader 更新链路</div>
+    <div class="sub">App 接收与校验 &nbsp;|&nbsp; W25Q128 暂存 &nbsp;|&nbsp; Bootloader 刷写内部 Flash</div>
+    <div class="flow">
+      <div class="step"><div class="step-num">1</div><div class="step-title">GUI 选包</div><div class="step-desc">校验 App 向量表<br>计算 size / CRC32</div></div>
+      <div class="arrow"><div class="arrow-l"></div><div class="arrow-h"></div></div>
+      <div class="step"><div class="step-num">2</div><div class="step-title">SCPI 上传</div><div class="step-desc">USART1 binary block<br>128B 分块写入</div></div>
+      <div class="arrow"><div class="arrow-l"></div><div class="arrow-h"></div></div>
+      <div class="step"><div class="step-num">3</div><div class="step-title">外部暂存</div><div class="step-desc">W25Q128 Slot A<br>bitmap 记录缺块</div></div>
+      <div class="arrow"><div class="arrow-l"></div><div class="arrow-h"></div></div>
+      <div class="step"><div class="step-num">4</div><div class="step-title">提交标志</div><div class="step-desc">Manifest + Boot Flags<br>写入 OTA Area</div></div>
+      <div class="arrow"><div class="arrow-l"></div><div class="arrow-h"></div></div>
+      <div class="step"><div class="step-num">5</div><div class="step-title">Bootloader</div><div class="step-desc">CRC/向量表校验<br>搬运到 App 区</div></div>
+      <div class="arrow"><div class="arrow-l"></div><div class="arrow-h"></div></div>
+      <div class="step"><div class="step-num">6</div><div class="step-title">App 确认</div><div class="step-desc">POST 通过后<br>CONFIRMED</div></div>
+    </div>
+    <table>
+      <thead><tr><th style="width:150px;">设计点</th><th>当前实现</th><th>工程意义</th></tr></thead>
+      <tbody>
+        <tr><td class="b">内部 Flash</td><td>Bootloader 常驻前段，App 从 <span class="val">0x08006000</span> 启动，配置页保持 <span class="val">0x0803F800</span></td><td>App 不自擦写自身，升级动作由更小的 Bootloader 控制</td></tr>
+        <tr><td class="b">W25Q128 分区</td><td>OTA Area 从 <span class="val">0x015000</span> 开始；Metadata A、Boot Flags、Control Log、Slot A/B 独立划分</td><td>OTA 与快照、事件日志分区隔离，降低互相覆盖风险</td></tr>
+        <tr><td class="b">传输协议</td><td><span class="val">SYSTem:OTA:BEGIN/DATA/END/VERify?/COMMit/ABORt/BOOT?</span>，DATA 使用 <span class="val">#3xxx</span> binary block</td><td>复用现有 SCPI 维护口，同时避免把固件数据塞进 RamVector</td></tr>
+        <tr><td class="b">完整性检查</td><td>App 侧按块写 W25Q128 并计算整包 CRC32；Bootloader 再次校验 Slot CRC 和向量表</td><td>传输完成和最终刷写前各校验一次，避免错误镜像进入 App 区</td></tr>
+        <tr><td class="b">上位机工具</td><td><span class="val">Tools/pinprobe_gui.py</span> 已集成 OTA 页，上传期间独占串口并暂停普通轮询</td><td>升级流程有可操作入口，可显示进度、速度、Boot 状态和失败阶段</td></tr>
+      </tbody>
+    </table>
+    <div class="row3">
+      <div class="card cg"><div class="card-h">已落地模块</div><div class="card-b"><ul>
+        <li><span class="val">Hardware/OTA</span> 定义 Manifest、Boot Flags、状态机和错误码</li>
+        <li><span class="val">Bootloader/Src/boot_main.c</span> 完成 Slot A 到 App 区的搬运与回读校验</li>
+        <li><span class="val">scpi-def.c</span> 暴露 OTA 状态、上传、校验、提交和中止命令</li>
+      </ul></div></div>
+      <div class="card co"><div class="card-h">关键边界</div><div class="card-b"><ul>
+        <li>App 只接收、暂存、校验和提交，不直接擦写运行中的 App 区</li>
+        <li>RamVector 不承载固件数据，只适合放 OTA 状态摘要和多机 ACK 位图</li>
+        <li>提交后通过 SRAM BootRequest 和 W25Q128 Boot Flags 交接给 Bootloader</li>
+      </ul></div></div>
+      <div class="card cb"><div class="card-h">后续扩展</div><div class="card-b"><ul>
+        <li>CAN 多机阶段由主节点分发已校验镜像，子节点仍本地校验后刷写</li>
+        <li>Slot B、失败回滚、签名校验和更大分块可按同一 Manifest 扩展</li>
+        <li>OTA 状态可映射到 RamVector 扩展区，供集群健康监控读取</li>
+      </ul></div></div>
+    </div>
+    <div class="bar">OTA 的核心原则：<span>App 管接收，W25Q128 管暂存，Bootloader 管刷写</span></div>
+  </div>
+  <div class="page-footer"><span>Accurate · Simple · Fast · Agile &nbsp;|&nbsp; &copy; General Test Systems Inc. All rights reserved.</span><span>内部文件 &nbsp;|&nbsp; <span class="page-num">11 / 15</span></span></div>
 </div>
 
 <div class="page">
@@ -440,8 +493,15 @@
         <li>defaultTask 已留出集群健康监控位置</li>
       </ul></div></div>
     </div>
+    <div class="row3" style="margin-top:14px;">
+      <div class="card cb"><div class="card-h">7. OTA 维护闭环</div><div class="card-b"><ul>
+        <li>App 侧接收固件并写入 W25Q128 Slot A，不自擦写运行区</li>
+        <li>Bootloader 校验 Manifest、CRC 和向量表后再搬运到 App 区</li>
+        <li>GUI 已提供固件选择、上传、校验、提交和 Boot 状态观测入口</li>
+      </ul></div></div>
+    </div>
   </div>
-  <div class="page-footer"><span>Accurate · Simple · Fast · Agile &nbsp;|&nbsp; &copy; General Test Systems Inc. All rights reserved.</span><span>内部文件 &nbsp;|&nbsp; <span class="page-num">11 / 14</span></span></div>
+  <div class="page-footer"><span>Accurate · Simple · Fast · Agile &nbsp;|&nbsp; &copy; General Test Systems Inc. All rights reserved.</span><span>内部文件 &nbsp;|&nbsp; <span class="page-num">12 / 15</span></span></div>
 </div>
 
 <div class="page">
@@ -465,7 +525,7 @@
       <p>当前架构不需要大改。执行器安全、共享数据一致性、失败可诊断三类边界已完成主线加固；后续重点转向 SCPI 错误覆盖、出厂测试和代码清理。</p>
     </div>
   </div>
-  <div class="page-footer"><span>Accurate · Simple · Fast · Agile &nbsp;|&nbsp; &copy; General Test Systems Inc. All rights reserved.</span><span>内部文件 &nbsp;|&nbsp; <span class="page-num">12 / 14</span></span></div>
+  <div class="page-footer"><span>Accurate · Simple · Fast · Agile &nbsp;|&nbsp; &copy; General Test Systems Inc. All rights reserved.</span><span>内部文件 &nbsp;|&nbsp; <span class="page-num">13 / 15</span></span></div>
 </div>
 
 <div class="page">
@@ -478,15 +538,16 @@
       <tbody>
         <tr><td class="b">阶段 1</td><td>单机上线加固</td><td>已完成气缸写入顺序、IO 快照、命令槽 Take/Clear、WriteIO/ReadIO 诊断</td><td>降低现场偶发风险</td></tr>
         <tr><td class="b">阶段 2</td><td>产线测试模式</td><td>增加一键 IO/传感器/通讯自测，输出标准化验收结果，补充 SCPI 错误反馈覆盖</td><td>缩短装配和维修定位时间</td></tr>
-        <tr><td class="b">阶段 3</td><td>运行数据沉淀</td><td>将关键故障、动作计数、设备寿命累计迁移到 W25Q128 或备份区</td><td>支持预防性维护</td></tr>
-        <tr><td class="b">阶段 4</td><td>CAN 多机协同</td><td>启用 node_id、node_status、heartbeat、version、CRC、ack_flags，完成 1~8 节点同步</td><td>从单机控制升级为集群控制</td></tr>
-        <tr><td class="b">阶段 5</td><td>PLC 标准化接入</td><td>对外主接口逐步从 SCPI 调试转向 Modbus RTU 从站，SCPI 保留为维护控制台</td><td>更贴近产线集成</td></tr>
-        <tr><td class="b">阶段 6</td><td>OTA 与快照恢复</td><td>W25Q128 分区：固件暂存、向量快照、故障日志、配置区；支持断点恢复</td><td>降低维护成本</td></tr>
+        <tr><td class="b">阶段 3</td><td>运行数据沉淀</td><td>将关键故障、动作计数、设备寿命累计迁移到 W25Q128 或备份区，并复用现有分区边界</td><td>支持预防性维护</td></tr>
+        <tr><td class="b">阶段 4</td><td>OTA 可靠性增强</td><td>完善 Slot B 回滚、掉电恢复、签名校验、分块严格校验和重复块读回比较</td><td>提升现场升级成功率</td></tr>
+        <tr><td class="b">阶段 5</td><td>CAN 多机协同</td><td>启用 node_id、node_status、heartbeat、version、CRC、ack_flags，完成 1~8 节点同步</td><td>从单机控制升级为集群控制</td></tr>
+        <tr><td class="b">阶段 6</td><td>CAN OTA 分发</td><td>主节点分发已校验镜像，子节点本地暂存、校验、READY 后统一 COMMIT</td><td>降低多箱维护成本</td></tr>
+        <tr><td class="b">阶段 7</td><td>PLC 标准化接入</td><td>对外主接口逐步从 SCPI 调试转向 Modbus RTU 从站，SCPI 保留为维护控制台</td><td>更贴近产线集成</td></tr>
       </tbody>
     </table>
     <div class="principles"><span>先加固单机</span><span>再沉淀诊断</span><span>后启用多机</span><span>最后做远程维护</span></div>
   </div>
-  <div class="page-footer"><span>Accurate · Simple · Fast · Agile &nbsp;|&nbsp; &copy; General Test Systems Inc. All rights reserved.</span><span>内部文件 &nbsp;|&nbsp; <span class="page-num">13 / 14</span></span></div>
+  <div class="page-footer"><span>Accurate · Simple · Fast · Agile &nbsp;|&nbsp; &copy; General Test Systems Inc. All rights reserved.</span><span>内部文件 &nbsp;|&nbsp; <span class="page-num">14 / 15</span></span></div>
 </div>
 
 <div class="page">
@@ -512,13 +573,13 @@
       </ul></div></div>
       <div class="card cb"><div class="card-h">扩展</div><div class="card-b"><ul>
         <li>出厂测试与验收自动化</li>
-        <li>W25Q128 日志/快照/OTA</li>
+        <li>W25Q128 日志/快照与 CAN OTA 分发</li>
         <li>CAN 反射内存式多机协同</li>
       </ul></div></div>
     </div>
     <div class="bar">推荐路线：<span>不重构主架构</span>，沿当前边界逐项加固，再进入多机阶段</div>
   </div>
-  <div class="page-footer"><span>Accurate · Simple · Fast · Agile &nbsp;|&nbsp; &copy; General Test Systems Inc. All rights reserved.</span><span>内部文件 &nbsp;|&nbsp; <span class="page-num">14 / 14</span></span></div>
+  <div class="page-footer"><span>Accurate · Simple · Fast · Agile &nbsp;|&nbsp; &copy; General Test Systems Inc. All rights reserved.</span><span>内部文件 &nbsp;|&nbsp; <span class="page-num">15 / 15</span></span></div>
 </div>
 
 </body>

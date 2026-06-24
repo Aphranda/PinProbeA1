@@ -412,6 +412,16 @@ scpi_choice_def_t led_source[] = {
     SCPI_CHOICE_LIST_END /* termination of option list */
 };
 
+static scpi_choice_def_t led_map_source[] = {
+    {"G", 1},
+    {"GREEN", 1},
+    {"R", 2},
+    {"RED", 2},
+    {"Y", 3},
+    {"YELLOW", 3},
+    SCPI_CHOICE_LIST_END
+};
+
 static scpi_result_t SCPI_ConfigureLED(scpi_t *context)
 {
     int32_t param;
@@ -439,6 +449,68 @@ static scpi_result_t SCPI_ReadLEDState(scpi_t *context)
         default: name = "OFF"; break;
     }
     SCPI_ResultCharacters(context, name, strlen(name));
+    return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_ConfigureLEDMap(scpi_t *context)
+{
+    int32_t io5_color, io6_color, io7_color;
+    uint8_t green_io = 0U, red_io = 0U, yellow_io = 0U;
+
+    if (!SCPI_ParamChoice(context, led_map_source, &io5_color, TRUE) ||
+        !SCPI_ParamChoice(context, led_map_source, &io6_color, TRUE) ||
+        !SCPI_ParamChoice(context, led_map_source, &io7_color, TRUE)) {
+        return SCPI_RES_ERR;
+    }
+
+    if (io5_color == io6_color || io5_color == io7_color || io6_color == io7_color) {
+        PUSH_ERR(context, -222 /*Data out of range*/, "LED map");
+    }
+
+    if (io5_color == 1) green_io = 5U;
+    else if (io5_color == 2) red_io = 5U;
+    else if (io5_color == 3) yellow_io = 5U;
+
+    if (io6_color == 1) green_io = 6U;
+    else if (io6_color == 2) red_io = 6U;
+    else if (io6_color == 3) yellow_io = 6U;
+
+    if (io7_color == 1) green_io = 7U;
+    else if (io7_color == 2) red_io = 7U;
+    else if (io7_color == 3) yellow_io = 7U;
+
+    if (green_io == 0U || red_io == 0U || yellow_io == 0U) {
+        PUSH_ERR(context, -222 /*Data out of range*/, "LED map");
+    }
+
+    if (Flash_SetLedMap(green_io, red_io, yellow_io) != FLASH_OK)
+        PUSH_ERR(context, -222 /*Data out of range*/, "LED map");
+    if (Flash_Save() != FLASH_OK)
+        PUSH_ERR(context, -320 /*Storage fault*/, "Flash save");
+
+    char buf[24];
+    snprintf(buf, sizeof(buf), "%c,%c,%c",
+             (io5_color == 1) ? 'G' : ((io5_color == 2) ? 'R' : 'Y'),
+             (io6_color == 1) ? 'G' : ((io6_color == 2) ? 'R' : 'Y'),
+             (io7_color == 1) ? 'G' : ((io7_color == 2) ? 'R' : 'Y'));
+    SCPI_ResultText(context, buf);
+    return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_ReadLEDMapQ(scpi_t *context)
+{
+    uint8_t green_io, red_io, yellow_io;
+    char colors[3] = {'?', '?', '?'};
+    char buf[24];
+
+    Flash_GetLedMap(&green_io, &red_io, &yellow_io);
+
+    if (green_io >= 5U && green_io <= 7U) colors[green_io - 5U] = 'G';
+    if (red_io >= 5U && red_io <= 7U) colors[red_io - 5U] = 'R';
+    if (yellow_io >= 5U && yellow_io <= 7U) colors[yellow_io - 5U] = 'Y';
+
+    snprintf(buf, sizeof(buf), "%c,%c,%c", colors[0], colors[1], colors[2]);
+    SCPI_ResultText(context, buf);
     return SCPI_RES_OK;
 }
 
@@ -1044,6 +1116,14 @@ const scpi_command_t scpi_commands[] = {
     {
         .pattern = "READ:LED:STATe?",
         .callback = SCPI_ReadLEDState,
+    },
+    {
+        .pattern = "CONFigure:LED:MAP",
+        .callback = SCPI_ConfigureLEDMap,
+    },
+    {
+        .pattern = "CONFigure:LED:MAP?",
+        .callback = SCPI_ReadLEDMapQ,
     },
     {
         .pattern = "READ:SYSTem:STATe?",

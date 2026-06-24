@@ -86,10 +86,7 @@ void ModBusTask(void *argument)
     io.cylinder_cmd[1]= (out_buf[0] & 0x02) ? 1 : 0;
     io.lock_state     = (out_buf[0] & 0x80) ? 1 : 0;
 
-    if (out_buf[0] & 0x10)      io.led_state = 1;
-    else if (out_buf[0] & 0x20) io.led_state = 2;
-    else if (out_buf[0] & 0x40) io.led_state = 4;
-    else                        io.led_state = 0;
+    io.led_state = LED_DecodeState((uint16_t)out_buf[0] | ((uint16_t)out_buf[1] << 8));
 
     RamVector_UpdateLocalIO(&io);
     CmdExec_ExecuteAll();

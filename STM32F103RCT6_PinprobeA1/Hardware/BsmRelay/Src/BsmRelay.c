@@ -1,5 +1,6 @@
 #include "BsmRelay.h"
 #include "ram_vector.h"
+#include "flash.h"
 #include <math.h>
 
 
@@ -11,6 +12,67 @@ extern scpi_choice_def_t sys_source[];
 
 // RS485通信状态标志：读/写操作失败时置false，禁止状态机使用不可靠数据
 static bool rs485_io_ok = true;
+
+static uint16_t LED_IoToMask(uint8_t io)
+{
+    if (io == 0U || io > 16U) {
+        return 0U;
+    }
+    return (uint16_t)(1U << (io - 1U));
+}
+
+static bool LED_GetIoMap(uint8_t *green_io, uint8_t *red_io, uint8_t *yellow_io)
+{
+    Flash_GetLedMap(green_io, red_io, yellow_io);
+
+    if (green_io == NULL || red_io == NULL || yellow_io == NULL) {
+        return false;
+    }
+
+    if (*green_io < 5U || *green_io > 7U ||
+        *red_io < 5U || *red_io > 7U ||
+        *yellow_io < 5U || *yellow_io > 7U) {
+        *green_io = 5U;
+        *red_io = 6U;
+        *yellow_io = 7U;
+        return false;
+    }
+
+    if (*green_io == *red_io || *green_io == *yellow_io || *red_io == *yellow_io) {
+        *green_io = 5U;
+        *red_io = 6U;
+        *yellow_io = 7U;
+        return false;
+    }
+
+    return true;
+}
+
+uint16_t LED_GetMask(uint8_t led_tag)
+{
+    uint8_t green_io, red_io, yellow_io;
+    (void)LED_GetIoMap(&green_io, &red_io, &yellow_io);
+
+    switch (led_tag) {
+    case 1: return LED_IoToMask(green_io);
+    case 2: return LED_IoToMask(red_io);
+    case 3: return LED_IoToMask(yellow_io);
+    default: return 0U;
+    }
+}
+
+uint16_t LED_GetAllMask(void)
+{
+    return (uint16_t)(LED_GetMask(1U) | LED_GetMask(2U) | LED_GetMask(3U));
+}
+
+uint8_t LED_DecodeState(uint16_t out_bits)
+{
+    if ((out_bits & LED_GetMask(1U)) != 0U) return 1U;
+    if ((out_bits & LED_GetMask(2U)) != 0U) return 2U;
+    if ((out_bits & LED_GetMask(3U)) != 0U) return 4U;
+    return 0U;
+}
 
 uint8_t Cylinder_Write(uint32_t cylinder_id, scpi_choice_def_t cylinder_value)
 {
@@ -109,28 +171,30 @@ scpi_choice_def_t Lock_Status(){
 uint8_t LED_Write(scpi_choice_def_t led_value)
 {
     uint8_t ok = 1U;
+    uint8_t green_io, red_io, yellow_io;
+    (void)LED_GetIoMap(&green_io, &red_io, &yellow_io);
 
     switch (led_value.tag)
     {
     case 0: // led OFF
-        ok &= WriteIO(5, 0) ? 1U : 0U;
-        ok &= WriteIO(6, 0) ? 1U : 0U;
-        ok &= WriteIO(7, 0) ? 1U : 0U;
+        ok &= WriteIO(green_io, 0) ? 1U : 0U;
+        ok &= WriteIO(red_io, 0) ? 1U : 0U;
+        ok &= WriteIO(yellow_io, 0) ? 1U : 0U;
         break;
     case 1: // led G
-        ok &= WriteIO(5, 1) ? 1U : 0U;
-        ok &= WriteIO(6, 0) ? 1U : 0U;
-        ok &= WriteIO(7, 0) ? 1U : 0U;
+        ok &= WriteIO(green_io, 1) ? 1U : 0U;
+        ok &= WriteIO(red_io, 0) ? 1U : 0U;
+        ok &= WriteIO(yellow_io, 0) ? 1U : 0U;
         break;
     case 2: // led R
-        ok &= WriteIO(5, 0) ? 1U : 0U;
-        ok &= WriteIO(6, 1) ? 1U : 0U;
-        ok &= WriteIO(7, 0) ? 1U : 0U;
+        ok &= WriteIO(green_io, 0) ? 1U : 0U;
+        ok &= WriteIO(red_io, 1) ? 1U : 0U;
+        ok &= WriteIO(yellow_io, 0) ? 1U : 0U;
         break;
     case 3: // led Y
-        ok &= WriteIO(5, 0) ? 1U : 0U;
-        ok &= WriteIO(6, 0) ? 1U : 0U;
-        ok &= WriteIO(7, 1) ? 1U : 0U;
+        ok &= WriteIO(green_io, 0) ? 1U : 0U;
+        ok &= WriteIO(red_io, 0) ? 1U : 0U;
+        ok &= WriteIO(yellow_io, 1) ? 1U : 0U;
         break;
     default:
         ok = 0U;
@@ -141,18 +205,19 @@ uint8_t LED_Write(scpi_choice_def_t led_value)
 
 scpi_choice_def_t LED_Status(){
     uint8_t* O_status = OutputIO_Read(CHECK_NUM);
-    uint8_t out_01_08 = O_status[0];
+    uint16_t out_bits = (uint16_t)O_status[0] | ((uint16_t)O_status[1] << 8);
+    uint8_t state = LED_DecodeState(out_bits);
 
-    if(out_01_08&led_green){
+    if(state == 1U){
         return led_source[1];
     }
-    else if(out_01_08&led_red){
+    else if(state == 2U){
         return led_source[2];
     }
-    else if(out_01_08&led_yellow){
+    else if(state == 4U){
         return led_source[3];
     }
-    else if((!(out_01_08&led_green))&&(!(out_01_08&led_red))&&(!(out_01_08&led_yellow)))
+    else if((out_bits & LED_GetAllMask()) == 0U)
     {
         return led_source[0];
     }

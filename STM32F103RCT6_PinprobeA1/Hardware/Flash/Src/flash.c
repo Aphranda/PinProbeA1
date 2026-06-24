@@ -25,6 +25,9 @@
  */
 #define FLASH_DEFAULT_BAUDRATE      115200U
 
+#define FLASH_LED_IO_MIN            5U
+#define FLASH_LED_IO_MAX            7U
+
 /**
  * @brief CRC32多项式 (标准IEEE 802.3)
  */
@@ -50,6 +53,7 @@ static uint32_t Flash_CalculateCRC(const uint32_t *data, size_t word_count);
 static Flash_Status_t Flash_VerifyConfig(const Flash_Config_t *cfg);
 static Flash_Status_t Flash_ErasePage(void);
 static Flash_Status_t Flash_WriteData(uint32_t address, const uint32_t *data, size_t word_count);
+static uint8_t Flash_IsValidLedMap(uint8_t green_io, uint8_t red_io, uint8_t yellow_io);
 
 /* ========================================================================== */
 /*              CRC32 计算 (软件实现)                                          */
@@ -118,7 +122,25 @@ static Flash_Status_t Flash_VerifyConfig(const Flash_Config_t *cfg)
     if (calculated_crc != cfg->crc)
         return FLASH_ERR_CRC;
 
+    if (!Flash_IsValidLedMap(cfg->led_green_io, cfg->led_red_io, cfg->led_yellow_io))
+        return FLASH_ERR_PARAM;
+
     return FLASH_OK;
+}
+
+static uint8_t Flash_IsValidLedMap(uint8_t green_io, uint8_t red_io, uint8_t yellow_io)
+{
+    if (green_io < FLASH_LED_IO_MIN || green_io > FLASH_LED_IO_MAX ||
+        red_io < FLASH_LED_IO_MIN || red_io > FLASH_LED_IO_MAX ||
+        yellow_io < FLASH_LED_IO_MIN || yellow_io > FLASH_LED_IO_MAX) {
+        return 0U;
+    }
+
+    if (green_io == red_io || green_io == yellow_io || red_io == yellow_io) {
+        return 0U;
+    }
+
+    return 1U;
 }
 
 /* ========================================================================== */
@@ -252,6 +274,9 @@ void Flash_LoadDefaults(void)
     config_cache.scpi_idn4[FLASH_SCPI_IDN4_LEN - 1] = '\0';
 
     config_cache.boot_diag_uart = 0U;
+    config_cache.led_green_io = 5U;
+    config_cache.led_red_io = 6U;
+    config_cache.led_yellow_io = 7U;
 
     /* 保留字段已初始化为0 (memset) */
 
@@ -576,4 +601,25 @@ Flash_Status_t Flash_SetBootDiagUart(uint8_t enable)
 uint8_t Flash_GetBootDiagUart(void)
 {
     return config_cache.boot_diag_uart ? 1U : 0U;
+}
+
+Flash_Status_t Flash_SetLedMap(uint8_t green_io, uint8_t red_io, uint8_t yellow_io)
+{
+    if (!Flash_IsValidLedMap(green_io, red_io, yellow_io))
+        return FLASH_ERR_PARAM;
+
+    config_cache.led_green_io = green_io;
+    config_cache.led_red_io = red_io;
+    config_cache.led_yellow_io = yellow_io;
+    return FLASH_OK;
+}
+
+void Flash_GetLedMap(uint8_t *green_io, uint8_t *red_io, uint8_t *yellow_io)
+{
+    if (green_io != NULL)
+        *green_io = config_cache.led_green_io;
+    if (red_io != NULL)
+        *red_io = config_cache.led_red_io;
+    if (yellow_io != NULL)
+        *yellow_io = config_cache.led_yellow_io;
 }
