@@ -113,8 +113,14 @@ static void CmdExec_LED(Vector_Cmd_t cmd)
 void CmdExec_ExecuteAll(void)
 {
     Vector_CmdSnapshot_t cmds;
+    Vector_IOState_t io;
 
     if (!RamVector_TakeCmds(&cmds)) {
+        return;
+    }
+
+    (void)RamVector_ReadLocalIO(&io);
+    if (io.rs485_ok != VECTOR_IO_LINK_OK) {
         return;
     }
 

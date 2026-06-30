@@ -60,6 +60,11 @@ typedef enum {
 #define CMD_PRIO_USER     1   /* 按钮 / SCPI */
 #define CMD_PRIO_SAFETY   2   /* 急停 / 激光 / 故障 (最高) */
 
+/* ===== IO 链路可信状态 (复用 Vector_IOState_t.rs485_ok, 不改变 RAM 布局) ===== */
+#define VECTOR_IO_LINK_FAULT       0U
+#define VECTOR_IO_LINK_OK          1U
+#define VECTOR_IO_LINK_RECOVERING  2U
+
 /* ===== 命令槽 (带优先级仲裁) ===== */
 typedef struct __attribute__((packed)) {
     uint16_t cmd;
