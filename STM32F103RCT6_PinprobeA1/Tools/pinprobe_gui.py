@@ -56,6 +56,8 @@ OTA_BOOT_FAIL_REASONS = {
 
 BAUD_RATES = [115200]
 SCPI_NO_RESPONSE_COMMANDS = {"*CLS", "*RST", "*WAI"}
+SCPI_MULTILINE_COMMANDS = {"READ:LOG:ALL?"}
+SCPI_LOG_READ_COMMANDS = {"READ:LOG:NEXT?", "READ:LOG:ALL?"}
 
 # ── SCPI 命令面板定义 ────────────────────────────────────────────────
 SCPI_COMMANDS = {
@@ -71,7 +73,14 @@ SCPI_COMMANDS = {
         ("固件版本", "SYSTem:VERSion?"),
         ("运行时间", "SYSTem:UPTime?"),
         ("系统重启", "SYSTem:REBoot"),
+        ("Flash ID", "SYSTem:FLASH:ID?"),
+        ("OTA 状态", "SYSTem:OTA:STATus?"),
         ("OTA Boot状态", "SYSTem:OTA:BOOT?"),
+        ("OTA 校验", "SYSTem:OTA:VERify?"),
+        ("OTA 中止", "SYSTem:OTA:ABORt"),
+        ("BSM波特率115200", "CONFigure:BAUDrate 115200"),
+        ("Boot诊断 ON", "CONFigure:BOOT:DIAG ON"),
+        ("Boot诊断 OFF", "CONFigure:BOOT:DIAG OFF"),
         ("Boot诊断?", "CONFigure:BOOT:DIAG?"),
     ],
     "门/气缸": [
@@ -93,6 +102,10 @@ SCPI_COMMANDS = {
         ("🟡 黄灯", "CONFigure:LED YELLOW"),
         ("⚫ 关灯", "CONFigure:LED OFF"),
         ("读 LED 状态", "READ:LED:STATe?"),
+        ("LED映射 G,R,Y", "CONFigure:LED:MAP G,R,Y"),
+        ("LED映射 R,G,Y", "CONFigure:LED:MAP R,G,Y"),
+        ("LED映射 Y,R,G", "CONFigure:LED:MAP Y,R,G"),
+        ("读 LED 映射", "CONFigure:LED:MAP?"),
     ],
     "系统状态": [
         ("读系统状态", "READ:SYSTem:STATe?"),
@@ -126,6 +139,19 @@ SCPI_COMMANDS = {
         ("事件打印 OFF", "CONFigure:DEBUg:EVENt OFF"),
         ("IO刷屏 ON", "CONFigure:DEBUg:IO ON"),
         ("IO刷屏 OFF", "CONFigure:DEBUg:IO OFF"),
+        ("读状态跟踪", "READ:DEBUg:STATe?"),
+        ("读动作耗时", "READ:DEBUg:ACTion?"),
+        ("读事件打印", "READ:DEBUg:EVENt?"),
+        ("读IO刷屏", "READ:DEBUg:IO?"),
+    ],
+    "日志": [
+        ("实时日志 ON", "CONFigure:LOG:UART ON"),
+        ("实时日志 OFF", "CONFigure:LOG:UART OFF"),
+        ("读实时日志开关", "READ:LOG:UART?"),
+        ("读日志状态", "READ:LOG:STATus?"),
+        ("读下一条日志", "READ:LOG:NEXT?"),
+        ("读全部日志", "READ:LOG:ALL?"),
+        ("清空日志", "CONFigure:LOG:CLEar"),
     ],
 }
 
@@ -137,6 +163,7 @@ AUTO_POLL_COMMANDS = [
     ("USB状态", "READ:CYLInder2:STATe?"),
     ("锁状态", "READ:LOCK:STATe?"),
     ("LED状态", "READ:LED:STATe?"),
+    ("日志状态", "READ:LOG:STATus?"),
 ]
 
 # IO信号位定义（用于 READ:IO:ALL? 响应解析）
@@ -253,6 +280,18 @@ PRESSURE_PRESETS = {
         "interval_ms": 150,
         "description": "混合读写命令, 模拟真实负载"
     },
+    "日志链路": {
+        "commands": [
+            "READ:LOG:STATus?",
+            "READ:LOG:NEXT?",
+            "READ:DEBUg:STATe?",
+            "READ:DEBUg:ACTion?",
+            "READ:DEBUg:EVENt?",
+            "READ:DEBUg:IO?",
+        ],
+        "interval_ms": 250,
+        "description": "轮询日志与调试开关, 测试新增诊断命令"
+    },
 }
 
 # ══════════════════════════════════════════════════════════════════════
@@ -319,7 +358,8 @@ class SerialWorker:
 
     @staticmethod
     def _is_debug_line(decoded: str) -> bool:
-        return (decoded.startswith("[STATE]") or
+        return (decoded.startswith("[T+") or
+                decoded.startswith("[STATE]") or
                 decoded.startswith("[CLOSE]") or
                 decoded.startswith("[EVENT]") or
                 decoded.startswith("[RISK]") or
@@ -339,7 +379,20 @@ class SerialWorker:
     def _expects_response(cmd: str) -> bool:
         return cmd.strip() not in SCPI_NO_RESPONSE_COMMANDS
 
-    def _read_scpi_response_locked(self, timeout: float) -> str:
+    @staticmethod
+    def _is_multiline_command(cmd: str) -> bool:
+        return cmd.strip().upper() in SCPI_MULTILINE_COMMANDS
+
+    @staticmethod
+    def _accepts_log_line_response(cmd: str) -> bool:
+        return cmd.strip().upper() in SCPI_LOG_READ_COMMANDS
+
+    def _read_scpi_response_locked(
+        self,
+        timeout: float,
+        multiline: bool = False,
+        accept_log_lines: bool = False,
+    ) -> str:
         deadline = time.time() + timeout
         while time.time() < deadline:
             line = self.serial_port.read_until(b'\n', size=512)
@@ -348,9 +401,23 @@ class SerialWorker:
             decoded = line.decode("utf-8", errors="replace").strip()
             if not decoded:
                 continue
-            if self._is_debug_line(decoded):
+            is_log_line_response = accept_log_lines and decoded.startswith("[T+")
+            if self._is_debug_line(decoded) and not is_log_line_response:
                 self.rx_queue.put(("debug", "", decoded, 0))
                 continue
+            if multiline:
+                lines = [decoded]
+                while self.serial_port.in_waiting:
+                    extra = self.serial_port.read_until(b'\n', size=512)
+                    extra_decoded = extra.decode("utf-8", errors="replace").strip()
+                    if not extra_decoded:
+                        continue
+                    is_extra_log_line = accept_log_lines and extra_decoded.startswith("[T+")
+                    if self._is_debug_line(extra_decoded) and not is_extra_log_line:
+                        self.rx_queue.put(("debug", "", extra_decoded, 0))
+                        continue
+                    lines.append(extra_decoded)
+                return "\n".join(lines)
             return decoded
         return ""
 
@@ -408,7 +475,11 @@ class SerialWorker:
                     time.sleep(0.03)
 
                     if expect_response:
-                        scpi_resp = self._read_scpi_response_locked(SERIAL_TIMEOUT)
+                        scpi_resp = self._read_scpi_response_locked(
+                            SERIAL_TIMEOUT,
+                            multiline=self._is_multiline_command(cmd),
+                            accept_log_lines=self._accepts_log_line_response(cmd),
+                        )
                         elapsed_us = int((time.perf_counter() - send_time) * 1_000_000)
                         resp_text = scpi_resp if scpi_resp else "(无响应)"
                         self.rx_queue.put(("response", cmd, resp_text, elapsed_us))
