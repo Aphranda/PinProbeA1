@@ -139,6 +139,7 @@ SCPI_COMMANDS = {
         ("事件打印 OFF", "CONFigure:DEBUg:EVENt OFF"),
         ("IO刷屏 ON", "CONFigure:DEBUg:IO ON"),
         ("IO刷屏 OFF", "CONFigure:DEBUg:IO OFF"),
+        ("波特率 115200", "CONFigure:BAUDrate 115200"),
         ("读状态跟踪", "READ:DEBUg:STATe?"),
         ("读动作耗时", "READ:DEBUg:ACTion?"),
         ("读事件打印", "READ:DEBUg:EVENt?"),
