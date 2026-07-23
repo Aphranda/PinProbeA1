@@ -354,18 +354,10 @@ static scpi_result_t SCPI_ReadCylinderState(scpi_t *context)
     Vector_IOState_t io;
     (void)RamVector_ReadLocalIO(&io);
     const char *name = "CYL ERR";
+    uint8_t state = (cylinder_id == 2) ? io.cylinder_state[1] : io.cylinder_state[0];
 
-    if (cylinder_id == 1) {
-        /* 气缸1: 限位优先, 未到位时再按输出命令判断运动方向 */
-        if (io.door_state == 1)      name = "OPENED";
-        else if (io.door_state == 0) name = "CLOSED";
-        else if (io.door_moving)     name = (io.cylinder_cmd[0] ? "OPENING" : "CLOSING");
-    } else {
-        /* 气缸2 (USB): 基于 raw_out_lo bits 0x04/0x08 (usb_pne_in/usb_pne_out) */
-        uint8_t out = io.raw_out_lo;
-        if (out & 0x04)           name = "OPENING";
-        else if (out & 0x08)      name = "CLOSING";
-        else                      name = "CLOSED";
+    if (state >= VECTOR_CYL_STATE_CLOSING && state <= VECTOR_CYL_STATE_ERR) {
+        SCPI_ChoiceToName(cylinder_source, state, &name);
     }
 
     SCPI_ResultCharacters(context, name, strlen(name));
@@ -616,6 +608,29 @@ static scpi_result_t SCPI_ReadBootDiagQ(scpi_t *context)
 {
     const char *name;
     SCPI_ChoiceToName(risk_mode_source, Flash_GetBootDiagUart() ? 1 : 0, &name);
+    SCPI_ResultCharacters(context, name, strlen(name));
+    return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_ConfigureUsbInsert(scpi_t *context)
+{
+    int32_t param;
+    if (!SCPI_ParamChoice(context, risk_mode_source, &param, TRUE))
+        return SCPI_RES_ERR;
+    if (Flash_SetUsbInsertEnable((uint8_t)(param != 0)) != FLASH_OK)
+        PUSH_ERR(context, -320 /*Storage fault*/, "Flash write");
+    if (Flash_Save() != FLASH_OK)
+        PUSH_ERR(context, -320 /*Storage fault*/, "Flash save");
+    const char *name;
+    SCPI_ChoiceToName(risk_mode_source, param, &name);
+    SCPI_ResultCharacters(context, name, strlen(name));
+    return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_ReadUsbInsertQ(scpi_t *context)
+{
+    const char *name;
+    SCPI_ChoiceToName(risk_mode_source, Flash_GetUsbInsertEnable() ? 1 : 0, &name);
     SCPI_ResultCharacters(context, name, strlen(name));
     return SCPI_RES_OK;
 }
@@ -1192,6 +1207,14 @@ const scpi_command_t scpi_commands[] = {
     {
         .pattern = "CONFigure:BOOT:DIAG?",
         .callback = SCPI_ReadBootDiagQ,
+    },
+    {
+        .pattern = "CONFigure:USB:INSert",
+        .callback = SCPI_ConfigureUsbInsert,
+    },
+    {
+        .pattern = "CONFigure:USB:INSert?",
+        .callback = SCPI_ReadUsbInsertQ,
     },
     /* 调试开关 (运行时控制, 默认 OFF) */
     {

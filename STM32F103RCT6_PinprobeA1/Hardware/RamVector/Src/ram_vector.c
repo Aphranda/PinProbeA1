@@ -149,7 +149,13 @@ void RamVector_UpdateLocalIO(const Vector_IOState_t *io)
     }
 
     taskENTER_CRITICAL();
+    uint8_t cylinder_state[2] = {
+        ram_vector.io_state[node_idx()].cylinder_state[0],
+        ram_vector.io_state[node_idx()].cylinder_state[1],
+    };
     memcpy(&ram_vector.io_state[node_idx()], io, sizeof(Vector_IOState_t));
+    ram_vector.io_state[node_idx()].cylinder_state[0] = cylinder_state[0];
+    ram_vector.io_state[node_idx()].cylinder_state[1] = cylinder_state[1];
     taskEXIT_CRITICAL();
 }
 
@@ -169,6 +175,17 @@ bool RamVector_ReadLocalIO(Vector_IOState_t *out)
     taskEXIT_CRITICAL();
 
     return true;
+}
+
+void RamVector_SetLocalCylinderState(uint8_t cylinder_index, uint8_t state)
+{
+    if (cylinder_index >= 2U) {
+        return;
+    }
+
+    taskENTER_CRITICAL();
+    ram_vector.io_state[node_idx()].cylinder_state[cylinder_index] = state;
+    taskEXIT_CRITICAL();
 }
 
 /* ===== 状态 ===== */

@@ -65,6 +65,15 @@ typedef enum {
 #define VECTOR_IO_LINK_OK          1U
 #define VECTOR_IO_LINK_RECOVERING  2U
 
+/* ===== 气缸状态 (对齐 cylinder_source[] 的 tag 值) ===== */
+#define VECTOR_CYL_STATE_CLOSE     0U
+#define VECTOR_CYL_STATE_OPEN      1U
+#define VECTOR_CYL_STATE_CLOSING   2U
+#define VECTOR_CYL_STATE_OPENING   3U
+#define VECTOR_CYL_STATE_CLOSED    4U
+#define VECTOR_CYL_STATE_OPENED    5U
+#define VECTOR_CYL_STATE_ERR       6U
+
 /* ===== 命令槽 (带优先级仲裁) ===== */
 typedef struct __attribute__((packed)) {
     uint16_t cmd;
@@ -132,7 +141,7 @@ typedef enum {
 
 typedef struct __attribute__((packed)) {
     uint8_t  cylinder_cmd[2];       /* 气缸命令 */
-    uint8_t  cylinder_state[2];     /* 气缸状态 */
+    uint8_t  cylinder_state[2];     /* 气缸状态摘要 (StateVector 基于 IO 镜像推导) */
     uint8_t  lock_cmd;              /* 锁定命令 */
     uint8_t  lock_state;            /* 锁定状态 */
     uint8_t  led_cmd;               /* LED 命令 */
@@ -212,6 +221,7 @@ bool RamVector_TakeCmds(Vector_CmdSnapshot_t *out);
 void        RamVector_UpdateLocalIO(const Vector_IOState_t *io);
 const Vector_IOState_t* RamVector_GetLocalIO(void);
 bool        RamVector_ReadLocalIO(Vector_IOState_t *out);
+void        RamVector_SetLocalCylinderState(uint8_t cylinder_index, uint8_t state);
 
 /* 状态同步 */
 void        RamVector_SetState(Vector_SysState_t s);

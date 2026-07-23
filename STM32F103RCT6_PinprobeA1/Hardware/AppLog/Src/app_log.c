@@ -71,6 +71,8 @@ static const char *event_name(uint8_t event)
     case APPLOG_EVT_SCPI_CYLINDER: return "SCPI_CYLINDER";
     case APPLOG_EVT_SCPI_LED: return "SCPI_LED";
     case APPLOG_EVT_IO_WRITE_FAIL: return "IO_WRITE_FAIL";
+    case APPLOG_EVT_USB_INSERT_FAIL: return "USB_INSERT_FAIL";
+    case APPLOG_EVT_USB_RETRACT_FAIL: return "USB_RETRACT_FAIL";
     default: return "EVENT?";
     }
 }
@@ -88,12 +90,15 @@ static const char *level_name(uint8_t level)
 static uint8_t event_level(uint8_t event_id)
 {
     switch (event_id) {
-    case APPLOG_EVT_RS485_FAULT:
     case APPLOG_EVT_ESTOP:
     case APPLOG_EVT_LASER:
+        return APPLOG_LEVEL_ERROR;
+    case APPLOG_EVT_RS485_FAULT:
     case APPLOG_EVT_RISK_PRESSURE:
     case APPLOG_EVT_AIR_LOW:
     case APPLOG_EVT_IO_WRITE_FAIL:
+    case APPLOG_EVT_USB_INSERT_FAIL:
+    case APPLOG_EVT_USB_RETRACT_FAIL:
         return APPLOG_LEVEL_WARN;
     default:
         return APPLOG_LEVEL_INFO;
@@ -562,6 +567,29 @@ size_t AppLog_Format(const AppLog_Record_t *record, char *buffer, size_t buffer_
                            record->arg0,
                            record->arg1);
             break;
+        case APPLOG_EVT_USB_INSERT_FAIL:
+        case APPLOG_EVT_USB_RETRACT_FAIL:
+        {
+            unsigned long usb_elapsed =
+                ((unsigned long)record->reserved << 16) | record->arg0;
+            const char *reason;
+            switch (record->arg1) {
+            case 1U: reason = "timeout"; break;
+            case 2U: reason = "sensor_conflict"; break;
+            case 3U: reason = "dual_output"; break;
+            default: reason = "unknown"; break;
+            }
+            len = snprintf(buffer, buffer_size,
+                           "[T+%lu.%03lus][N%u][%s][EVENT] %s elapsed=%lums reason=%s",
+                           tick_s,
+                           tick_ms,
+                           record->node_id,
+                           level_name(record->level),
+                           event_name(record->event_id),
+                           usb_elapsed,
+                           reason);
+            break;
+        }
         default:
             len = snprintf(buffer, buffer_size,
                            "[T+%lu.%03lus][N%u][%s][EVENT] %s arg0=%u arg1=%u",

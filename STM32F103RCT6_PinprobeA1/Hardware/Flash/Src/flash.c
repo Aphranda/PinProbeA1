@@ -125,6 +125,9 @@ static Flash_Status_t Flash_VerifyConfig(const Flash_Config_t *cfg)
     if (!Flash_IsValidLedMap(cfg->led_green_io, cfg->led_red_io, cfg->led_yellow_io))
         return FLASH_ERR_PARAM;
 
+    if (cfg->usb_insert_enable > 1U)
+        return FLASH_ERR_PARAM;
+
     return FLASH_OK;
 }
 
@@ -277,6 +280,7 @@ void Flash_LoadDefaults(void)
     config_cache.led_green_io = 5U;
     config_cache.led_red_io = 6U;
     config_cache.led_yellow_io = 7U;
+    config_cache.usb_insert_enable = 0U;
 
     /* 保留字段已初始化为0 (memset) */
 
@@ -601,6 +605,18 @@ Flash_Status_t Flash_SetBootDiagUart(uint8_t enable)
 uint8_t Flash_GetBootDiagUart(void)
 {
     return config_cache.boot_diag_uart ? 1U : 0U;
+}
+
+Flash_Status_t Flash_SetUsbInsertEnable(uint8_t enable)
+{
+    if (enable > 1U) return FLASH_ERR_PARAM;
+    config_cache.usb_insert_enable = enable;
+    return FLASH_OK;
+}
+
+uint8_t Flash_GetUsbInsertEnable(void)
+{
+    return config_cache.usb_insert_enable ? 1U : 0U;
 }
 
 Flash_Status_t Flash_SetLedMap(uint8_t green_io, uint8_t red_io, uint8_t yellow_io)

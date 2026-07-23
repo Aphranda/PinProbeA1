@@ -51,7 +51,7 @@ extern "C" {
 /**
  * @brief 配置结构版本号
  */
-#define FLASH_CONFIG_VERSION       0x00020002UL  /* v2.0.2 - added LED IO map */
+#define FLASH_CONFIG_VERSION       0x00020003UL  /* v2.0.3 - added USB insert enable */
 
 /**
  * @brief 设备名称最大长度
@@ -109,7 +109,8 @@ typedef struct {
     uint8_t  led_green_io;      /**< LED green output IO number (default 5)                  */
     uint8_t  led_red_io;        /**< LED red output IO number (default 6)                    */
     uint8_t  led_yellow_io;     /**< LED yellow output IO number (default 7)                 */
-    uint8_t  reserved[10];      /**< 保留字节                                          */
+    uint8_t  usb_insert_enable; /**< USB自动拔插流程: 0=OFF, 1=ON                       */
+    uint8_t  reserved[9];       /**< 保留字节                                          */
 
     /* ===== CRC校验 (必须在结构体末尾) ===== */
     uint32_t crc;               /**< CRC32校验 (从 magic 到 reserved 末尾)              */
@@ -302,6 +303,9 @@ uint8_t Flash_GetRiskMode(void);
 
 Flash_Status_t Flash_SetBootDiagUart(uint8_t enable);
 uint8_t Flash_GetBootDiagUart(void);
+
+Flash_Status_t Flash_SetUsbInsertEnable(uint8_t enable);
+uint8_t Flash_GetUsbInsertEnable(void);
 
 Flash_Status_t Flash_SetLedMap(uint8_t green_io, uint8_t red_io, uint8_t yellow_io);
 void Flash_GetLedMap(uint8_t *green_io, uint8_t *red_io, uint8_t *yellow_io);
