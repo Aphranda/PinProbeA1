@@ -324,7 +324,7 @@ void StateVector_Input(void)
     bool estop_active = (Flash_GetEstopType() == 1)
         ? IS_ESTOP(in_hi)           /* NO 模式: bit=1 → 触发 */
         : !IS_ESTOP(in_hi);         /* NC 模式: bit=0 → 触发 (默认) */
-    uint8_t usb_feature_enabled = Flash_GetUsbInsertEnable();
+    uint8_t usb_auto_enabled = Flash_GetUsbAutoEnable();
 
     if (vector_debug_flags.event) {
         uint8_t power_btn = IS_POWER_BTN(in_hi) ? 1U : 0U;
@@ -441,11 +441,19 @@ void StateVector_Input(void)
      */
     {
         uint8_t door_state = VECTOR_CYL_STATE_ERR;
-        uint8_t usb_state = VECTOR_CYL_STATE_ERR;
+        uint8_t usb_state = VECTOR_CYL_STATE_CLOSED;
         uint8_t door_opening = IS_DOOR_OPENING(out_lo) ? 1U : 0U;
         uint8_t door_closing = IS_DOOR_CLOSING(out_lo) ? 1U : 0U;
         uint8_t usb_inserting = IS_USB_INSERTING(out_lo) ? 1U : 0U;
         uint8_t usb_retracting = IS_USB_RETRACTING(out_lo) ? 1U : 0U;
+
+        if (!usb_auto_enabled && !usb_inserting && !usb_retracting) {
+            usb_move_start_tick = 0;
+            usb_move_dir = 0;
+            usb_fault = 0;
+            usb_insert_fail_logged = 0;
+            usb_retract_fail_logged = 0;
+        }
 
         if (IS_DOOR_UP(in_lo) && IS_DOOR_DOWN(in_lo)) {
             door_state = VECTOR_CYL_STATE_ERR;
@@ -462,16 +470,7 @@ void StateVector_Input(void)
         }
         RamVector_SetLocalCylinderState(0U, door_state);
 
-        if (!usb_feature_enabled) {
-            usb_state = VECTOR_CYL_STATE_CLOSED;
-            usb_move_start_tick = 0;
-            usb_move_dir = 0;
-            usb_fault = 0;
-            usb_insert_fail_logged = 0;
-            usb_retract_fail_logged = 0;
-            last_usb_inserting = 0;
-            last_usb_retracting = 0;
-        } else {
+        {
             if ((usb_inserting && !last_usb_inserting) ||
                 (usb_retracting && !last_usb_retracting) ||
                 ((usb_inserting || usb_retracting) && usb_move_start_tick == 0U)) {
@@ -487,7 +486,7 @@ void StateVector_Input(void)
 
             if (IS_USB_UP(in_lo) && IS_USB_DOWN(in_lo)) {
                 usb_state = VECTOR_CYL_STATE_ERR;
-                if (!usb_insert_fail_logged &&
+                if (usb_auto_enabled && !usb_insert_fail_logged &&
                     (usb_inserting || usb_move_dir == VECTOR_CYL_STATE_OPENING || ready_usb_insert_posted)) {
                     uint32_t elapsed = usb_move_start_tick ? (now - usb_move_start_tick) : 0U;
                     AppLog_TimedEvent(APPLOG_EVT_USB_INSERT_FAIL,
@@ -495,7 +494,7 @@ void StateVector_Input(void)
                                       USB_FAIL_SENSOR_CONFLICT);
                     usb_alert_red_request = 1U;
                     usb_insert_fail_logged = 1;
-                } else if (!usb_retract_fail_logged &&
+                } else if (usb_auto_enabled && !usb_retract_fail_logged &&
                            (usb_retracting || usb_move_dir == VECTOR_CYL_STATE_CLOSING ||
                             complete_usb_retract_posted)) {
                     uint32_t elapsed = usb_move_start_tick ? (now - usb_move_start_tick) : 0U;
@@ -508,7 +507,8 @@ void StateVector_Input(void)
                 usb_fault = 1;
             } else if (usb_inserting && usb_retracting) {
                 usb_state = VECTOR_CYL_STATE_ERR;
-                if ((usb_move_dir == VECTOR_CYL_STATE_CLOSING || complete_usb_retract_posted) &&
+                if (usb_auto_enabled &&
+                    (usb_move_dir == VECTOR_CYL_STATE_CLOSING || complete_usb_retract_posted) &&
                     !usb_retract_fail_logged) {
                     uint32_t elapsed = usb_move_start_tick ? (now - usb_move_start_tick) : 0U;
                     AppLog_TimedEvent(APPLOG_EVT_USB_RETRACT_FAIL,
@@ -516,7 +516,7 @@ void StateVector_Input(void)
                                       USB_FAIL_DUAL_OUTPUT);
                     usb_alert_red_request = 1U;
                     usb_retract_fail_logged = 1;
-                } else if (!usb_insert_fail_logged) {
+                } else if (usb_auto_enabled && !usb_insert_fail_logged) {
                     uint32_t elapsed = usb_move_start_tick ? (now - usb_move_start_tick) : 0U;
                     AppLog_TimedEvent(APPLOG_EVT_USB_INSERT_FAIL,
                                       elapsed,
@@ -534,7 +534,9 @@ void StateVector_Input(void)
                     usb_insert_fail_logged = 0;
                 } else if (usb_fault) {
                     usb_state = VECTOR_CYL_STATE_ERR;
-                } else if (usb_move_start_tick != 0U && ((now - usb_move_start_tick) > USB_MOVE_TIMEOUT_MS)) {
+                } else if (usb_auto_enabled &&
+                           usb_move_start_tick != 0U &&
+                           ((now - usb_move_start_tick) > USB_MOVE_TIMEOUT_MS)) {
                     usb_state = VECTOR_CYL_STATE_ERR;
                     if (!usb_insert_fail_logged) {
                         AppLog_TimedEvent(APPLOG_EVT_USB_INSERT_FAIL,
@@ -555,9 +557,11 @@ void StateVector_Input(void)
                     usb_fault = 0;
                     usb_retract_fail_logged = 0;
                 } else if (usb_fault ||
-                           (usb_move_start_tick != 0U && ((now - usb_move_start_tick) > USB_MOVE_TIMEOUT_MS))) {
+                           (usb_auto_enabled &&
+                            usb_move_start_tick != 0U &&
+                            ((now - usb_move_start_tick) > USB_MOVE_TIMEOUT_MS))) {
                     usb_state = VECTOR_CYL_STATE_ERR;
-                    if (!usb_retract_fail_logged) {
+                    if (usb_auto_enabled && !usb_retract_fail_logged) {
                         AppLog_TimedEvent(APPLOG_EVT_USB_RETRACT_FAIL,
                                           usb_move_start_tick ? (now - usb_move_start_tick) : 0U,
                                           USB_FAIL_TIMEOUT);
@@ -755,9 +759,9 @@ void StateVector_Input(void)
      *  按钮事件通过 RamVector 命令槽发出, 由 ModBusTask 执行。
      * ══════════════════════════════════════════ */
     if (!estop && !laser_emergency) {
-        uint8_t usb_inserted = (!usb_feature_enabled ||
+        uint8_t usb_inserted = (!usb_auto_enabled ||
                                 (IS_USB_UP(in_lo) && !IS_USB_DOWN(in_lo))) ? 1U : 0U;
-        uint8_t usb_busy = (usb_feature_enabled &&
+        uint8_t usb_busy = (usb_auto_enabled &&
                             (IS_USB_INSERTING(out_lo) || IS_USB_RETRACTING(out_lo))) ? 1U : 0U;
 
         if (system_status != V_STATE_READY) {
@@ -828,17 +832,18 @@ void StateVector_Input(void)
         }
 
         /*
-         * ── Ready 状态: 自动插入 USB, 到位后双按钮确认 → 关门 ──
+         * ── Ready 状态: USB 自动流程开启时先插入, 到位后双按钮确认 → 关门 ──
          *
-         * Ready 进入后先通过气缸2自动插入 USB。只有 USB 上位传感确认到位后,
-         * 才允许双按钮确认关门, 避免 USB 未插到位时继续进入 RUNNING。
+         * USB 自动流程开启时, Ready 进入后先通过气缸2自动插入 USB。
+         * 只有 USB 上位传感确认到位后, 才允许双按钮确认关门。
+         * USB 自动流程关闭时, 不自动操作气缸2, 关门确认只按门流程执行。
          *
          * 安全设计: 必须同时按下两个门按钮 (双手操作, 防止单手被夹),
          * 持续 500ms 确认后才真正执行关门。
          * 关门从上限位开始 → 记录为 "全行程关门" (用于学习关门时间)。
          */
         if (system_status == V_STATE_READY) {
-            if (usb_feature_enabled && !usb_inserted) {
+            if (usb_auto_enabled && !usb_inserted) {
                 door_close_confirm_tick = 0;
                 if (!usb_fault && !usb_busy && !ready_usb_insert_posted) {
                     RamVector_PostCylinder(VCMD_CYLINDER2_OPEN, CMD_PRIO_USER);
@@ -863,10 +868,11 @@ void StateVector_Input(void)
         }
 
         /*
-         * ── Complete 状态: 按按钮 → 开门, USB 跟随回退 ──
+         * ── Complete 状态: 按按钮 → 开门, USB 自动流程开启时跟随回退 ──
          *
          * 门已关闭, 单按钮确认 200ms 即可开门。
-         * USB 回退与开门没有条件依赖: 先发开门, 下一轮再发 USB 回退。
+         * USB 自动流程开启时, USB 回退与开门没有条件依赖:
+         * 先发开门, 下一轮再发 USB 回退。
          */
         if (system_status == V_STATE_COMPLETE) {
             uint8_t door_open_posted_now = 0;
@@ -888,7 +894,7 @@ void StateVector_Input(void)
                 }
             }
 
-            if (usb_feature_enabled && complete_door_open_posted &&
+            if (usb_auto_enabled && complete_door_open_posted &&
                 !door_open_posted_now && !IS_USB_DOWN(in_lo) &&
                 !usb_fault && !usb_busy && !complete_usb_retract_posted) {
                 RamVector_PostCylinder(VCMD_CYLINDER2_CLOSE, CMD_PRIO_USER);

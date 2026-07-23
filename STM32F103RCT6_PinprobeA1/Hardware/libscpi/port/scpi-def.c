@@ -612,12 +612,12 @@ static scpi_result_t SCPI_ReadBootDiagQ(scpi_t *context)
     return SCPI_RES_OK;
 }
 
-static scpi_result_t SCPI_ConfigureUsbInsert(scpi_t *context)
+static scpi_result_t SCPI_ConfigureUsbAuto(scpi_t *context)
 {
     int32_t param;
     if (!SCPI_ParamChoice(context, risk_mode_source, &param, TRUE))
         return SCPI_RES_ERR;
-    if (Flash_SetUsbInsertEnable((uint8_t)(param != 0)) != FLASH_OK)
+    if (Flash_SetUsbAutoEnable((uint8_t)(param != 0)) != FLASH_OK)
         PUSH_ERR(context, -320 /*Storage fault*/, "Flash write");
     if (Flash_Save() != FLASH_OK)
         PUSH_ERR(context, -320 /*Storage fault*/, "Flash save");
@@ -627,10 +627,10 @@ static scpi_result_t SCPI_ConfigureUsbInsert(scpi_t *context)
     return SCPI_RES_OK;
 }
 
-static scpi_result_t SCPI_ReadUsbInsertQ(scpi_t *context)
+static scpi_result_t SCPI_ReadUsbAutoQ(scpi_t *context)
 {
     const char *name;
-    SCPI_ChoiceToName(risk_mode_source, Flash_GetUsbInsertEnable() ? 1 : 0, &name);
+    SCPI_ChoiceToName(risk_mode_source, Flash_GetUsbAutoEnable() ? 1 : 0, &name);
     SCPI_ResultCharacters(context, name, strlen(name));
     return SCPI_RES_OK;
 }
@@ -1209,12 +1209,12 @@ const scpi_command_t scpi_commands[] = {
         .callback = SCPI_ReadBootDiagQ,
     },
     {
-        .pattern = "CONFigure:USB:INSert",
-        .callback = SCPI_ConfigureUsbInsert,
+        .pattern = "CONFigure:USB:AUTO",
+        .callback = SCPI_ConfigureUsbAuto,
     },
     {
-        .pattern = "CONFigure:USB:INSert?",
-        .callback = SCPI_ReadUsbInsertQ,
+        .pattern = "CONFigure:USB:AUTO?",
+        .callback = SCPI_ReadUsbAutoQ,
     },
     /* 调试开关 (运行时控制, 默认 OFF) */
     {
