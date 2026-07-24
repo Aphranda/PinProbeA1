@@ -128,7 +128,7 @@ VectorDebugFlags_t vector_debug_flags = {
 #define RELEASE_DELAY_MS      200   /* 按钮全部松开后等 200ms 才允许下次操作 */
 #define DOOR_DEBOUNCE_CNT       3   /* 连续 3 次采样一致才确认 (3×25ms=75ms) */
 #define RS485_FAIL_THRESHOLD   10   /* RS485 连续失败 10 次 (~250ms) 触发告警 */
-#define USB_MOVE_TIMEOUT_MS  1000   /* USB 行程短, 超过 1s 未到位判故障 */
+#define USB_MOVE_TIMEOUT_MS  2000   /* USB 行程短, 超过 2s 未到位判故障 */
 #define LED_ALERT_RED_BLINK_INTERVAL_MS  125U
 #define LED_ALERT_RED_BLINK_EDGES          6U
 #define LED_ALERT_YELLOW_BLINK_INTERVAL_MS 250U
@@ -203,6 +203,7 @@ void StateVector_Input(void)
     static uint32_t usb_move_start_tick;
     static uint8_t  usb_move_dir, usb_fault;
     static uint8_t  last_usb_inserting, last_usb_retracting;
+    static uint8_t  close_pending_after_usb;
     static uint8_t  usb_insert_fail_logged, usb_retract_fail_logged;
     static uint32_t led_alert_red_blink_tick;
     static uint8_t  led_alert_red_blink_active, led_alert_red_blink_remaining, led_alert_red_blink_on;
@@ -248,6 +249,7 @@ void StateVector_Input(void)
         usb_fault = 0;
         usb_insert_fail_logged = 0;
         usb_retract_fail_logged = 0;
+        close_pending_after_usb = 0;
         last_usb_inserting = 0;
         last_usb_retracting = 0;
         led_alert_red_blink_active = 0;
@@ -274,6 +276,7 @@ void StateVector_Input(void)
         usb_fault = 1;
         usb_insert_fail_logged = 0;
         usb_retract_fail_logged = 0;
+        close_pending_after_usb = 0;
         last_usb_inserting = 0;
         last_usb_retracting = 0;
         led_alert_red_blink_active = 0;
@@ -332,6 +335,9 @@ void StateVector_Input(void)
         ? IS_ESTOP(in_hi)           /* NO 模式: bit=1 → 触发 */
         : !IS_ESTOP(in_hi);         /* NC 模式: bit=0 → 触发 (默认) */
     uint8_t usb_auto_enabled = Flash_GetUsbAutoEnable();
+    if (!usb_auto_enabled) {
+        close_pending_after_usb = 0U;
+    }
 
     if (vector_debug_flags.event) {
         uint8_t power_btn = IS_POWER_BTN(in_hi) ? 1U : 0U;
@@ -499,6 +505,9 @@ void StateVector_Input(void)
                     AppLog_TimedEvent(APPLOG_EVT_USB_INSERT_FAIL,
                                       elapsed,
                                       USB_FAIL_SENSOR_CONFLICT);
+                    if (IS_DOOR_UP(in_lo)) {
+                        RamVector_PostCylinder(VCMD_CYLINDER2_CLOSE, CMD_PRIO_SAFETY);
+                    }
                     usb_alert_red_request = 1U;
                     usb_alert_return_idle = 1U;
                     usb_insert_fail_logged = 1;
@@ -531,6 +540,9 @@ void StateVector_Input(void)
                     AppLog_TimedEvent(APPLOG_EVT_USB_INSERT_FAIL,
                                       elapsed,
                                       USB_FAIL_DUAL_OUTPUT);
+                    if (IS_DOOR_UP(in_lo)) {
+                        RamVector_PostCylinder(VCMD_CYLINDER2_CLOSE, CMD_PRIO_SAFETY);
+                    }
                     usb_alert_red_request = 1U;
                     usb_alert_return_idle = 1U;
                     usb_insert_fail_logged = 1;
@@ -554,6 +566,9 @@ void StateVector_Input(void)
                         AppLog_TimedEvent(APPLOG_EVT_USB_INSERT_FAIL,
                                           now - usb_move_start_tick,
                                           USB_FAIL_TIMEOUT);
+                        if (IS_DOOR_UP(in_lo)) {
+                            RamVector_PostCylinder(VCMD_CYLINDER2_CLOSE, CMD_PRIO_SAFETY);
+                        }
                         usb_alert_red_request = 1U;
                         usb_alert_return_idle = 1U;
                         usb_insert_fail_logged = 1;
@@ -611,16 +626,24 @@ void StateVector_Input(void)
 
     /*
      * USB 自动绑定:
-     *   门气缸关门输出已生效 → USB 插入
-     *   门气缸开门完成 → USB 拔出
-     * 绑定依据是 RamVector IO 镜像中的门气缸输出反馈, 不是软件命令本身。
+     *   Ready 阶段先完成 USB 插入, 到位后才允许关门
+     *   Idle 且门已打开时, USB 必须处于拔出到位
+     * 绑定依据是 RamVector IO 镜像中的系统状态和物理传感, 不是软件命令本身。
+     * 注意: Idle→Ready 过渡期仍可能暂时读到 Idle, 需要用按钮/黄灯/pending
+     * 保护关门准备流程, 避免刚插入 USB 又被 Idle 纠偏弹开。
      */
     if (usb_auto_enabled && !usb_fault && IS_UNLOCKED(out_lo) &&
         system_status != V_STATE_EMERGENCY && !estop_active) {
         if (RamVector_GetCylinderCmd() == VCMD_NONE) {
-            if (IS_DOOR_CLOSING(out_lo) && !IS_DOOR_OPENING(out_lo) &&
-                !IS_USB_UP(in_lo) && !IS_USB_INSERTING(out_lo)) {
-                RamVector_PostCylinder(VCMD_CYLINDER2_OPEN, CMD_PRIO_USER);
+            uint8_t ready_intent = (IS_ANY_BTN(in_hi) ||
+                                    IS_LED_YELLOW_STATE(led_state) ||
+                                    door_ready_tick ||
+                                    close_pending_after_usb) ? 1U : 0U;
+            if (system_status == V_STATE_IDLE &&
+                !ready_intent &&
+                IS_DOOR_UP(in_lo) && !IS_USB_DOWN(in_lo) &&
+                !IS_USB_RETRACTING(out_lo)) {
+                RamVector_PostCylinder(VCMD_CYLINDER2_CLOSE, CMD_PRIO_USER);
             }
         }
     }
@@ -709,11 +732,6 @@ void StateVector_Input(void)
     if (system_status == V_STATE_COMPLETE) {
         if (IS_DOOR_OPENING(out_lo) && IS_DOOR_UP(in_lo)) {
             RamVector_PostLED(VCMD_LED_OFF, CMD_PRIO_USER);
-            if (usb_auto_enabled && !usb_fault && !IS_USB_DOWN(in_lo) &&
-                !IS_USB_RETRACTING(out_lo) &&
-                RamVector_GetCylinderCmd() == VCMD_NONE) {
-                RamVector_PostCylinder(VCMD_CYLINDER2_CLOSE, CMD_PRIO_USER);
-            }
             if (door_open_start_tick != 0U)
                 VEC_ACTION(APPLOG_ACT_OPEN_DONE, now - door_open_start_tick);
             door_open_start_tick = 0;
@@ -806,6 +824,10 @@ void StateVector_Input(void)
      *  按钮事件通过 RamVector 命令槽发出, 由 ModBusTask 执行。
      * ══════════════════════════════════════════ */
     if (!estop && !laser_emergency) {
+        if (system_status != V_STATE_READY) {
+            close_pending_after_usb = 0U;
+        }
+
         /*
          * ── 电源按钮: 长按 LOCK_PRESS_MS 切换 锁定/解锁 ──
          *
@@ -839,7 +861,8 @@ void StateVector_Input(void)
          *   - 门在下限位 → 输出关门信号压紧
          *   - 门在中间 → 不自动操作, 等人按按钮 (安全, 防止意外夹伤)
          */
-        if (system_status == V_STATE_IDLE && !poweron_position_ok) {
+        if (system_status == V_STATE_IDLE && !poweron_position_ok &&
+            RamVector_GetCylinderCmd() == VCMD_NONE) {
             if (IS_DOOR_UP(in_lo)) {
                 RamVector_PostCylinder(VCMD_CYLINDER_OPEN,  CMD_PRIO_USER); poweron_position_ok = 1;
             } else if (IS_DOOR_DOWN(in_lo)) {
@@ -866,11 +889,10 @@ void StateVector_Input(void)
         }
 
         /*
-         * ── Ready 状态: 双按钮确认 → 关门, USB 自动流程随后插入 ──
+         * ── Ready 状态: 双按钮确认 → USB 插入 → 关门 ──
          *
-         * USB 自动流程开启时, 先通过气缸1执行关门。
-         * 等 IO 镜像确认关门输出生效后, 再通过气缸2自动插入 USB。
-         * 门到下限位时检查 USB 插入传感是否到位。
+         * USB 自动流程开启时, 双按钮确认满 500ms 后先投递 USB 插入。
+         * 只有 USB 上位传感确认到位后, 才自动投递关门命令。
          * USB 自动流程关闭时, 不自动操作气缸2, 关门确认只按门流程执行。
          *
          * 安全设计: 必须同时按下两个门按钮 (双手操作, 防止单手被夹),
@@ -878,16 +900,33 @@ void StateVector_Input(void)
          * 关门从上限位开始 → 记录为 "全行程关门" (用于学习关门时间)。
          */
         if (system_status == V_STATE_READY) {
+            uint8_t usb_inserted = (!usb_auto_enabled ||
+                                    (IS_USB_UP(in_lo) && !IS_USB_DOWN(in_lo))) ? 1U : 0U;
+
+            if (usb_auto_enabled && close_pending_after_usb && usb_inserted &&
+                !IS_DOOR_CLOSING(out_lo) && RamVector_GetCylinderCmd() == VCMD_NONE) {
+                RamVector_PostCylinder(VCMD_CYLINDER_CLOSE, CMD_PRIO_USER);
+                close_pending_after_usb = 0U;
+            }
+
             /* 第一阶段: 任意按钮按下 → 开始 500ms 倒计时 (不是双按就直接重置) */
-            if (IS_ANY_BTN(in_hi) && !IS_DOOR_CLOSING(out_lo) && !release_start_tick) {
+            if (!close_pending_after_usb &&
+                IS_ANY_BTN(in_hi) && !IS_DOOR_CLOSING(out_lo) && !release_start_tick) {
                 if (!door_close_confirm_tick) door_close_confirm_tick = now;
             } else {
                 door_close_confirm_tick = 0;
             }
-            /* 第二阶段: 双按 + 500ms 到 → 执行关门 */
+            /* 第二阶段: 双按 + 500ms 到 → USB 插入; 插入到位后再执行关门 */
             if (IS_BOTH_BTN(in_hi) && door_close_confirm_tick &&
                 ((now - door_close_confirm_tick) >= DOOR_CLOSE_CONFIRM_MS) && !release_start_tick) {
-                if (!IS_DOOR_CLOSING(out_lo)) {
+                if (usb_auto_enabled && !usb_inserted) {
+                    if (!usb_fault && !IS_USB_INSERTING(out_lo) &&
+                        RamVector_GetCylinderCmd() == VCMD_NONE) {
+                        RamVector_PostCylinder(VCMD_CYLINDER2_OPEN, CMD_PRIO_USER);
+                        close_pending_after_usb = 1U;
+                        door_close_confirm_tick = 0; release_start_tick = now;
+                    }
+                } else if (!IS_DOOR_CLOSING(out_lo)) {
                     RamVector_PostCylinder(VCMD_CYLINDER_CLOSE, CMD_PRIO_USER);
                     door_close_confirm_tick = 0; release_start_tick = now;
                 }
@@ -992,6 +1031,7 @@ void StateVector_Input(void)
             door_ready_tick = 0U;
             door_close_confirm_tick = 0U;
             door_open_confirm_tick = 0U;
+            close_pending_after_usb = 0U;
             release_start_tick = now;
         }
         led_alert_red_blink_active = 1U;
