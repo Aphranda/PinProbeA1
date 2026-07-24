@@ -81,7 +81,7 @@ SCPI_COMMANDS = {
         ("BSM波特率115200", "CONFigure:BAUDrate 115200"),
         ("Boot诊断 ON", "CONFigure:BOOT:DIAG ON"),
         ("Boot诊断 OFF", "CONFigure:BOOT:DIAG OFF"),
-        ("Boot诊断?", "CONFigure:BOOT:DIAG?"),
+        ("读Boot诊断", "READ:BOOT:DIAG?"),
     ],
     "门/气缸": [
         ("开门", "CONFigure:CYLInder1 OPEN"),
@@ -92,7 +92,7 @@ SCPI_COMMANDS = {
         ("读 USB 状态", "READ:CYLInder2:STATe?"),
         ("USB自动 ON", "CONFigure:USB:AUTO ON"),
         ("USB自动 OFF", "CONFigure:USB:AUTO OFF"),
-        ("USB自动?", "CONFigure:USB:AUTO?"),
+        ("读USB自动", "READ:USB:AUTO?"),
     ],
     "门锁": [
         ("🔓 解锁", "CONFigure:LOCK UNLOCK"),
@@ -108,7 +108,7 @@ SCPI_COMMANDS = {
         ("LED映射 G,R,Y", "CONFigure:LED:MAP G,R,Y"),
         ("LED映射 R,G,Y", "CONFigure:LED:MAP R,G,Y"),
         ("LED映射 Y,R,G", "CONFigure:LED:MAP Y,R,G"),
-        ("读 LED 映射", "CONFigure:LED:MAP?"),
+        ("读 LED 映射", "READ:LED:MAP?"),
     ],
     "系统状态": [
         ("读系统状态", "READ:SYSTem:STATe?"),
@@ -117,10 +117,10 @@ SCPI_COMMANDS = {
     "急停": [
         ("常闭 NC (默认)", "CONFigure:ESTOP:TYPE NC"),
         ("常开 NO", "CONFigure:ESTOP:TYPE NO"),
-        ("读急停类型", "CONFigure:ESTOP:TYPE?"),
+        ("读急停类型", "READ:ESTOP:TYPE?"),
         ("风险模式 ON", "CONFigure:RISK:MODE ON"),
         ("风险模式 OFF", "CONFigure:RISK:MODE OFF"),
-        ("读风险模式", "CONFigure:RISK:MODE?"),
+        ("读风险模式", "READ:RISK:MODE?"),
     ],
     "IDN配置": [
         ("🔍 读*IDN?", "*IDN?"),
@@ -165,7 +165,7 @@ AUTO_POLL_COMMANDS = [
     ("全部IO", "READ:IO:ALL?"),
     ("门状态", "READ:CYLInder1:STATe?"),
     ("USB状态", "READ:CYLInder2:STATe?"),
-    ("USB自动", "CONFigure:USB:AUTO?"),
+    ("USB自动", "READ:USB:AUTO?"),
     ("锁状态", "READ:LOCK:STATe?"),
     ("LED状态", "READ:LED:STATe?"),
     ("日志状态", "READ:LOG:STATus?"),
@@ -1691,7 +1691,7 @@ class PinProbeApp:
             for raw in (b"*IDN?\r\n",
                         b"SYSTem:FLASH:ID?\r\n",
                         b"CONFigure:BOOT:DIAG ON\r\n",
-                        b"CONFigure:BOOT:DIAG?\r\n"):
+                        b"READ:BOOT:DIAG?\r\n"):
                 label = raw.decode("ascii").strip()
                 resp = self.serial_worker.transact_raw(raw, timeout=5.0)
                 self.serial_worker.rx_queue.put(("ota", f"{label} => {resp or '<timeout>'}"))
@@ -1724,7 +1724,7 @@ class PinProbeApp:
             for raw in (b"*IDN?\r\n",
                         b"SYSTem:OTA:BOOT?\r\n",
                         b"CONFigure:BOOT:DIAG OFF\r\n",
-                        b"CONFigure:BOOT:DIAG?\r\n"):
+                        b"READ:BOOT:DIAG?\r\n"):
                 label = raw.decode("ascii").strip()
                 resp = self.serial_worker.transact_raw(raw, timeout=5.0)
                 self.serial_worker.rx_queue.put(("ota", f"{label} => {resp or '<timeout>'}"))

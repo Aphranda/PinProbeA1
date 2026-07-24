@@ -1137,7 +1137,7 @@ const scpi_command_t scpi_commands[] = {
         .callback = SCPI_ConfigureLEDMap,
     },
     {
-        .pattern = "CONFigure:LED:MAP?",
+        .pattern = "READ:LED:MAP?",
         .callback = SCPI_ReadLEDMapQ,
     },
     {
@@ -1189,7 +1189,7 @@ const scpi_command_t scpi_commands[] = {
         .callback = SCPI_ConfigureEstopType,
     },
     {
-        .pattern = "CONFigure:ESTOP:TYPE?",
+        .pattern = "READ:ESTOP:TYPE?",
         .callback = SCPI_ReadEstopTypeQ,
     },
     {
@@ -1197,7 +1197,7 @@ const scpi_command_t scpi_commands[] = {
         .callback = SCPI_ConfigureRiskMode,
     },
     {
-        .pattern = "CONFigure:RISK:MODE?",
+        .pattern = "READ:RISK:MODE?",
         .callback = SCPI_ReadRiskModeQ,
     },
     {
@@ -1205,7 +1205,7 @@ const scpi_command_t scpi_commands[] = {
         .callback = SCPI_ConfigureBootDiag,
     },
     {
-        .pattern = "CONFigure:BOOT:DIAG?",
+        .pattern = "READ:BOOT:DIAG?",
         .callback = SCPI_ReadBootDiagQ,
     },
     {
@@ -1213,7 +1213,7 @@ const scpi_command_t scpi_commands[] = {
         .callback = SCPI_ConfigureUsbAuto,
     },
     {
-        .pattern = "CONFigure:USB:AUTO?",
+        .pattern = "READ:USB:AUTO?",
         .callback = SCPI_ReadUsbAutoQ,
     },
     /* 调试开关 (运行时控制, 默认 OFF) */
