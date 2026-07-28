@@ -90,6 +90,8 @@ SCPI_COMMANDS = {
         ("USB 插入", "CONFigure:CYLInder2 CLOSE"),
         ("USB 拔出", "CONFigure:CYLInder2 OPEN"),
         ("读 USB 状态", "READ:CYLInder2:STATe?"),
+        ("USB自动 ON", "CONFigure:USB:AUTO ON"),
+        ("USB自动 OFF", "CONFigure:USB:AUTO OFF"),
         ("读USB自动(出厂)", "READ:USB:AUTO?"),
     ],
     "门锁": [
@@ -664,6 +666,15 @@ class PinProbeApp:
         style.map("Danger.TButton",
                   background=[("active", "#c0392b"), ("pressed", "#a93226")])
 
+        # 出厂配置警示按钮
+        style.configure("FactoryWarn.TButton",
+                        background="#fde2e2", foreground="#8a1f1f",
+                        borderwidth=0,
+                        relief="flat", padding=(14, 6))
+        style.map("FactoryWarn.TButton",
+                  background=[("active", "#fbd0d0"), ("pressed", "#f6bcbc")],
+                  foreground=[("disabled", "#8a1f1f")])
+
         # 成功按钮 (连接状态)
         style.configure("Success.TButton",
                         background=SUCCESS, foreground="#ffffff",
@@ -909,7 +920,9 @@ class PinProbeApp:
 
             col = 0
             for label, cmd in commands:
+                style_name = "FactoryWarn.TButton" if cmd.startswith("CONFigure:USB:AUTO ") else "TButton"
                 btn = ttk.Button(btn_row, text=label, width=18,
+                                 style=style_name,
                                  command=lambda c=cmd: self._send_scpi(c))
                 btn.grid(row=0, column=col, padx=2, pady=2, sticky="w")
                 btn.tooltip = cmd  # 附加命令文本用于搜索
