@@ -55,14 +55,14 @@ static void CmdExec_Cylinder(Vector_Cmd_t cmd)
         ok = Cylinder_Write(1, cylinder_source[0]); /* CLOSE */
         break;
     case VCMD_CYLINDER2_OPEN:
-        if ((out_lo & 0x04U) == 0U)
+        if ((out_lo & 0x08U) == 0U)
             AppLog_Action(APPLOG_ACT_CYLINDER_OPEN, 0, 2);
-        ok = Cylinder_Write(2, cylinder_source[1]); /* USB 插入 */
+        ok = Cylinder_Write(2, cylinder_source[0]); /* USB 拔出/回退 */
         break;
     case VCMD_CYLINDER2_CLOSE:
-        if ((out_lo & 0x08U) == 0U)
+        if ((out_lo & 0x04U) == 0U)
             AppLog_Action(APPLOG_ACT_CYLINDER_CLOSE, 0, 2);
-        ok = Cylinder_Write(2, cylinder_source[0]); /* USB 拔出 */
+        ok = Cylinder_Write(2, cylinder_source[1]); /* USB 插入 */
         break;
     default:
         break;

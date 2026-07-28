@@ -97,8 +97,8 @@ VectorDebugFlags_t vector_debug_flags = {
 #define OUT_DOOR_OPEN   0x01   /* 气缸伸出 → 门上升 (开门) */
 #define OUT_DOOR_CLOSE  0x02   /* 气缸回缩 → 门下降 (关门) */
 #define OUT_DOOR_MOVING (OUT_DOOR_OPEN | OUT_DOOR_CLOSE)
-#define OUT_USB_IN      0x04   /* USB 气缸伸出 → 插入 */
-#define OUT_USB_OUT     0x08   /* USB 气缸回缩 → 回退 */
+#define OUT_USB_IN      0x04   /* USB 插入输出: 对外语义 CLOSE/CLOSED */
+#define OUT_USB_OUT     0x08   /* USB 回退输出: 对外语义 OPEN/OPENED */
 #define OUT_POWER       0x80   /* 电源锁: 0=锁定(断电) 1=解锁(上电) */
 
 /* ── 速查宏: 把位运算封装为布尔语义 ── */
@@ -114,8 +114,8 @@ VectorDebugFlags_t vector_debug_flags = {
 #define IS_UNLOCKED(o)    ((o) & OUT_POWER)          /* 系统已解锁? */
 #define IS_DOOR_OPENING(o)  ((o) & OUT_DOOR_OPEN)    /* 气缸正在伸出? */
 #define IS_DOOR_CLOSING(o)  ((o) & OUT_DOOR_CLOSE)   /* 气缸正在回缩? */
-#define IS_USB_INSERTING(o)  ((o) & OUT_USB_IN)      /* USB 气缸正在插入? */
-#define IS_USB_RETRACTING(o) ((o) & OUT_USB_OUT)     /* USB 气缸正在回退? */
+#define IS_USB_INSERTING(o)  ((o) & OUT_USB_IN)      /* USB 插入输出有效? */
+#define IS_USB_RETRACTING(o) ((o) & OUT_USB_OUT)     /* USB 回退输出有效? */
 #define IS_LED_RED_STATE(s)     ((s) == 2U)          /* 红灯亮? */
 #define IS_LED_YELLOW_STATE(s)  ((s) == 4U)          /* 黄灯亮? */
 
@@ -454,7 +454,7 @@ void StateVector_Input(void)
      */
     {
         uint8_t door_state = VECTOR_CYL_STATE_ERR;
-        uint8_t usb_state = VECTOR_CYL_STATE_CLOSED;
+        uint8_t usb_state = VECTOR_CYL_STATE_OPENED;
         uint8_t door_opening = IS_DOOR_OPENING(out_lo) ? 1U : 0U;
         uint8_t door_closing = IS_DOOR_CLOSING(out_lo) ? 1U : 0U;
         uint8_t usb_inserting = IS_USB_INSERTING(out_lo) ? 1U : 0U;
@@ -488,7 +488,7 @@ void StateVector_Input(void)
                 (usb_retracting && !last_usb_retracting) ||
                 ((usb_inserting || usb_retracting) && usb_move_start_tick == 0U)) {
                 usb_move_start_tick = now;
-                usb_move_dir = usb_inserting ? VECTOR_CYL_STATE_OPENING : VECTOR_CYL_STATE_CLOSING;
+                usb_move_dir = usb_inserting ? VECTOR_CYL_STATE_CLOSING : VECTOR_CYL_STATE_OPENING;
                 usb_fault = 0;
                 if (usb_inserting) {
                     usb_insert_fail_logged = 0;
@@ -500,19 +500,19 @@ void StateVector_Input(void)
             if (IS_USB_UP(in_lo) && IS_USB_DOWN(in_lo)) {
                 usb_state = VECTOR_CYL_STATE_ERR;
                 if (usb_auto_enabled && !usb_insert_fail_logged &&
-                    (usb_inserting || usb_move_dir == VECTOR_CYL_STATE_OPENING || IS_DOOR_CLOSING(out_lo))) {
+                    (usb_inserting || usb_move_dir == VECTOR_CYL_STATE_CLOSING || IS_DOOR_CLOSING(out_lo))) {
                     uint32_t elapsed = usb_move_start_tick ? (now - usb_move_start_tick) : 0U;
                     AppLog_TimedEvent(APPLOG_EVT_USB_INSERT_FAIL,
                                       elapsed,
                                       USB_FAIL_SENSOR_CONFLICT);
                     if (IS_DOOR_UP(in_lo)) {
-                        RamVector_PostCylinder(VCMD_CYLINDER2_CLOSE, CMD_PRIO_SAFETY);
+                        RamVector_PostCylinder(VCMD_CYLINDER2_OPEN, CMD_PRIO_SAFETY);
                     }
                     usb_alert_red_request = 1U;
                     usb_alert_return_idle = 1U;
                     usb_insert_fail_logged = 1;
                 } else if (usb_auto_enabled && !usb_retract_fail_logged &&
-                           (usb_retracting || usb_move_dir == VECTOR_CYL_STATE_CLOSING ||
+                           (usb_retracting || usb_move_dir == VECTOR_CYL_STATE_OPENING ||
                             IS_DOOR_OPENING(out_lo))) {
                     uint32_t elapsed = usb_move_start_tick ? (now - usb_move_start_tick) : 0U;
                     AppLog_TimedEvent(APPLOG_EVT_USB_RETRACT_FAIL,
@@ -526,7 +526,7 @@ void StateVector_Input(void)
             } else if (usb_inserting && usb_retracting) {
                 usb_state = VECTOR_CYL_STATE_ERR;
                 if (usb_auto_enabled &&
-                    (usb_move_dir == VECTOR_CYL_STATE_CLOSING || IS_DOOR_OPENING(out_lo)) &&
+                    (usb_move_dir == VECTOR_CYL_STATE_OPENING || IS_DOOR_OPENING(out_lo)) &&
                     !usb_retract_fail_logged) {
                     uint32_t elapsed = usb_move_start_tick ? (now - usb_move_start_tick) : 0U;
                     AppLog_TimedEvent(APPLOG_EVT_USB_RETRACT_FAIL,
@@ -541,7 +541,7 @@ void StateVector_Input(void)
                                       elapsed,
                                       USB_FAIL_DUAL_OUTPUT);
                     if (IS_DOOR_UP(in_lo)) {
-                        RamVector_PostCylinder(VCMD_CYLINDER2_CLOSE, CMD_PRIO_SAFETY);
+                        RamVector_PostCylinder(VCMD_CYLINDER2_OPEN, CMD_PRIO_SAFETY);
                     }
                     usb_alert_red_request = 1U;
                     usb_alert_return_idle = 1U;
@@ -550,7 +550,7 @@ void StateVector_Input(void)
                 usb_fault = 1;
             } else if (usb_inserting) {
                 if (IS_USB_UP(in_lo)) {
-                    usb_state = VECTOR_CYL_STATE_OPENED;
+                    usb_state = VECTOR_CYL_STATE_CLOSED;
                     usb_move_start_tick = 0;
                     usb_move_dir = 0;
                     usb_fault = 0;
@@ -567,7 +567,7 @@ void StateVector_Input(void)
                                           now - usb_move_start_tick,
                                           USB_FAIL_TIMEOUT);
                         if (IS_DOOR_UP(in_lo)) {
-                            RamVector_PostCylinder(VCMD_CYLINDER2_CLOSE, CMD_PRIO_SAFETY);
+                            RamVector_PostCylinder(VCMD_CYLINDER2_OPEN, CMD_PRIO_SAFETY);
                         }
                         usb_alert_red_request = 1U;
                         usb_alert_return_idle = 1U;
@@ -575,11 +575,11 @@ void StateVector_Input(void)
                     }
                     usb_fault = 1;
                 } else {
-                    usb_state = VECTOR_CYL_STATE_OPENING;
+                    usb_state = VECTOR_CYL_STATE_CLOSING;
                 }
             } else if (usb_retracting) {
                 if (IS_USB_DOWN(in_lo)) {
-                    usb_state = VECTOR_CYL_STATE_CLOSED;
+                    usb_state = VECTOR_CYL_STATE_OPENED;
                     usb_move_start_tick = 0;
                     usb_move_dir = 0;
                     usb_fault = 0;
@@ -599,16 +599,16 @@ void StateVector_Input(void)
                     }
                     usb_fault = 1;
                 } else {
-                    usb_state = VECTOR_CYL_STATE_CLOSING;
+                    usb_state = VECTOR_CYL_STATE_OPENING;
                 }
             } else if (IS_USB_UP(in_lo)) {
-                usb_state = VECTOR_CYL_STATE_OPENED;
+                usb_state = VECTOR_CYL_STATE_CLOSED;
                 usb_move_start_tick = 0;
                 usb_move_dir = 0;
                 usb_fault = 0;
                 usb_insert_fail_logged = 0;
             } else if (IS_USB_DOWN(in_lo)) {
-                usb_state = VECTOR_CYL_STATE_CLOSED;
+                usb_state = VECTOR_CYL_STATE_OPENED;
                 usb_move_start_tick = 0;
                 usb_move_dir = 0;
                 usb_fault = 0;
@@ -643,7 +643,7 @@ void StateVector_Input(void)
                 !ready_intent &&
                 IS_DOOR_UP(in_lo) && !IS_USB_DOWN(in_lo) &&
                 !IS_USB_RETRACTING(out_lo)) {
-                RamVector_PostCylinder(VCMD_CYLINDER2_CLOSE, CMD_PRIO_USER);
+                RamVector_PostCylinder(VCMD_CYLINDER2_OPEN, CMD_PRIO_USER);
             }
         }
     }
@@ -922,7 +922,7 @@ void StateVector_Input(void)
                 if (usb_auto_enabled && !usb_inserted) {
                     if (!usb_fault && !IS_USB_INSERTING(out_lo) &&
                         RamVector_GetCylinderCmd() == VCMD_NONE) {
-                        RamVector_PostCylinder(VCMD_CYLINDER2_OPEN, CMD_PRIO_USER);
+                        RamVector_PostCylinder(VCMD_CYLINDER2_CLOSE, CMD_PRIO_USER);
                         close_pending_after_usb = 1U;
                         door_close_confirm_tick = 0; release_start_tick = now;
                     }

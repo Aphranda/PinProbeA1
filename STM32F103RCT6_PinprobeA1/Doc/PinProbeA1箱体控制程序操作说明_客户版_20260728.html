@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PinProbeA1 箱体控制程序操作说明</title>
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  body {
+    font-family:"Microsoft YaHei","SimSun","DengXian",Arial,sans-serif;
+    background:#d7d9df;
+    color:#1f2328;
+    padding:18px;
+    line-height:1.42;
+  }
+  @page { size:A4 portrait; margin:0; }
+  .page {
+    width:210mm;
+    height:297mm;
+    margin:0 auto 18px;
+    background:#fff;
+    box-shadow:0 3px 14px rgba(0,0,0,.16);
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+    break-after:page;
+    page-break-after:always;
+  }
+  .page:last-child { margin-bottom:0; }
+  .page-header {
+    padding:10mm 16mm 5mm;
+    border-bottom:5px solid #d9e1ef;
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:18px;
+  }
+  .page-header .logo { height:28px; width:auto; display:block; overflow:visible; }
+  .svg-defs { position:absolute; width:0; height:0; overflow:hidden; }
+  .doc-meta { text-align:right; font-size:10.5px; color:#687381; white-space:nowrap; }
+  .doc-meta strong { display:block; color:#1f3864; font-size:13px; margin-bottom:3px; }
+  .main { flex:1; padding:6mm 16mm 6mm; overflow:hidden; }
+  .page-footer {
+    padding:3mm 16mm 4mm;
+    border-top:5px solid #d9e1ef;
+    color:#8b949e;
+    font-size:9px;
+    display:flex;
+    justify-content:space-between;
+  }
+  h1 { font-size:23px; color:#172033; letter-spacing:0; margin-bottom:3px; }
+  h3 { font-size:13px; color:#1f3864; margin:7px 0 5px; }
+  h4, h5 { font-size:12px; color:#374151; margin:6px 0 4px; }
+  p { font-size:10.7px; margin:4px 0 6px; }
+  .subtitle { color:#5b6573; font-size:12px; }
+  .section-title {
+    font-size:14px;
+    color:#1f3864;
+    font-weight:700;
+    padding-bottom:4px;
+    border-bottom:2px solid #1f3864;
+    margin-bottom:6px;
+  }
+  table { width:100%; border-collapse:collapse; font-size:10.3px; border:1.5px solid #2f3542; margin:6px 0 8px; }
+  th {
+    background:#1f3864;
+    color:#fff;
+    text-align:left;
+    padding:5px 7px;
+    border:1px solid #182b4c;
+    font-weight:700;
+  }
+  th code {
+    color:#fff;
+    background:rgba(255,255,255,.16);
+    border-color:rgba(255,255,255,.28);
+    font-weight:700;
+  }
+  td { padding:4px 7px; border:1px solid #c8d1dc; vertical-align:top; }
+  tbody tr:nth-child(even) td { background:#f5f8fc; }
+  code {
+    font-family:Consolas,"Courier New",monospace;
+    font-size:9.5px;
+    background:#f5f8fc;
+    border:1px solid #dce3ed;
+    border-radius:3px;
+    padding:0 3px;
+  }
+  pre {
+    white-space:pre-wrap;
+    word-break:break-word;
+    font-size:10px;
+    background:#f5f8fc;
+    border:1px solid #dce3ed;
+    padding:6px 7px;
+    margin:5px 0 7px;
+  }
+  pre code { border:0; background:transparent; padding:0; font-size:10px; }
+  .note-box {
+    padding:7px 10px;
+    font-size:10.8px;
+    background:#f7fbf5;
+    border-left:4px solid #2e7d32;
+    margin:5px 0 7px;
+  }
+  .danger-text { color:#c1121f; font-weight:800; }
+  .small-list { font-size:10.8px; color:#2f3542; padding-left:17px; margin:4px 0 7px; }
+  li { margin:1px 0; }
+  .chips { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin:0 0 9px; }
+  .chip { border:1px solid #d9e1ef; border-left:4px solid #1f3864; padding:6px 8px; min-height:44px; background:#f8fafc; }
+  .chip:nth-child(2) { border-left-color:#2e7d32; }
+  .chip:nth-child(3) { border-left-color:#d97706; }
+  .chip:nth-child(4) { border-left-color:#6a1b9a; }
+  .chip .k { display:block; color:#687381; font-size:9.5px; margin-bottom:1px; }
+  .chip .v { display:block; color:#111827; font-size:12px; font-weight:700; }
+  .cover-page .page-header { padding-top:11mm; padding-bottom:8mm; align-items:center; }
+  .cover-header-text { min-width:40mm; }
+  .cover-doc-label { font-size:14px; color:#172033; font-weight:800; }
+  .cover-doc-subtitle { margin-top:3px; color:#687381; font-size:10px; }
+  .cover-page .logo { height:30px; }
+  .cover-main { justify-content:center; padding-top:8mm; padding-bottom:7mm; }
+  .cover-layout { display:flex; flex-direction:column; gap:11mm; justify-content:center; height:100%; }
+  .cover-copy { text-align:left; }
+  .cover-kicker { font-size:18px; color:#1f3864; font-weight:800; margin-bottom:4px; }
+  .cover-title { font-size:31px; line-height:1.24; color:#172033; font-weight:800; margin-bottom:12px; max-width:142mm; }
+  .cover-divider { width:86px; height:4px; background:#1f3864; margin:0 0 14px; }
+  .cover-subtitle { font-size:14px; color:#1f3864; margin-bottom:13px; }
+  .cover-info-line { display:flex; flex-wrap:wrap; gap:8px 20px; color:#374151; font-size:11px; font-weight:700; margin-bottom:10px; }
+  .cover-info-line span { padding-left:9px; border-left:3px solid #d9e1ef; }
+  .cover-info-line span:first-child { border-left-color:#1f3864; }
+  .cover-note { margin-top:0; padding:8px 10px; border-left:4px solid #2e7d32; background:#f7fbf5; color:#2f3542; font-size:11px; line-height:1.6; }
+  .cover-image-wrap { height:122mm; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+  .cover-image-wrap img { max-width:100%; max-height:122mm; object-fit:contain; display:block; }
+  @media print {
+    html, body {
+      width:210mm;
+      min-width:210mm;
+      max-width:210mm;
+      background:#fff;
+      padding:0;
+      overflow:visible;
+      -webkit-print-color-adjust:exact;
+      print-color-adjust:exact;
+    }
+    .page {
+      width:210mm !important;
+      height:297mm !important;
+      min-height:297mm !important;
+      margin:0;
+      box-shadow:none;
+      break-after:page;
+      page-break-after:always;
+      transform:none !important;
+    }
+  }
+</style>
+</head>
+<body>
+<svg class="svg-defs" aria-hidden="true" focusable="false" width="0" height="0">
+  <defs>
+<g id="gts-logo">
+<path fill="#D60037" fill-rule="nonzero" d="M7173.87 7805.86c65.71,49.76 152.92,-3.45 161.5,-85.48 34.14,-326.93 59.89,-778.58 -188.29,-867.15 -134.13,-47.88 -383.2,75.16 -647.9,276.41 -56.62,43.08 -58.44,137.1 -0.49,178.37 114.42,81.53 286.45,206.09 359.03,259.42 67.74,49.78 207.26,155.97 316.15,238.43z"/>
+  <path fill="#D60037" fill-rule="nonzero" d="M7010.48 8220.07c50.61,-15.73 89.1,44.99 53.52,84.38 -476,526.88 -1651.9,1775.4 -2028.19,1645.49 -295.42,-101.97 -217.57,-697.86 -167.67,-999.8 6.59,-39.95 38.12,-86.94 76.85,-98.98 300.73,-93.45 1586.52,-482.25 2065.49,-631.09z"/>
+  <path fill="#D60037" fill-rule="nonzero" d="M6289.45 9505.32c-45.04,49.87 -39.24,134.17 19.91,165.98 487.05,261.95 883.78,383.1 1180.58,206.51 339.14,-201.84 91.52,-1044.36 -91.35,-1494.25 -37.92,-93.31 -128.44,-95.32 -184.99,-20.01 -249.69,332.51 -548.72,726.2 -924.15,1141.77z"/>
+  <path fill="#D60037" fill-rule="nonzero" d="M6973.93 8073.83c88.35,-19.74 108.24,-132.68 33.57,-183.98 -760.56,-522.38 -1894.09,-1273.18 -2308.85,-988.78 -347.98,238.59 -54.33,1130.87 115.77,1565.41 18.63,47.61 69.13,74.43 118.96,63.29l2040.55 -455.94z"/>
+  <path fill="#000" fill-rule="nonzero" d="M9171.91 9327.15c-256.06,0 -459.29,-82.56 -609.64,-247.68 -150.37,-165.1 -225.55,-388.47 -225.55,-670.04 0,-287.18 78.19,-515.1 234.52,-683.81 156.33,-168.7 367.72,-253.07 634.14,-253.07 213.77,0 389.85,53.47 528.29,160.35 138.37,106.9 219.12,251.26 242.27,433.12l-367.33 0c-9.58,-76.57 -52.72,-143.74 -129.37,-201.61 -76.67,-57.83 -161.31,-86.75 -253.93,-86.75 -159.73,0 -284.72,55.26 -374.96,165.72 -90.24,110.51 -135.35,263.83 -135.35,460.05 0,199.45 43.3,351.2 129.86,455.31 86.57,104.07 213.26,156.11 380.02,156.11l-1.19 0c142.02,0 252.93,-54.22 332.73,-162.7 43.87,-61.43 76.2,-133.59 96.96,-216.58l0 -3.6 -414.07 0 0 -302.7 736.66 0 0 948.82 -245.28 0 -35.89 -227.36 -21.54 28.74c-123.64,165.12 -291.16,247.68 -502.55,247.68l1.2 0z"/>
+  <path fill="#000" fill-rule="nonzero" d="M11057 8494.38c-7.98,-78.18 -28.71,-139.2 -62.23,-183.06 -43.88,-58.22 -112.08,-87.35 -204.58,-87.35 -88.55,0 -155.98,33.93 -202.24,101.71 -28.72,43.08 -49.45,99.29 -62.22,168.7l531.27 0zm-262.03 818.41c-197.84,0 -350.41,-61.02 -457.67,-183.06 -107.3,-122.03 -160.94,-295.93 -160.94,-521.68 0,-208.2 54.65,-371.1 163.93,-488.76 109.26,-117.66 260.84,-176.5 454.68,-176.5 198.6,0 351.57,60.03 458.85,180.08 107.28,120.06 160.91,290.93 160.91,512.7 1.61,25.55 -0.39,51.43 -5.96,77.76l-886.62 0c7.97,102.91 30.71,179.89 68.2,230.92 47.87,63.84 127.63,95.72 239.3,95.72 51.85,0 99.92,-14.74 144.17,-44.27 44.28,-29.49 70.79,-64.99 79.59,-106.47l349.38 0c-29.52,132.41 -97.93,236.11 -205.21,311.09 -107.3,74.98 -241.5,112.47 -402.61,112.47z"/>
+  <path fill="#000" fill-rule="nonzero" d="M11604.85 7977.48l162.71 0 163.92 0 0 192.65c13.57,-23.13 28.32,-45.07 44.27,-65.82 84.55,-107.67 207.38,-161.52 368.53,-161.52 137.18,0 244.69,40.69 322.46,122.03 77.78,81.37 116.66,194.25 116.66,338.6l0 875.87 -171.1 0 -172.29 0 0 -813.65c0,-80.53 -17.37,-140.15 -52.06,-178.83 -34.68,-38.72 -87.92,-58.07 -159.74,-58.07 -90.14,0 -159.32,27.14 -207.57,81.35 -48.27,54.29 -72.4,132.46 -72.4,234.53l0 734.67 -171.09 0 -172.3 0 0 -1301.81z"/>
+  <path fill="#000" fill-rule="nonzero" d="M13843.63 8494.38c-7.99,-78.18 -28.72,-139.2 -62.22,-183.06 -43.9,-58.22 -112.07,-87.35 -204.6,-87.35 -88.55,0 -155.96,33.93 -202.22,101.71 -28.72,43.08 -49.45,99.29 -62.21,168.7l531.25 0zm-262.04 818.41c-197.83,0 -350.39,-61.02 -457.67,-183.06 -107.29,-122.03 -160.91,-295.93 -160.91,-521.68 0,-208.2 54.62,-371.1 163.9,-488.76 109.28,-117.66 260.84,-176.5 454.68,-176.5 198.6,0 351.58,60.03 458.87,180.08 107.26,120.06 160.92,290.93 160.92,512.7 1.59,25.55 -0.42,51.43 -5.98,77.76l-886.61 0c7.97,102.91 30.69,179.89 68.18,230.92 47.87,63.84 127.64,95.72 239.3,95.72 51.85,0 99.92,-14.74 144.2,-44.27 44.25,-29.49 70.77,-64.99 79.56,-106.47l349.39 0c-29.53,132.41 -97.92,236.11 -205.22,311.09 -107.29,74.98 -241.5,112.47 -402.61,112.47z"/>
+  <path fill="#000" fill-rule="nonzero" d="M14390.55 7977.48l162.7 0 163.93 0 0 233.32c11.98,-25.53 25.53,-50.23 40.7,-74.19 80.57,-129.21 184.63,-193.82 312.29,-193.82l77.77 1.2 0 350.57c-30.33,-3.19 -64.61,-4.78 -102.91,-4.78 -104.5,0 -182.45,25.92 -233.9,77.75 -51.46,51.87 -77.19,130.45 -77.19,235.74l0 676.02 -171.08 0 -172.31 0 0 -1301.81z"/>
+  <path fill="#000" fill-rule="nonzero" d="M16032.68 8798.3l0 -149.57c-39.89,22.33 -92.54,40.27 -157.94,53.84l-126.83 23.94c-59.84,11.17 -105.3,31.71 -136.41,61.6 -31.1,29.92 -46.65,67.61 -46.65,113.08 0,51.87 13.94,92.57 41.87,122.05 27.91,29.51 67.01,44.28 117.27,44.28 110.05,0 197.79,-38.69 263.21,-116.07 12.75,-15.13 23.53,-37.49 32.32,-67.02 8.75,-29.5 13.16,-58.2 13.16,-86.13zm-412.8 514.49c-120.44,0 -217.37,-34.49 -290.75,-103.48 -73.4,-69.02 -110.08,-159.77 -110.08,-272.22 0,-118.82 33.09,-213.97 99.32,-285.37 66.2,-71.38 162.72,-116.26 289.53,-134.61l226.14 -31.1c59.03,-7.99 108.08,-21.56 147.18,-40.68 16.74,-7.98 29.73,-22.32 38.89,-43.09 9.17,-20.72 12.57,-41.88 10.17,-63.4 -4.78,-36.68 -23.52,-65.42 -56.24,-86.17 -39.1,-24.7 -95.31,-37.08 -168.72,-37.08 -65.4,0 -116.44,15.97 -153.14,47.88 -36.69,31.9 -56.22,76.97 -58.62,135.19l-329.05 0c7.2,-152.32 59.03,-266.43 155.55,-342.21 96.51,-75.75 238.12,-113.65 424.76,-113.65 161.94,0 289.75,34.13 383.47,102.4 93.73,68.27 140.6,161.48 140.6,279.64l0 728.12c0,58.3 4.78,99.21 14.36,122.76 9.58,23.58 28.72,42.13 57.43,55.7l0 1.18 0 46.68 -185.46 0 -185.44 0 0 -1.18c-15.19,-52.66 -25.14,-104.11 -29.92,-154.35l-1.2 -2.42c-107.69,127.65 -247.28,191.46 -418.78,191.46z"/>
+  <polygon fill="#000" fill-rule="nonzero" points="16634.66,7520.42 16805.76,7520.42 16978.05,7520.42 16978.05,9279.28 16806.96,9279.28 16634.66,9279.28 "/>
+  <polygon fill="#000" fill-rule="nonzero" points="18393.51,7832.71 17862.26,7832.71 17862.26,7677.19 17862.26,7520.42 19292.09,7520.42 19292.09,7675.94 19292.09,7832.71 18760.84,7832.71 18760.84,9279.28 18577.78,9279.28 18393.51,9279.28 "/>
+  <path fill="#000" fill-rule="nonzero" d="M20018.43 8494.38c-7.98,-78.18 -28.72,-139.2 -62.21,-183.06 -43.9,-58.22 -112.08,-87.35 -204.6,-87.35 -88.54,0 -155.96,33.93 -202.22,101.71 -28.72,43.08 -49.48,99.29 -62.22,168.7l531.25 0zm-262.03 818.41c-197.84,0 -350.4,-61.02 -457.67,-183.06 -107.3,-122.03 -160.92,-295.93 -160.92,-521.68 0,-208.2 54.62,-371.1 163.91,-488.76 109.28,-117.66 260.83,-176.5 454.68,-176.5 198.6,0 351.56,60.03 458.86,180.08 107.26,120.06 160.92,290.93 160.92,512.7 1.59,25.55 -0.41,51.43 -5.98,77.76l-886.6 0c7.94,102.91 30.68,179.89 68.17,230.92 47.88,63.84 127.64,95.72 239.3,95.72 51.87,0 99.92,-14.74 144.18,-44.27 44.27,-29.49 70.81,-64.99 79.58,-106.47l349.39 0c-29.52,132.41 -97.91,236.11 -205.21,311.09 -107.3,74.98 -241.5,112.47 -402.61,112.47z"/>
+  <path fill="#000" fill-rule="nonzero" d="M21307.05 8367.53c0,-50.23 -20.77,-90.52 -62.27,-120.85 -41.51,-30.29 -96.58,-45.43 -165.21,-45.43 -66.26,0 -117.96,11.34 -155.05,34.08 -37.14,22.74 -55.69,54.45 -55.69,95.13 0,28.69 21.13,53.46 63.42,74.19 41.48,19.95 115.3,41.87 221.4,65.79 210.64,47.07 351.47,98.52 422.5,154.35 71.18,55.86 106.78,143.61 106.78,263.25 0,127.62 -51.67,230.31 -154.97,308.09 -103.31,77.77 -239.54,116.67 -408.67,116.67 -200.28,0 -354.43,-38.31 -462.55,-114.87 -108.09,-76.6 -165.72,-188.25 -172.91,-335.02l349.38 0c2.4,59.83 28.94,106.67 79.58,140.58 50.68,33.92 119.5,50.84 206.46,50.84 68.6,0 122.28,-11.74 160.99,-35.29 38.69,-23.5 58.04,-56.41 58.04,-98.72 0,-29.48 -18.74,-54.62 -56.21,-75.37 -37.49,-19.9 -103.33,-40.27 -197.46,-61.01 -220.2,-49.45 -367.39,-101.72 -441.58,-156.75 -74.08,-54.25 -111.11,-138.38 -111.11,-252.46 0,-129.23 48.03,-233.51 144.14,-312.88 96.08,-79.35 222.71,-119.06 379.81,-119.06 177.05,0 319.8,38.89 428.28,116.66 108.48,77.77 162.71,180.5 162.71,308.08l-339.81 0z"/>
+  <path fill="#000" fill-rule="nonzero" d="M22489.62 9286.48c-57.44,4.78 -128.03,7.16 -211.8,7.16 -121.27,0 -208.38,-21.71 -261.43,-65.2 -53.05,-43.47 -79.57,-114.67 -79.57,-213.59l0 -796.85 -180.66 0 0 -240.52 180.66 0 0 -350.57 343.39 0 0 350.57 209.41 0 0 240.52 -209.41 0 0 739.43c0,30.31 9,50.25 26.93,59.82 17.96,9.58 55.21,14.35 111.88,14.35l70.6 0 0 254.88z"/>
+ </g>
+  </defs>
+</svg>
+<!-- P1 Cover -->
+<div class="page cover-page">
+  <div class="page-header cover-header">
+    <div class="cover-header-text">
+      <div class="cover-doc-label">客户交付文档</div>
+      <div class="cover-doc-subtitle">Customer Delivery</div>
+    </div>
+    <svg class="logo" viewBox="4400 6500 18750 3520" role="img" aria-label="GTS"><use href="#gts-logo"></use></svg>
+    <div class="doc-meta">
+      <strong>2026-07-28</strong>
+      Operation Guide<br>
+      PinProbe A1
+    </div>
+  </div>
+  <div class="main cover-main">
+    <div class="cover-layout">
+      <div class="cover-copy">
+        <div class="cover-kicker">PinProbe A1</div>
+        <div class="cover-title">PinProbeA1 箱体控制程序操作说明</div>
+        <div class="cover-divider"></div>
+        <div class="cover-subtitle">连接设备 · 常用控制 · 异常处理</div>
+        <div class="cover-info-line">
+          <span>客户联调资料</span>
+          <span>SCPI / UART</span>
+          <span>2026-07-28</span>
+        </div>
+        <div class="cover-note">本文用于客户侧上位机联调、设备控制与维护参考。</div>
+      </div>
+      
+    </div>
+  </div>
+  <div class="page-footer">
+    <span>Accurate · Simple · Fast · Agile | General Test Systems Inc.</span>
+    <span>PinProbe A1 操作说明 | 1 / 5</span>
+  </div>
+</div>
+<!-- P2 -->
+<div class="page">
+  <div class="page-header">
+    <div>
+      <h1>PinProbeA1 箱体控制程序操作说明</h1>
+      <div class="subtitle">客户外发资料</div>
+    </div>
+    <svg class="logo" viewBox="4400 6500 18750 3520" role="img" aria-label="GTS"><use href="#gts-logo"></use></svg>
+    <div class="doc-meta">
+      <strong>2026-07-28</strong>
+      Operation Guide<br>
+      PinProbe A1
+    </div>
+  </div>
+  <div class="main">
+<div class="note-box">适用程序：<code>PinProbeA1箱体控制程序.exe</code> 文档版本：<code>2026-07-28</code> 适用设备：PinProbe A1 箱体控制设备</div>
+<div class="section-title">1. 使用前准备</div>
+<ol class="small-list">
+<li>将 PinProbe A1 设备连接到电脑串口或 USB 转串口模块。</li>
+<li>确认设备已上电，串口驱动已正确安装。</li>
+<li>双击运行 <code>PinProbeA1箱体控制程序.exe</code>。</li>
+<li>默认通信参数为 <code>115200 bps</code>，无需修改波特率。</li>
+</ol>
+<div class="note-box">程序为免安装工具，外发包中可直接运行。若 Windows 弹出安全提示，请选择“仍要运行”。</div>
+<div class="section-title">2. 连接设备</div>
+<ol class="small-list">
+<li>在左上角“串口设置”区域点击“刷新”。</li>
+<li>在“端口”下拉框选择设备对应串口，例如 <code>COM3</code>、<code>COM5</code>。</li>
+<li>点击“连接”。</li>
+<li>连接成功后，状态栏显示“已连接”，程序会自动查询设备信息。</li>
+<li>可点击“查询设备”确认设备返回 <code>GTS,PINPROBEA1,...</code>。</li>
+</ol>
+<p>若连接失败，请检查：</p>
+<table class="compact">
+<thead><tr><th>问题</th><th>处理方式</th></tr></thead>
+<tbody>
+<tr><td>找不到串口</td><td>检查 USB 转串口驱动、线缆和设备供电</td></tr>
+<tr><td>串口被占用</td><td>关闭其他串口工具后重新连接</td></tr>
+<tr><td>无响应</td><td>确认设备上电、端口选择正确，重新插拔串口线后点击“刷新”</td></tr>
+</tbody>
+</table>
+  </div>
+  <div class="page-footer">
+    <span>Accurate · Simple · Fast · Agile | General Test Systems Inc.</span>
+    <span>PinProbe A1 操作说明 | 2 / 5</span>
+  </div>
+</div>
+<!-- P3 -->
+<div class="page">
+  <div class="page-header">
+    <div>
+      <h1>3. 常用控制</h1>
+      <div class="subtitle">PinProbeA1 箱体控制程序操作说明</div>
+    </div>
+    <svg class="logo" viewBox="4400 6500 18750 3520" role="img" aria-label="GTS"><use href="#gts-logo"></use></svg>
+    <div class="doc-meta">
+      <strong>2026-07-28</strong>
+      Operation Guide<br>
+      PinProbe A1
+    </div>
+  </div>
+  <div class="main">
+<div class="section-title">3. 常用控制</div>
+<p>左侧“SCPI 命令面板”提供常用操作按钮。客户日常使用建议优先使用按钮，不需要手动输入指令。</p>
+<h4>3.1 门/气缸</h4>
+<table class="compact">
+<thead><tr><th>按钮</th><th>功能</th></tr></thead>
+<tbody>
+<tr><td>“开门”</td><td>打开箱门</td></tr>
+<tr><td>“关门”</td><td>关闭箱门</td></tr>
+<tr><td>“读门状态”</td><td>查询箱门当前位置和动作状态</td></tr>
+<tr><td>“USB 插入”</td><td>手动插入 USB 接头（发送 <code>CONFigure:CYLInder2 CLOSE</code>）</td></tr>
+<tr><td>“USB 拔出”</td><td>手动拔出/回退 USB 接头（发送 <code>CONFigure:CYLInder2 OPEN</code>）</td></tr>
+<tr><td>“读 USB 状态”</td><td>查询 USB 插拔机构状态</td></tr>
+<tr><td>“读USB自动(出厂)”</td><td>查询 USB 自动拔插流程出厂配置</td></tr>
+</tbody>
+</table>
+<h4>3.2 USB 自动流程</h4>
+<p>USB 自动拔插流程为出厂配置项，出厂时已按设备硬件配置完成。带 USB 气缸的设备配置为 <code>ON</code>，不带 USB 气缸的设备配置为 <code>OFF</code>。</p>
+<p>建议客户使用方式：</p>
+<ol class="small-list">
+<li>连接设备后先点击“读USB自动(出厂)”确认当前出厂配置。</li>
+<li>带 USB 气缸的设备保持 <code>ON</code>，设备会在关门前自动插入 USB，插入到位后才关门；开门到位后自动回退 USB。</li>
+<li>该配置<span class="danger-text">禁止修改</span>；如需人工单独调试 USB 插拔动作，可直接使用“USB 插入”和“USB 拔出”。</li>
+</ol>
+<h4>3.3 门锁和指示灯</h4>
+<table class="compact">
+<thead><tr><th>按钮</th><th>功能</th></tr></thead>
+<tbody>
+<tr><td>“解锁”</td><td>设备上电解锁，允许执行动作</td></tr>
+<tr><td>“锁定”</td><td>设备锁定，停止普通动作</td></tr>
+<tr><td>“读锁状态”</td><td>查询锁定/解锁状态</td></tr>
+<tr><td>“绿灯 / 红灯 / 黄灯 / 关灯”</td><td>手动控制指示灯</td></tr>
+<tr><td>“读 LED 状态”</td><td>查询指示灯状态</td></tr>
+</tbody>
+</table>
+<div class="section-title">4. 状态监控</div>
+<p>右侧“状态监控”页用于查看设备当前状态。</p>
+<p>常用功能：</p>
+<table class="compact">
+<thead><tr><th>功能</th><th>说明</th></tr></thead>
+<tbody>
+<tr><td>“自动轮询”</td><td>周期刷新系统、门、USB、锁、LED 和日志状态</td></tr>
+<tr><td>“间隔(ms)”</td><td>轮询间隔，建议不低于 <code>500 ms</code></td></tr>
+<tr><td>“立即刷新”</td><td>手动刷新一次状态</td></tr>
+<tr><td>“IO 指示灯”</td><td>快速观察输入/输出状态</td></tr>
+</tbody>
+</table>
+<p>客户日常判断建议以以下状态为主：</p>
+<table class="compact">
+<thead><tr><th>状态项</th><th>常见返回</th><th>含义</th></tr></thead>
+<tbody>
+<tr><td>系统状态</td><td><code>LOCK</code> / <code>IDLE</code> / <code>READY</code></td><td>锁定、空闲、准备关门</td></tr>
+<tr><td>系统状态</td><td><code>RUNNING</code> / <code>COMPLETE</code> / <code>EMERGENCY</code></td><td>动作中、完成、急停或安全保护</td></tr>
+<tr><td>门/USB 状态</td><td><code>OPENING</code> / <code>CLOSING</code></td><td>动作中</td></tr>
+<tr><td>门/USB 状态</td><td><code>OPENED</code> / <code>CLOSED</code> / <code>CYL ERR</code></td><td>已到位或执行器异常</td></tr>
+</tbody>
+</table>
+  </div>
+  <div class="page-footer">
+    <span>Accurate · Simple · Fast · Agile | General Test Systems Inc.</span>
+    <span>PinProbe A1 操作说明 | 3 / 5</span>
+  </div>
+</div>
+<!-- P4 -->
+<div class="page">
+  <div class="page-header">
+    <div>
+      <h1>5. 日志和异常处理</h1>
+      <div class="subtitle">PinProbeA1 箱体控制程序操作说明</div>
+    </div>
+    <svg class="logo" viewBox="4400 6500 18750 3520" role="img" aria-label="GTS"><use href="#gts-logo"></use></svg>
+    <div class="doc-meta">
+      <strong>2026-07-28</strong>
+      Operation Guide<br>
+      PinProbe A1
+    </div>
+  </div>
+  <div class="main">
+<div class="section-title">5. 日志和异常处理</div>
+<p>下方“命令日志 / 响应输出”区域会显示指令发送、设备响应和异常信息。</p>
+<p>常用操作：</p>
+<table class="compact">
+<thead><tr><th>功能</th><th>说明</th></tr></thead>
+<tbody>
+<tr><td>“清空日志”</td><td>清除程序窗口中的显示内容</td></tr>
+<tr><td>“自动滚动”</td><td>新日志出现时自动滚动到底部</td></tr>
+<tr><td>“实时旁听”</td><td>持续接收下位机自发输出的实时日志，适合联调和异常复现</td></tr>
+<tr><td>“导出日志”</td><td>将当前窗口日志保存为 <code>.log</code> 或 <code>.txt</code> 文件，便于售后分析</td></tr>
+</tbody>
+</table>
+<p>遇到异常时建议按以下顺序处理：</p>
+<ol class="small-list">
+<li>停止自动测试或连续操作。</li>
+<li>查看日志中是否存在 <code>ERROR</code>、<code>ERR</code>、<code>WARN</code>。</li>
+<li>在“状态监控”页点击“立即刷新”。</li>
+<li>读取门状态、USB 状态、锁状态和系统状态。</li>
+<li>导出日志并反馈给技术支持。</li>
+</ol>
+<p>常见异常提示：</p>
+<table class="compact">
+<thead><tr><th>提示</th><th>含义</th><th>建议处理</th></tr></thead>
+<tbody>
+<tr><td><code>ESTOP</code></td><td>急停触发</td><td>检查急停按钮，复位后重新解锁</td></tr>
+<tr><td><code>LASER</code></td><td>防夹或遮挡触发</td><td>清除遮挡物，确认安全后重新操作</td></tr>
+<tr><td><code>RS485_FAULT</code></td><td>IO 通信异常</td><td>检查设备连接和供电，等待恢复或重启设备</td></tr>
+<tr><td><code>USB_INSERT_FAIL</code></td><td>USB 插入未到位或机构异常</td><td>检查 USB 插入机构和治具位置</td></tr>
+<tr><td><code>USB_RETRACT_FAIL</code></td><td>USB 回退未到位或机构异常</td><td>检查 USB 回退机构和治具位置</td></tr>
+<tr><td><code>IO_WRITE_FAIL</code></td><td>执行器输出失败</td><td>检查 IO 模块、电源和线缆</td></tr>
+</tbody>
+</table>
+<div class="section-title">6. 自定义命令</div>
+<p>“自定义命令”页可手动输入 SCPI 指令，适合维护和联调使用。</p>
+<p>使用方式：</p>
+<ol class="small-list">
+<li>在输入框中输入完整指令，例如 <code>*IDN?</code>。</li>
+<li>点击“发送”或按 Enter。</li>
+<li>在下方日志区查看响应。</li>
+<li>命令历史可点击重用。</li>
+</ol>
+<p>普通客户日常使用不需要手动输入指令。详细指令含义请参考随包提供的《PinProbe A1 箱体控制 SCPI 指令说明》。</p>
+<div class="section-title">7. 压力测试</div>
+<p>“压力测试”页用于批量循环发送指令，主要用于出厂验证、老化测试或售后复现问题。</p>
+<p>建议：</p>
+<table class="compact">
+<thead><tr><th>项目</th><th>建议值</th></tr></thead>
+<tbody>
+<tr><td>命令间隔</td><td>不低于 <code>500 ms</code></td></tr>
+<tr><td>循环次数</td><td>客户现场验证建议设置有限次数</td></tr>
+<tr><td>超时时间</td><td>根据设备动作时长设置，门动作相关命令建议预留足够时间</td></tr>
+</tbody>
+</table>
+<p>压力测试运行期间，程序会暂停部分自动轮询，以减少串口冲突。测试结束后可重新开启“自动轮询”。</p>
+  </div>
+  <div class="page-footer">
+    <span>Accurate · Simple · Fast · Agile | General Test Systems Inc.</span>
+    <span>PinProbe A1 操作说明 | 4 / 5</span>
+  </div>
+</div>
+<!-- P5 -->
+<div class="page">
+  <div class="page-header">
+    <div>
+      <h1>8. 固件升级</h1>
+      <div class="subtitle">PinProbeA1 箱体控制程序操作说明</div>
+    </div>
+    <svg class="logo" viewBox="4400 6500 18750 3520" role="img" aria-label="GTS"><use href="#gts-logo"></use></svg>
+    <div class="doc-meta">
+      <strong>2026-07-28</strong>
+      Operation Guide<br>
+      PinProbe A1
+    </div>
+  </div>
+  <div class="main">
+<div class="section-title">8. 固件升级</div>
+<p>“固件升级”页用于 OTA 升级。客户现场如无技术支持指导，不建议自行升级。</p>
+<p>基本流程：</p>
+<ol class="small-list">
+<li>点击“选择...”选择 <code>.bin</code> 固件文件。</li>
+<li>确认程序显示的文件大小和 CRC32 信息正常。</li>
+<li>点击“查询状态”和“查询Boot”确认设备状态。</li>
+<li>点击“开始上传”上传固件。</li>
+<li>上传并校验通过后，点击“提交升级”。</li>
+<li>按提示重启设备，等待升级完成。</li>
+</ol>
+<p>注意事项：</p>
+<table class="compact">
+<thead><tr><th>注意项</th><th>说明</th></tr></thead>
+<tbody>
+<tr><td>固件文件</td><td>必须选择 PinProbe A1 App 固件 <code>.bin</code> 文件</td></tr>
+<tr><td>供电</td><td>升级过程中不得断电</td></tr>
+<tr><td>串口</td><td>升级过程中不要断开串口</td></tr>
+<tr><td>操作</td><td>升级过程中不要同时进行门、USB、锁等动作</td></tr>
+<tr><td>失败处理</td><td>若升级失败，请导出日志并联系技术支持</td></tr>
+</tbody>
+</table>
+<div class="section-title">9. 外发包文件说明</div>
+<table class="compact">
+<thead><tr><th>文件</th><th>说明</th></tr></thead>
+<tbody>
+<tr><td><code>PinProbeA1箱体控制程序.exe</code></td><td>箱体控制上位机程序</td></tr>
+<tr><td><code>PinProbeA1箱体控制程序操作说明_客户版_20260728.pdf</code></td><td>本操作说明</td></tr>
+<tr><td><code>PinProbe A1 箱体控制 SCPI 指令说明20260728.pdf</code></td><td>SCPI 指令说明</td></tr>
+</tbody>
+</table>
+<div class="section-title">10. 推荐操作顺序</div>
+<ol class="small-list">
+<li>运行程序。</li>
+<li>刷新并选择串口。</li>
+<li>点击“连接”。</li>
+<li>点击“查询设备”。</li>
+<li>点击“读锁状态”和“读系统状态”。</li>
+<li>根据现场需求执行解锁、开门、关门、USB 自动或手动控制。</li>
+<li>出现异常时导出日志并反馈。</li>
+</ol>
+  </div>
+  <div class="page-footer">
+    <span>Accurate · Simple · Fast · Agile | General Test Systems Inc.</span>
+    <span>PinProbe A1 操作说明 | 5 / 5</span>
+  </div>
+</div>
+</body>
+</html>

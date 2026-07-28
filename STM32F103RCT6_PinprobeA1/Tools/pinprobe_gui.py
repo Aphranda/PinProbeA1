@@ -87,12 +87,10 @@ SCPI_COMMANDS = {
         ("开门", "CONFigure:CYLInder1 OPEN"),
         ("关门", "CONFigure:CYLInder1 CLOSE"),
         ("读门状态", "READ:CYLInder1:STATe?"),
-        ("USB 插入", "CONFigure:CYLInder2 OPEN"),
-        ("USB 拔出", "CONFigure:CYLInder2 CLOSE"),
+        ("USB 插入", "CONFigure:CYLInder2 CLOSE"),
+        ("USB 拔出", "CONFigure:CYLInder2 OPEN"),
         ("读 USB 状态", "READ:CYLInder2:STATe?"),
-        ("USB自动 ON", "CONFigure:USB:AUTO ON"),
-        ("USB自动 OFF", "CONFigure:USB:AUTO OFF"),
-        ("读USB自动", "READ:USB:AUTO?"),
+        ("读USB自动(出厂)", "READ:USB:AUTO?"),
     ],
     "门锁": [
         ("🔓 解锁", "CONFigure:LOCK UNLOCK"),
@@ -314,6 +312,7 @@ class SerialWorker:
         self._thread: threading.Thread | None = None
         self._lock = threading.Lock()
         self._ota_active = False
+        self._live_listen = False
         self._response_event = threading.Event()
 
     @property
@@ -360,6 +359,10 @@ class SerialWorker:
     def ota_set_active(self, active: bool) -> None:
         """标记 OTA 上传独占串口。"""
         self._ota_active = active
+
+    def set_live_listen(self, enabled: bool) -> None:
+        """开启/关闭空闲串口旁听。"""
+        self._live_listen = enabled
 
     @staticmethod
     def _is_debug_line(decoded: str) -> bool:
@@ -428,7 +431,31 @@ class SerialWorker:
 
     def _clear_stale_input_locked(self) -> None:
         if self.serial_port and self.serial_port.is_open:
-            self.serial_port.reset_input_buffer()
+            if self._live_listen:
+                self._poll_live_lines_locked(max_lines=64)
+            else:
+                self.serial_port.reset_input_buffer()
+
+    def _poll_live_lines_locked(self, max_lines: int = 16) -> None:
+        """空闲时读取下位机自发输出, 不参与 SCPI 响应等待。"""
+        if (not self._live_listen or self._ota_active or
+                not self.serial_port or not self.serial_port.is_open):
+            return
+
+        old_timeout = self.serial_port.timeout
+        self.serial_port.timeout = 0.02
+        try:
+            count = 0
+            while self.serial_port.in_waiting and count < max_lines:
+                raw = self.serial_port.read_until(b'\n', size=512)
+                if not raw:
+                    break
+                decoded = raw.decode("utf-8", errors="replace").strip()
+                if decoded:
+                    self.rx_queue.put(("live", decoded))
+                    count += 1
+        finally:
+            self.serial_port.timeout = old_timeout
 
     def transact_raw(self, payload: bytes, timeout: float = OTA_ACK_TIMEOUT) -> str:
         """直接发送 bytes 并读取一行 SCPI 响应, OTA 上传线程使用。"""
@@ -465,6 +492,11 @@ class SerialWorker:
             try:
                 cmd, expect_response = self.cmd_queue.get(timeout=0.05)
             except queue.Empty:
+                try:
+                    with self._lock:
+                        self._poll_live_lines_locked()
+                except serial.SerialException as e:
+                    self.rx_queue.put(("ERROR", "实时旁听", str(e)))
                 continue
 
             try:
@@ -515,6 +547,7 @@ class PinProbeApp:
         self.polling_enabled = tk.BooleanVar(value=False)
         self.poll_interval_ms = tk.IntVar(value=500)
         self.auto_scroll = tk.BooleanVar(value=True)
+        self.live_listen = tk.BooleanVar(value=False)
         self.connected = tk.BooleanVar(value=False)
 
         # 压力测试状态
@@ -1271,6 +1304,8 @@ class PinProbeApp:
         ttk.Button(toolbar, text="清空日志", command=self._clear_log).pack(side=tk.LEFT)
         ttk.Checkbutton(toolbar, text="自动滚动", variable=self.auto_scroll).pack(
             side=tk.LEFT, padx=10)
+        ttk.Checkbutton(toolbar, text="实时旁听", variable=self.live_listen,
+                        command=self._toggle_live_listen).pack(side=tk.LEFT, padx=4)
         ttk.Button(toolbar, text="导出日志", command=self._export_log).pack(
             side=tk.RIGHT, padx=2)
 
@@ -1288,6 +1323,7 @@ class PinProbeApp:
         self.log_text.tag_config("ERROR", foreground="#F44747")
         self.log_text.tag_config("WARN", foreground="#CE9178")
         self.log_text.tag_config("INFO", foreground="#4FC1FF")
+        self.log_text.tag_config("LIVE", foreground="#B5CEA8")
         self.log_text.tag_config("STATE", foreground="#CE9178")
         self.log_text.tag_config("DOOR", foreground="#DCDCAA")
         self.log_text.tag_config("IO", foreground="#569CD6")
@@ -1332,6 +1368,7 @@ class PinProbeApp:
 
         try:
             self.serial_worker.connect(port, baud)
+            self.serial_worker.set_live_listen(self.live_listen.get())
             self.connected.set(True)
             self.conn_indicator.configure(text="● 已连接", foreground="#00AA00")
             self.conn_detail.configure(text=f"{port} @ {baud} bps", foreground="#00AA00")
@@ -1360,6 +1397,12 @@ class PinProbeApp:
         self.device_info_label.configure(text="设备: ---", foreground="gray")
         self.status_label.configure(text="已断开连接")
         self._log("串口已断开", "INFO")
+
+    def _toggle_live_listen(self):
+        enabled = self.live_listen.get()
+        self.serial_worker.set_live_listen(enabled)
+        state = "开启" if enabled else "关闭"
+        self._log(f"实时旁听已{state}", "INFO")
 
     # ── 日志系统 ──────────────────────────────────────────────────────
     def _log(self, message: str, tag: str = "INFO"):
@@ -1869,6 +1912,17 @@ class PinProbeApp:
                     # 复合动作标签映射: CLOSE_START/DONE → CLOSE, OPEN_START/DONE → OPEN
                     if tag.startswith("CLOSE"):   tag = "CLOSE"
                     elif tag.startswith("OPEN"):  tag = "OPEN"
+                    self._log(decoded, tag)
+
+                elif msg_type == "live":
+                    _, decoded = msg
+                    tag = decoded.split()[0].strip("[]") if decoded else "LIVE"
+                    if tag.startswith("T+"):
+                        tag = "LIVE"
+                    elif tag.startswith("CLOSE"):
+                        tag = "CLOSE"
+                    elif tag.startswith("OPEN"):
+                        tag = "OPEN"
                     self._log(decoded, tag)
 
                 elif msg_type == "sent":

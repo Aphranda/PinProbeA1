@@ -89,6 +89,8 @@ CONFigure:BAUDrate 115200
 |`CONFigure:CYLInder2`|`OPEN` / `CLOSE`|Unplug or plug the USB connector|
 |`READ:CYLInder2:STATe?`|[Return Value](#actuator-state)|Query current USB state|
 
+> USB commands are named by connection state: `CYLInder2 CLOSE` plugs/connects USB, and `CYLInder2 OPEN` unplugs/retracts USB.
+
 ### Actuator State
 
 |Return Value|Description|
@@ -101,13 +103,15 @@ CONFigure:BAUDrate 115200
 |`OPENED`|Extended / opened|
 |`CYL ERR`|Actuator error|
 
+For `CYLInder2`, `CLOSING/CLOSED` means USB plugging/plugged, and `OPENING/OPENED` means USB unplugging/unplugged.
+
 ### Example
 
 ```scpi
 CONFigure:CYLInder1 OPEN     # Open door
 CONFigure:CYLInder1 CLOSE    # Close door
-CONFigure:CYLInder2 OPEN     # Unplug USB
 CONFigure:CYLInder2 CLOSE    # Plug USB
+CONFigure:CYLInder2 OPEN     # Unplug USB
 READ:CYLInder1:STATe?        # Query door state
 READ:CYLInder2:STATe?        # Query USB state
 ```

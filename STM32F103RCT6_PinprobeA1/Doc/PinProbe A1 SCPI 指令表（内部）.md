@@ -167,6 +167,8 @@ CONFigure:BAUDrate 9600      → ERROR: Only 115200 baudrate is supported
 | `OPENED` | 已打开 / 已伸出（仅查询） |
 | `CYL ERR` | 执行错误 |
 
+> USB 按连接状态定义：`CYLInder2 CLOSE` 表示 USB 插入/连接，`CYLInder2 OPEN` 表示 USB 拔出/回退；`CLOSING/CLOSED` 对应插入中/插入到位，`OPENING/OPENED` 对应回退中/回退到位。
+
 > 实现代码: [`scpi-def.c:433-469`](../Hardware/libscpi/port/scpi-def.c:433)
 
 ### 示例
@@ -174,8 +176,8 @@ CONFigure:BAUDrate 9600      → ERROR: Only 115200 baudrate is supported
 ```
 CONFigure:CYLInder1 OPEN     → OPENED
 CONFigure:CYLInder1 CLOSE    → CLOSED
-CONFigure:CYLInder2 OPEN     → OPENED
 CONFigure:CYLInder2 CLOSE    → CLOSED
+CONFigure:CYLInder2 OPEN     → OPENED
 READ:CYLInder1:STATe?        → CLOSED
 READ:CYLInder2:STATe?        → CLOSED
 ```

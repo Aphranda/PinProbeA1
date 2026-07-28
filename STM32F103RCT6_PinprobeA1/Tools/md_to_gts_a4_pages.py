@@ -384,7 +384,7 @@ def block_to_html(block: Block) -> str:
     return ""
 
 
-def page_html(page: Page, index: int, total: int, doc_date: str) -> str:
+def page_html(page: Page, index: int, total: int, doc_date: str, doc_kind: str, footer_name: str) -> str:
     body = "\n".join(block_to_html(block) for block in page.blocks)
     return f"""<!-- P{index} -->
 <div class="page">
@@ -396,7 +396,7 @@ def page_html(page: Page, index: int, total: int, doc_date: str) -> str:
     <svg class="logo" viewBox="4400 6500 18750 3520" role="img" aria-label="GTS"><use href="#gts-logo"></use></svg>
     <div class="doc-meta">
       <strong>{html.escape(doc_date)}</strong>
-      Customer Delivery<br>
+      {html.escape(doc_kind)}<br>
       PinProbe A1
     </div>
   </div>
@@ -405,12 +405,22 @@ def page_html(page: Page, index: int, total: int, doc_date: str) -> str:
   </div>
   <div class="page-footer">
     <span>Accurate · Simple · Fast · Agile | General Test Systems Inc.</span>
-    <span>PinProbe A1 文档 | {index} / {total}</span>
+    <span>{html.escape(footer_name)} | {index} / {total}</span>
   </div>
 </div>"""
 
 
-def build_html(title: str, pages: list[Page], logo: str, doc_date: str, cover_note: str = "", cover_image: Path | None = None) -> str:
+def build_html(
+    title: str,
+    pages: list[Page],
+    logo: str,
+    doc_date: str,
+    cover_note: str = "",
+    cover_image: Path | None = None,
+    doc_kind: str = "SCPI Reference",
+    cover_subtitle: str = "通信指令 · 设备控制 · 异常处理",
+    footer_name: str = "PinProbe A1 文档",
+) -> str:
     total = len(pages) + 1
     cover_product = "PinProbe A1"
     cover_doc_name = title
@@ -429,7 +439,7 @@ def build_html(title: str, pages: list[Page], logo: str, doc_date: str, cover_no
     <svg class="logo" viewBox="4400 6500 18750 3520" role="img" aria-label="GTS"><use href="#gts-logo"></use></svg>
     <div class="doc-meta">
       <strong>{html.escape(doc_date)}</strong>
-      SCPI Reference<br>
+      {html.escape(doc_kind)}<br>
       PinProbe A1
     </div>
   </div>
@@ -439,7 +449,7 @@ def build_html(title: str, pages: list[Page], logo: str, doc_date: str, cover_no
         <div class="cover-kicker">{inline_md(cover_product)}</div>
         <div class="cover-title">{inline_md(cover_doc_name)}</div>
         <div class="cover-divider"></div>
-        <div class="cover-subtitle">通信指令 · 设备控制 · 异常处理</div>
+        <div class="cover-subtitle">{html.escape(cover_subtitle)}</div>
         <div class="cover-info-line">
           <span>客户联调资料</span>
           <span>SCPI / UART</span>
@@ -452,11 +462,14 @@ def build_html(title: str, pages: list[Page], logo: str, doc_date: str, cover_no
   </div>
   <div class="page-footer">
     <span>Accurate · Simple · Fast · Agile | General Test Systems Inc.</span>
-    <span>PinProbe A1 文档 | 1 / {total}</span>
+    <span>{html.escape(footer_name)} | 1 / {total}</span>
   </div>
 </div>"""
     rendered_pages = [cover]
-    rendered_pages.extend(page_html(page, i + 2, total, doc_date) for i, page in enumerate(pages))
+    rendered_pages.extend(
+        page_html(page, i + 2, total, doc_date, doc_kind, footer_name)
+        for i, page in enumerate(pages)
+    )
     return f"""<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -633,13 +646,26 @@ def main() -> None:
     parser.add_argument("--html", required=True, type=Path)
     parser.add_argument("--date", default="2026-07-27")
     parser.add_argument("--cover-image", type=Path)
+    parser.add_argument("--doc-kind", default="SCPI Reference")
+    parser.add_argument("--cover-subtitle", default="通信指令 · 设备控制 · 异常处理")
+    parser.add_argument("--footer-name", default="PinProbe A1 文档")
     args = parser.parse_args()
 
     title, blocks = parse_markdown(args.markdown)
     logo = extract_logo(args.template.read_text(encoding="utf-8"))
     cover_note, content_blocks = extract_cover_note(blocks)
     pages = merge_trailing_sparse_page(paginate(title, content_blocks))
-    output = build_html(title, pages, logo, args.date, cover_note, args.cover_image)
+    output = build_html(
+        title,
+        pages,
+        logo,
+        args.date,
+        cover_note,
+        args.cover_image,
+        args.doc_kind,
+        args.cover_subtitle,
+        args.footer_name,
+    )
     args.html.write_text(output, encoding="utf-8", newline="\n")
     print(f"Wrote {args.html} ({len(pages) + 1} pages)")
 
