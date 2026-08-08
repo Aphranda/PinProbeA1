@@ -1,0 +1,917 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PinProbe A1 Box Control SCPI Command Reference</title>
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  body {
+    font-family:"Microsoft YaHei","SimSun","DengXian",Arial,sans-serif;
+    background:#d7d9df;
+    color:#1f2328;
+    padding:18px;
+    line-height:1.42;
+  }
+  @page { size:A4 portrait; margin:0; }
+  .page {
+    width:210mm;
+    height:297mm;
+    margin:0 auto 18px;
+    background:#fff;
+    box-shadow:0 3px 14px rgba(0,0,0,.16);
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+    break-after:page;
+    page-break-after:always;
+  }
+  .page:last-child { margin-bottom:0; }
+  .page-header {
+    padding:10mm 16mm 5mm;
+    border-bottom:5px solid #d9e1ef;
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:18px;
+  }
+  .page-header .logo { height:28px; width:auto; display:block; overflow:visible; }
+  .svg-defs { position:absolute; width:0; height:0; overflow:hidden; }
+  .doc-meta { text-align:right; font-size:10.5px; color:#687381; white-space:nowrap; }
+  .doc-meta strong { display:block; color:#1f3864; font-size:13px; margin-bottom:3px; }
+  .main { flex:1; padding:6mm 16mm 6mm; overflow:hidden; }
+  .page-footer {
+    padding:3mm 16mm 4mm;
+    border-top:5px solid #d9e1ef;
+    color:#8b949e;
+    font-size:9px;
+    display:flex;
+    justify-content:space-between;
+  }
+  h1 { font-size:23px; color:#172033; letter-spacing:0; margin-bottom:3px; }
+  h3 { font-size:13px; color:#1f3864; margin:7px 0 5px; }
+  h4, h5 { font-size:12px; color:#374151; margin:6px 0 4px; }
+  p { font-size:10.7px; margin:4px 0 6px; }
+  .subtitle { color:#5b6573; font-size:12px; }
+  .section-title {
+    font-size:14px;
+    color:#1f3864;
+    font-weight:700;
+    padding-bottom:4px;
+    border-bottom:2px solid #1f3864;
+    margin-bottom:6px;
+  }
+  table { width:100%; border-collapse:collapse; font-size:10.3px; border:1.5px solid #2f3542; margin:6px 0 8px; }
+  .page.tight table { font-size:9.2px; }
+  .page.tight th { padding:4px 6px; }
+  .page.tight td { padding:3px 6px; }
+  .page.tight table code { font-size:8.5px; }
+  th {
+    background:#1f3864;
+    color:#fff;
+    text-align:left;
+    padding:5px 7px;
+    border:1px solid #182b4c;
+    font-weight:700;
+  }
+  th code {
+    color:#fff;
+    background:rgba(255,255,255,.16);
+    border-color:rgba(255,255,255,.28);
+    font-weight:700;
+  }
+  td { padding:4px 7px; border:1px solid #c8d1dc; vertical-align:top; }
+  tbody tr:nth-child(even) td { background:#f5f8fc; }
+  code {
+    font-family:Consolas,"Courier New",monospace;
+    font-size:9.5px;
+    background:#f5f8fc;
+    border:1px solid #dce3ed;
+    border-radius:3px;
+    padding:0 3px;
+  }
+  pre {
+    white-space:pre-wrap;
+    word-break:break-word;
+    font-size:10px;
+    background:#f5f8fc;
+    border:1px solid #dce3ed;
+    padding:6px 7px;
+    margin:5px 0 7px;
+  }
+  pre code { border:0; background:transparent; padding:0; font-size:10px; }
+  .note-box {
+    padding:7px 10px;
+    font-size:10.8px;
+    background:#f7fbf5;
+    border-left:4px solid #2e7d32;
+    margin:5px 0 7px;
+  }
+  .danger-text { color:#c1121f; font-weight:800; }
+  .small-list { font-size:10.8px; color:#2f3542; padding-left:17px; margin:4px 0 7px; }
+  li { margin:1px 0; }
+  .chips { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin:0 0 9px; }
+  .chip { border:1px solid #d9e1ef; border-left:4px solid #1f3864; padding:6px 8px; min-height:44px; background:#f8fafc; }
+  .chip:nth-child(2) { border-left-color:#2e7d32; }
+  .chip:nth-child(3) { border-left-color:#d97706; }
+  .chip:nth-child(4) { border-left-color:#6a1b9a; }
+  .chip .k { display:block; color:#687381; font-size:9.5px; margin-bottom:1px; }
+  .chip .v { display:block; color:#111827; font-size:12px; font-weight:700; }
+  .cover-page .page-header { padding-top:11mm; padding-bottom:8mm; align-items:center; }
+  .cover-header-text { min-width:40mm; }
+  .cover-doc-label { font-size:14px; color:#172033; font-weight:800; }
+  .cover-doc-subtitle { margin-top:3px; color:#687381; font-size:10px; }
+  .cover-page .logo { height:30px; }
+  .cover-main { justify-content:center; padding-top:8mm; padding-bottom:7mm; }
+  .cover-layout { display:flex; flex-direction:column; gap:11mm; justify-content:center; height:100%; }
+  .cover-copy { text-align:left; }
+  .cover-kicker { font-size:18px; color:#1f3864; font-weight:800; margin-bottom:4px; }
+  .cover-title { font-size:31px; line-height:1.24; color:#172033; font-weight:800; margin-bottom:12px; max-width:142mm; }
+  .cover-divider { width:86px; height:4px; background:#1f3864; margin:0 0 14px; }
+  .cover-subtitle { font-size:14px; color:#1f3864; margin-bottom:13px; }
+  .cover-info-line { display:flex; flex-wrap:wrap; gap:8px 20px; color:#374151; font-size:11px; font-weight:700; margin-bottom:10px; }
+  .cover-info-line span { padding-left:9px; border-left:3px solid #d9e1ef; }
+  .cover-info-line span:first-child { border-left-color:#1f3864; }
+  .cover-note { margin-top:0; padding:8px 10px; border-left:4px solid #2e7d32; background:#f7fbf5; color:#2f3542; font-size:11px; line-height:1.6; }
+  .cover-image-wrap { height:122mm; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+  .cover-image-wrap img { max-width:100%; max-height:122mm; object-fit:contain; display:block; }
+  @media print {
+    html, body {
+      width:210mm;
+      min-width:210mm;
+      max-width:210mm;
+      background:#fff;
+      padding:0;
+      overflow:visible;
+      -webkit-print-color-adjust:exact;
+      print-color-adjust:exact;
+    }
+    .page {
+      width:210mm !important;
+      height:297mm !important;
+      min-height:297mm !important;
+      margin:0;
+      box-shadow:none;
+      break-after:page;
+      page-break-after:always;
+      transform:none !important;
+    }
+  }
+</style>
+</head>
+<body>
+<svg class="svg-defs" aria-hidden="true" focusable="false" width="0" height="0">
+  <defs>
+<g id="gts-logo">
+<path fill="#D60037" fill-rule="nonzero" d="M7173.87 7805.86c65.71,49.76 152.92,-3.45 161.5,-85.48 34.14,-326.93 59.89,-778.58 -188.29,-867.15 -134.13,-47.88 -383.2,75.16 -647.9,276.41 -56.62,43.08 -58.44,137.1 -0.49,178.37 114.42,81.53 286.45,206.09 359.03,259.42 67.74,49.78 207.26,155.97 316.15,238.43z"/>
+  <path fill="#D60037" fill-rule="nonzero" d="M7010.48 8220.07c50.61,-15.73 89.1,44.99 53.52,84.38 -476,526.88 -1651.9,1775.4 -2028.19,1645.49 -295.42,-101.97 -217.57,-697.86 -167.67,-999.8 6.59,-39.95 38.12,-86.94 76.85,-98.98 300.73,-93.45 1586.52,-482.25 2065.49,-631.09z"/>
+  <path fill="#D60037" fill-rule="nonzero" d="M6289.45 9505.32c-45.04,49.87 -39.24,134.17 19.91,165.98 487.05,261.95 883.78,383.1 1180.58,206.51 339.14,-201.84 91.52,-1044.36 -91.35,-1494.25 -37.92,-93.31 -128.44,-95.32 -184.99,-20.01 -249.69,332.51 -548.72,726.2 -924.15,1141.77z"/>
+  <path fill="#D60037" fill-rule="nonzero" d="M6973.93 8073.83c88.35,-19.74 108.24,-132.68 33.57,-183.98 -760.56,-522.38 -1894.09,-1273.18 -2308.85,-988.78 -347.98,238.59 -54.33,1130.87 115.77,1565.41 18.63,47.61 69.13,74.43 118.96,63.29l2040.55 -455.94z"/>
+  <path fill="#000" fill-rule="nonzero" d="M9171.91 9327.15c-256.06,0 -459.29,-82.56 -609.64,-247.68 -150.37,-165.1 -225.55,-388.47 -225.55,-670.04 0,-287.18 78.19,-515.1 234.52,-683.81 156.33,-168.7 367.72,-253.07 634.14,-253.07 213.77,0 389.85,53.47 528.29,160.35 138.37,106.9 219.12,251.26 242.27,433.12l-367.33 0c-9.58,-76.57 -52.72,-143.74 -129.37,-201.61 -76.67,-57.83 -161.31,-86.75 -253.93,-86.75 -159.73,0 -284.72,55.26 -374.96,165.72 -90.24,110.51 -135.35,263.83 -135.35,460.05 0,199.45 43.3,351.2 129.86,455.31 86.57,104.07 213.26,156.11 380.02,156.11l-1.19 0c142.02,0 252.93,-54.22 332.73,-162.7 43.87,-61.43 76.2,-133.59 96.96,-216.58l0 -3.6 -414.07 0 0 -302.7 736.66 0 0 948.82 -245.28 0 -35.89 -227.36 -21.54 28.74c-123.64,165.12 -291.16,247.68 -502.55,247.68l1.2 0z"/>
+  <path fill="#000" fill-rule="nonzero" d="M11057 8494.38c-7.98,-78.18 -28.71,-139.2 -62.23,-183.06 -43.88,-58.22 -112.08,-87.35 -204.58,-87.35 -88.55,0 -155.98,33.93 -202.24,101.71 -28.72,43.08 -49.45,99.29 -62.22,168.7l531.27 0zm-262.03 818.41c-197.84,0 -350.41,-61.02 -457.67,-183.06 -107.3,-122.03 -160.94,-295.93 -160.94,-521.68 0,-208.2 54.65,-371.1 163.93,-488.76 109.26,-117.66 260.84,-176.5 454.68,-176.5 198.6,0 351.57,60.03 458.85,180.08 107.28,120.06 160.91,290.93 160.91,512.7 1.61,25.55 -0.39,51.43 -5.96,77.76l-886.62 0c7.97,102.91 30.71,179.89 68.2,230.92 47.87,63.84 127.63,95.72 239.3,95.72 51.85,0 99.92,-14.74 144.17,-44.27 44.28,-29.49 70.79,-64.99 79.59,-106.47l349.38 0c-29.52,132.41 -97.93,236.11 -205.21,311.09 -107.3,74.98 -241.5,112.47 -402.61,112.47z"/>
+  <path fill="#000" fill-rule="nonzero" d="M11604.85 7977.48l162.71 0 163.92 0 0 192.65c13.57,-23.13 28.32,-45.07 44.27,-65.82 84.55,-107.67 207.38,-161.52 368.53,-161.52 137.18,0 244.69,40.69 322.46,122.03 77.78,81.37 116.66,194.25 116.66,338.6l0 875.87 -171.1 0 -172.29 0 0 -813.65c0,-80.53 -17.37,-140.15 -52.06,-178.83 -34.68,-38.72 -87.92,-58.07 -159.74,-58.07 -90.14,0 -159.32,27.14 -207.57,81.35 -48.27,54.29 -72.4,132.46 -72.4,234.53l0 734.67 -171.09 0 -172.3 0 0 -1301.81z"/>
+  <path fill="#000" fill-rule="nonzero" d="M13843.63 8494.38c-7.99,-78.18 -28.72,-139.2 -62.22,-183.06 -43.9,-58.22 -112.07,-87.35 -204.6,-87.35 -88.55,0 -155.96,33.93 -202.22,101.71 -28.72,43.08 -49.45,99.29 -62.21,168.7l531.25 0zm-262.04 818.41c-197.83,0 -350.39,-61.02 -457.67,-183.06 -107.29,-122.03 -160.91,-295.93 -160.91,-521.68 0,-208.2 54.62,-371.1 163.9,-488.76 109.28,-117.66 260.84,-176.5 454.68,-176.5 198.6,0 351.58,60.03 458.87,180.08 107.26,120.06 160.92,290.93 160.92,512.7 1.59,25.55 -0.42,51.43 -5.98,77.76l-886.61 0c7.97,102.91 30.69,179.89 68.18,230.92 47.87,63.84 127.64,95.72 239.3,95.72 51.85,0 99.92,-14.74 144.2,-44.27 44.25,-29.49 70.77,-64.99 79.56,-106.47l349.39 0c-29.53,132.41 -97.92,236.11 -205.22,311.09 -107.29,74.98 -241.5,112.47 -402.61,112.47z"/>
+  <path fill="#000" fill-rule="nonzero" d="M14390.55 7977.48l162.7 0 163.93 0 0 233.32c11.98,-25.53 25.53,-50.23 40.7,-74.19 80.57,-129.21 184.63,-193.82 312.29,-193.82l77.77 1.2 0 350.57c-30.33,-3.19 -64.61,-4.78 -102.91,-4.78 -104.5,0 -182.45,25.92 -233.9,77.75 -51.46,51.87 -77.19,130.45 -77.19,235.74l0 676.02 -171.08 0 -172.31 0 0 -1301.81z"/>
+  <path fill="#000" fill-rule="nonzero" d="M16032.68 8798.3l0 -149.57c-39.89,22.33 -92.54,40.27 -157.94,53.84l-126.83 23.94c-59.84,11.17 -105.3,31.71 -136.41,61.6 -31.1,29.92 -46.65,67.61 -46.65,113.08 0,51.87 13.94,92.57 41.87,122.05 27.91,29.51 67.01,44.28 117.27,44.28 110.05,0 197.79,-38.69 263.21,-116.07 12.75,-15.13 23.53,-37.49 32.32,-67.02 8.75,-29.5 13.16,-58.2 13.16,-86.13zm-412.8 514.49c-120.44,0 -217.37,-34.49 -290.75,-103.48 -73.4,-69.02 -110.08,-159.77 -110.08,-272.22 0,-118.82 33.09,-213.97 99.32,-285.37 66.2,-71.38 162.72,-116.26 289.53,-134.61l226.14 -31.1c59.03,-7.99 108.08,-21.56 147.18,-40.68 16.74,-7.98 29.73,-22.32 38.89,-43.09 9.17,-20.72 12.57,-41.88 10.17,-63.4 -4.78,-36.68 -23.52,-65.42 -56.24,-86.17 -39.1,-24.7 -95.31,-37.08 -168.72,-37.08 -65.4,0 -116.44,15.97 -153.14,47.88 -36.69,31.9 -56.22,76.97 -58.62,135.19l-329.05 0c7.2,-152.32 59.03,-266.43 155.55,-342.21 96.51,-75.75 238.12,-113.65 424.76,-113.65 161.94,0 289.75,34.13 383.47,102.4 93.73,68.27 140.6,161.48 140.6,279.64l0 728.12c0,58.3 4.78,99.21 14.36,122.76 9.58,23.58 28.72,42.13 57.43,55.7l0 1.18 0 46.68 -185.46 0 -185.44 0 0 -1.18c-15.19,-52.66 -25.14,-104.11 -29.92,-154.35l-1.2 -2.42c-107.69,127.65 -247.28,191.46 -418.78,191.46z"/>
+  <polygon fill="#000" fill-rule="nonzero" points="16634.66,7520.42 16805.76,7520.42 16978.05,7520.42 16978.05,9279.28 16806.96,9279.28 16634.66,9279.28 "/>
+  <polygon fill="#000" fill-rule="nonzero" points="18393.51,7832.71 17862.26,7832.71 17862.26,7677.19 17862.26,7520.42 19292.09,7520.42 19292.09,7675.94 19292.09,7832.71 18760.84,7832.71 18760.84,9279.28 18577.78,9279.28 18393.51,9279.28 "/>
+  <path fill="#000" fill-rule="nonzero" d="M20018.43 8494.38c-7.98,-78.18 -28.72,-139.2 -62.21,-183.06 -43.9,-58.22 -112.08,-87.35 -204.6,-87.35 -88.54,0 -155.96,33.93 -202.22,101.71 -28.72,43.08 -49.48,99.29 -62.22,168.7l531.25 0zm-262.03 818.41c-197.84,0 -350.4,-61.02 -457.67,-183.06 -107.3,-122.03 -160.92,-295.93 -160.92,-521.68 0,-208.2 54.62,-371.1 163.91,-488.76 109.28,-117.66 260.83,-176.5 454.68,-176.5 198.6,0 351.56,60.03 458.86,180.08 107.26,120.06 160.92,290.93 160.92,512.7 1.59,25.55 -0.41,51.43 -5.98,77.76l-886.6 0c7.94,102.91 30.68,179.89 68.17,230.92 47.88,63.84 127.64,95.72 239.3,95.72 51.87,0 99.92,-14.74 144.18,-44.27 44.27,-29.49 70.81,-64.99 79.58,-106.47l349.39 0c-29.52,132.41 -97.91,236.11 -205.21,311.09 -107.3,74.98 -241.5,112.47 -402.61,112.47z"/>
+  <path fill="#000" fill-rule="nonzero" d="M21307.05 8367.53c0,-50.23 -20.77,-90.52 -62.27,-120.85 -41.51,-30.29 -96.58,-45.43 -165.21,-45.43 -66.26,0 -117.96,11.34 -155.05,34.08 -37.14,22.74 -55.69,54.45 -55.69,95.13 0,28.69 21.13,53.46 63.42,74.19 41.48,19.95 115.3,41.87 221.4,65.79 210.64,47.07 351.47,98.52 422.5,154.35 71.18,55.86 106.78,143.61 106.78,263.25 0,127.62 -51.67,230.31 -154.97,308.09 -103.31,77.77 -239.54,116.67 -408.67,116.67 -200.28,0 -354.43,-38.31 -462.55,-114.87 -108.09,-76.6 -165.72,-188.25 -172.91,-335.02l349.38 0c2.4,59.83 28.94,106.67 79.58,140.58 50.68,33.92 119.5,50.84 206.46,50.84 68.6,0 122.28,-11.74 160.99,-35.29 38.69,-23.5 58.04,-56.41 58.04,-98.72 0,-29.48 -18.74,-54.62 -56.21,-75.37 -37.49,-19.9 -103.33,-40.27 -197.46,-61.01 -220.2,-49.45 -367.39,-101.72 -441.58,-156.75 -74.08,-54.25 -111.11,-138.38 -111.11,-252.46 0,-129.23 48.03,-233.51 144.14,-312.88 96.08,-79.35 222.71,-119.06 379.81,-119.06 177.05,0 319.8,38.89 428.28,116.66 108.48,77.77 162.71,180.5 162.71,308.08l-339.81 0z"/>
+  <path fill="#000" fill-rule="nonzero" d="M22489.62 9286.48c-57.44,4.78 -128.03,7.16 -211.8,7.16 -121.27,0 -208.38,-21.71 -261.43,-65.2 -53.05,-43.47 -79.57,-114.67 -79.57,-213.59l0 -796.85 -180.66 0 0 -240.52 180.66 0 0 -350.57 343.39 0 0 350.57 209.41 0 0 240.52 -209.41 0 0 739.43c0,30.31 9,50.25 26.93,59.82 17.96,9.58 55.21,14.35 111.88,14.35l70.6 0 0 254.88z"/>
+ </g>
+  </defs>
+</svg>
+<!-- P1 Cover -->
+<div class="page cover-page">
+  <div class="page-header cover-header">
+    <div class="cover-header-text">
+      <div class="cover-doc-label">Customer Delivery Document</div>
+      <div class="cover-doc-subtitle">Customer Delivery</div>
+    </div>
+    <svg class="logo" viewBox="4400 6500 18750 3520" role="img" aria-label="GTS"><use href="#gts-logo"></use></svg>
+    <div class="doc-meta">
+      <strong>2026-07-28</strong>
+      SCPI Reference<br>
+      PinProbe A1
+    </div>
+  </div>
+  <div class="main cover-main">
+    <div class="cover-layout">
+      <div class="cover-copy">
+        <div class="cover-kicker">PinProbe A1</div>
+        <div class="cover-title">Box Control SCPI Command Reference</div>
+        <div class="cover-divider"></div>
+        <div class="cover-subtitle">Communication Commands / Device Control / Error Handling</div>
+        <div class="cover-info-line">
+          <span>Customer Integration Material</span>
+          <span>SCPI / UART</span>
+          <span>2026-07-28</span>
+        </div>
+        <div class="cover-note">Document updated: <code>2026-07-28</code>This document is intended for customer-side host integration, device control, and maintenance reference.</div>
+      </div>
+      <div class="cover-image-wrap"><img src="file:///E:/OneDrive/4.Code/STM32/PinProbeA1/STM32F103RCT6_PinprobeA1/Doc/untitled.642.png" alt="PinProbe A1 box illustration"></div>
+    </div>
+  </div>
+  <div class="page-footer">
+    <span>Accurate · Simple · Fast · Agile | General Test Systems Inc.</span>
+    <span>PinProbe A1 SCPI Reference | 1 / 12</span>
+  </div>
+</div>
+<!-- P2 -->
+<div class="page">
+  <div class="page-header">
+    <div>
+      <h1>Device Information</h1>
+      <div class="subtitle">PinProbe A1 Box Control SCPI Command Reference</div>
+    </div>
+    <svg class="logo" viewBox="4400 6500 18750 3520" role="img" aria-label="GTS"><use href="#gts-logo"></use></svg>
+    <div class="doc-meta">
+      <strong>2026-07-28</strong>
+      SCPI Reference<br>
+      PinProbe A1
+    </div>
+  </div>
+  <div class="main">
+<div class="section-title">Device Information</div>
+<table class="compact">
+<thead><tr><th>Item</th><th>Default Value</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>Manufacturer</td><td><code>GTS</code></td><td><code>*IDN?</code> field 1; can be changed with <code>SYSTem:IDN1</code></td></tr>
+<tr><td>Model</td><td><code>PINPROBEA1</code></td><td><code>*IDN?</code> field 2; can be changed with <code>SYSTem:IDN2</code></td></tr>
+<tr><td>Serial Number</td><td><code>20250626</code></td><td><code>*IDN?</code> field 3; can be changed with <code>SYSTem:IDN3</code></td></tr>
+<tr><td>IDN Firmware Version</td><td><code>V0.0.9</code></td><td><code>*IDN?</code> field 4; can be changed with <code>SYSTem:IDN4</code></td></tr>
+<tr><td>Compiled Firmware Version</td><td><code>v1.0.0+&lt;build-id&gt;</code></td><td><code>SYSTem:VERSion?</code> returned</td></tr>
+</tbody>
+</table>
+<div class="note-box"><code>*IDN?</code> returns the current SCPI IDN configuration: <code>Manufacturer,Model,Serial Number,IDN Firmware Version</code>The IDN fields are stored in device configuration and may differ from compiled firmware version.</div>
+<div class="section-title">Communication Conventions</div>
+<table class="compact">
+<thead><tr><th>Item</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>Serial Baud Rate</td><td><code>115200</code></td></tr>
+<tr><td>Command Terminator</td><td><code>\r\n</code></td></tr>
+<tr><td>Normal Response</td><td>Single-line text</td></tr>
+<tr><td>Batch Log Response</td><td><code>READ:LOG:ALL?</code> may return multi-line text</td></tr>
+<tr><td>OTA Data Block</td><td>Uses SCPI definite-length binary block; max payload per block is<code>128</code> bytes</td></tr>
+</tbody>
+</table>
+<div class="note-box">SCPI errors can come from parser error queue, command responses beginning with <code>ERR...</code> text, and device exception logs. Host software should process both command responses and logs; see Error and Exception Handling.</div>
+<div class="section-title">Basic Commands (IEEE 488.2)</div>
+<table class="compact">
+<thead><tr><th>Command</th><th>Parameter</th><th>Response</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>*CLS</code></td><td></td><td>None</td><td>Clear status and error queue</td></tr>
+<tr><td><code>*IDN?</code></td><td></td><td><code>GTS,PINPROBEA1,20250626,V0.0.9</code></td><td>Query device identification</td></tr>
+<tr><td><code>*RST</code></td><td></td><td>None</td><td>Reset SCPI parser state</td></tr>
+<tr><td><code>*STB?</code></td><td></td><td>Status byte</td><td>Query status byte</td></tr>
+<tr><td><code>*WAI</code></td><td></td><td>None</td><td>Wait for command completion</td></tr>
+<tr><td><code>*OPC?</code></td><td></td><td><code>1</code></td><td>Query operation-complete status</td></tr>
+</tbody>
+</table>
+<div class="section-title">System Commands</div>
+<table class="compact">
+<thead><tr><th>Command</th><th>Parameter</th><th>Response</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>SYSTem:ERRor[:NEXT]?</code></td><td></td><td>Error code and description</td><td>Query next error message</td></tr>
+<tr><td><code>SYSTem:ERRor:COUNt?</code></td><td></td><td>Error count</td><td>Query error queue count</td></tr>
+<tr><td><code>SYSTem:VERSion?</code></td><td></td><td><code>v1.0.0+&lt;build-id&gt;</code></td><td>Query compiled firmware version and build ID</td></tr>
+<tr><td><code>SYSTem:UPTime?</code></td><td></td><td>Seconds</td><td>Query system uptime</td></tr>
+<tr><td><code>SYSTem:REBoot</code></td><td></td><td><code>OK</code></td><td>Software reset after about 200 ms</td></tr>
+<tr><td><code>SYSTem:FLASH:ID?</code></td><td></td><td><code>OK ID=&lt;JEDEC&gt; SR1=&lt;xx&gt; SR2=&lt;xx&gt;</code> or <code>ERR ...</code></td><td>Query W25Q128 Flash ID and status registers</td></tr>
+</tbody>
+</table>
+  </div>
+  <div class="page-footer">
+    <span>Accurate · Simple · Fast · Agile | General Test Systems Inc.</span>
+    <span>PinProbe A1 SCPI Reference | 2 / 12</span>
+  </div>
+</div>
+<!-- P3 -->
+<div class="page">
+  <div class="page-header">
+    <div>
+      <h1>System Commands</h1>
+      <div class="subtitle">PinProbe A1 Box Control SCPI Command Reference</div>
+    </div>
+    <svg class="logo" viewBox="4400 6500 18750 3520" role="img" aria-label="GTS"><use href="#gts-logo"></use></svg>
+    <div class="doc-meta">
+      <strong>2026-07-28</strong>
+      SCPI Reference<br>
+      PinProbe A1
+    </div>
+  </div>
+  <div class="main">
+<h4>Example</h4>
+<pre data-lang="scpi"><code>SYSTem:ERRor:NEXT?
+SYSTem:ERRor:COUNt?
+SYSTem:VERSion?
+SYSTem:UPTime?
+SYSTem:FLASH:ID?
+SYSTem:REBoot</code></pre>
+<div class="section-title">Device Identification Configuration Commands</div>
+<table class="compact">
+<thead><tr><th>Command</th><th>Parameter</th><th>Response</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>SYSTem:IDN1</code></td><td><code>&lt;string&gt;</code></td><td>None</td><td>Configure manufacturer field and save to Flash</td></tr>
+<tr><td><code>SYSTem:IDN1?</code></td><td></td><td>String</td><td>Query manufacturer field</td></tr>
+<tr><td><code>SYSTem:IDN2</code></td><td><code>&lt;string&gt;</code></td><td>None</td><td>Configure model field and save to Flash</td></tr>
+<tr><td><code>SYSTem:IDN2?</code></td><td></td><td>String</td><td>Query model field</td></tr>
+<tr><td><code>SYSTem:IDN3</code></td><td><code>&lt;string&gt;</code></td><td>None</td><td>Configure serial number/date field and save to Flash</td></tr>
+<tr><td><code>SYSTem:IDN3?</code></td><td></td><td>String</td><td>Query serial number/date field</td></tr>
+<tr><td><code>SYSTem:IDN4</code></td><td><code>&lt;string&gt;</code></td><td>None</td><td>Configure IDN firmware version field and save to Flash</td></tr>
+<tr><td><code>SYSTem:IDN4?</code></td><td></td><td>String</td><td>Query IDN Firmware VersionField</td></tr>
+</tbody>
+</table>
+<h4>Example</h4>
+<pre data-lang="scpi"><code>SYSTem:IDN1 &quot;GTS&quot;
+SYSTem:IDN2 &quot;PINPROBEA1&quot;
+SYSTem:IDN3 &quot;20260727&quot;
+SYSTem:IDN4 &quot;V0.0.9&quot;
+*IDN?</code></pre>
+<div class="section-title">Communication Configuration Commands</div>
+<table class="compact">
+<thead><tr><th>Command</th><th>Parameter</th><th>Response</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>CONFigure:BAUDrate</code></td><td><code>115200</code></td><td><code>115200 baudrate is enable</code></td><td>Configure BSM communication baud rate. Only<code>115200</code></td></tr>
+</tbody>
+</table>
+<h4>Example</h4>
+<pre data-lang="scpi"><code>CONFigure:BAUDrate 115200</code></pre>
+  </div>
+  <div class="page-footer">
+    <span>Accurate · Simple · Fast · Agile | General Test Systems Inc.</span>
+    <span>PinProbe A1 SCPI Reference | 3 / 12</span>
+  </div>
+</div>
+<!-- P4 -->
+<div class="page">
+  <div class="page-header">
+    <div>
+      <h1>Door / USB Commands</h1>
+      <div class="subtitle">PinProbe A1 Box Control SCPI Command Reference</div>
+    </div>
+    <svg class="logo" viewBox="4400 6500 18750 3520" role="img" aria-label="GTS"><use href="#gts-logo"></use></svg>
+    <div class="doc-meta">
+      <strong>2026-07-28</strong>
+      SCPI Reference<br>
+      PinProbe A1
+    </div>
+  </div>
+  <div class="main">
+<div class="section-title">Door and USB Control Commands</div>
+<table class="compact">
+<thead><tr><th>Command</th><th>Parameter</th><th>Response</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>CONFigure:CYLInder1</code></td><td><code>OPEN</code> / <code>CLOSE</code></td><td><code>OPEN</code> / <code>CLOSE</code></td><td>Open or close the box door</td></tr>
+<tr><td><code>READ:CYLInder1:STATe?</code></td><td></td><td>Actuator State</td><td>Query the current door actuator state</td></tr>
+<tr><td><code>CONFigure:CYLInder2</code></td><td><code>OPEN</code> / <code>CLOSE</code></td><td><code>OPEN</code> / <code>CLOSE</code></td><td>Manual USB: <code>CLOSE</code>=insert/connect; <code>OPEN</code>=unplug/retract</td></tr>
+<tr><td><code>READ:CYLInder2:STATe?</code></td><td></td><td>Actuator State</td><td>Query the current USB actuator state</td></tr>
+<tr><td><code>CONFigure:USB:AUTO</code></td><td><code>OFF</code> / <code>ON</code></td><td><code>OFF</code> / <code>ON</code></td><td>Factory USB auto setting; <span class="danger-text">do not modify</span></td></tr>
+<tr><td><code>READ:USB:AUTO?</code></td><td></td><td><code>OFF</code> / <code>ON</code></td><td>Query the factory USB auto setting</td></tr>
+</tbody>
+</table>
+<div class="note-box">USB state naming: <code>CYLInder2 CLOSE</code>=insert/connect; <code>OPEN</code>=unplug/retract.</div>
+<h4>Actuator State</h4>
+<table class="compact">
+<thead><tr><th>Return Value</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>CLOSE</code></td><td>Command accepted; USB inserted/connected</td></tr>
+<tr><td><code>OPEN</code></td><td>Command accepted; USB unplugged/retracted</td></tr>
+<tr><td><code>CLOSING</code></td><td>Closing; USB insertion in progress</td></tr>
+<tr><td><code>OPENING</code></td><td>Opening; USB retraction in progress</td></tr>
+<tr><td><code>CLOSED</code></td><td>Closed; USB inserted/connected</td></tr>
+<tr><td><code>OPENED</code></td><td>Opened; USB unplugged/retracted</td></tr>
+<tr><td><code>CYL ERR</code></td><td>Actuator error</td></tr>
+</tbody>
+</table>
+<h4>USB Automatic Sequence</h4>
+<p><code>CONFigure:USB:AUTO ON</code> links USB insertion/retraction to door operation.</p>
+<table class="compact">
+<thead><tr><th>Scenario</th><th>Automatic Action</th></tr></thead>
+<tbody>
+<tr><td><code>READY</code>; both buttons confirmed 500 ms</td><td>Insert USB first; close after insertion is confirmed</td></tr>
+<tr><td>USB insertion not reached or sensor fault</td><td>Do not close; log <code>USB_INSERT_FAIL</code>; retract USB; fast-flash red</td></tr>
+<tr><td><code>COMPLETE</code>; open-door button pressed</td><td>Open door; after <code>IDLE</code>, retract USB if still inserted</td></tr>
+<tr><td>USB retraction not reached or output fault</td><td>Log <code>USB_RETRACT_FAIL</code>; fast-flash red; return <code>IDLE</code> if needed</td></tr>
+<tr><td>Diagnostic fallback</td><td>If USB is not inserted after closing, log <code>USB_INSERT_FAIL</code>; flash yellow; restore green when ready</td></tr>
+</tbody>
+</table>
+<div class="note-box"><code>CONFigure:USB:AUTO</code> is factory-set; <span class="danger-text">do not modify</span>. Devices with a USB cylinder use <code>ON</code>; others use <code>OFF</code>. Confirm with <code>READ:USB:AUTO?</code>.</div>
+<h4>Example</h4>
+<pre data-lang="scpi"><code>CONFigure:CYLInder1 OPEN
+CONFigure:CYLInder1 CLOSE
+READ:CYLInder1:STATe?
+CONFigure:CYLInder2 CLOSE
+CONFigure:CYLInder2 OPEN
+READ:CYLInder2:STATe?
+READ:USB:AUTO?</code></pre>
+  </div>
+  <div class="page-footer">
+    <span>Accurate · Simple · Fast · Agile | General Test Systems Inc.</span>
+    <span>PinProbe A1 SCPI Reference | 4 / 12</span>
+  </div>
+</div>
+<!-- P5 -->
+<div class="page">
+  <div class="page-header">
+    <div>
+      <h1>Lock and Indicator Commands</h1>
+      <div class="subtitle">PinProbe A1 Box Control SCPI Command Reference</div>
+    </div>
+    <svg class="logo" viewBox="4400 6500 18750 3520" role="img" aria-label="GTS"><use href="#gts-logo"></use></svg>
+    <div class="doc-meta">
+      <strong>2026-07-28</strong>
+      SCPI Reference<br>
+      PinProbe A1
+    </div>
+  </div>
+  <div class="main">
+<div class="section-title">Lock and Indicator Commands</div>
+<table class="compact">
+<thead><tr><th>Command</th><th>Parameter</th><th>Response</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>CONFigure:LOCK</code></td><td><code>UNLOCK</code> / <code>LOCKED</code></td><td><code>UNLOCK</code> / <code>LOCKED</code></td><td>Set the device lock state</td></tr>
+<tr><td><code>READ:LOCK:STATe?</code></td><td></td><td>Lock State</td><td>Read the current lock state</td></tr>
+</tbody>
+</table>
+<h4>Lock State</h4>
+<table class="compact">
+<thead><tr><th>Parameter / Return Value</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>UNLOCK</code></td><td>Unlocked</td></tr>
+<tr><td><code>LOCKED</code></td><td>Locked</td></tr>
+<tr><td><code>LOCK ERR</code></td><td>Lock error</td></tr>
+</tbody>
+</table>
+<h4>Example</h4>
+<pre data-lang="scpi"><code>CONFigure:LOCK LOCKED
+CONFigure:LOCK UNLOCK
+READ:LOCK:STATe?</code></pre>
+<div class="section-title">LED Indicator Commands</div>
+<table class="compact">
+<thead><tr><th>Command</th><th>Parameter</th><th>Response</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>CONFigure:LED</code></td><td><code>OFF</code> / <code>GREEN</code> / <code>RED</code> / <code>YELLOW</code></td><td>LED State</td><td>Set the LED output state</td></tr>
+<tr><td><code>READ:LED:STATe?</code></td><td></td><td>LED State</td><td>Read the current LED output</td></tr>
+<tr><td><code>CONFigure:LED:MAP</code></td><td><code>&lt;io5&gt;,&lt;io6&gt;,&lt;io7&gt;</code></td><td><code>G,R,Y</code> format</td><td>Map IO5/IO6/IO7 to LED colors and save</td></tr>
+<tr><td><code>READ:LED:MAP?</code></td><td></td><td><code>G,R,Y</code> format</td><td>Read the IO5/IO6/IO7 LED color map</td></tr>
+</tbody>
+</table>
+<h4>LED State</h4>
+<table class="compact">
+<thead><tr><th>Parameter / Return Value</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>OFF</code></td><td>LED off</td></tr>
+<tr><td><code>GREEN</code></td><td>Green LED</td></tr>
+<tr><td><code>RED</code></td><td>Red LED</td></tr>
+<tr><td><code>YELLOW</code></td><td>Yellow LED</td></tr>
+<tr><td><code>LED ERR</code></td><td>LED error</td></tr>
+</tbody>
+</table>
+<h4>LED Mapping Parameters</h4>
+<table class="compact">
+<thead><tr><th>Parameter</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>G</code> / <code>GREEN</code></td><td>Map this IO line to the green LED</td></tr>
+<tr><td><code>R</code> / <code>RED</code></td><td>Map this IO line to the red LED</td></tr>
+<tr><td><code>Y</code> / <code>YELLOW</code></td><td>Map this IO line to the yellow LED</td></tr>
+</tbody>
+</table>
+<div class="note-box"><code>CONFigure:LED:MAP</code> needs three unique values and must include green, red, and yellow.</div>
+<h4>Example</h4>
+<pre data-lang="scpi"><code>CONFigure:LED GREEN
+CONFigure:LED OFF
+READ:LED:STATe?
+CONFigure:LED:MAP G,R,Y
+READ:LED:MAP?</code></pre>
+  </div>
+  <div class="page-footer">
+    <span>Accurate · Simple · Fast · Agile | General Test Systems Inc.</span>
+    <span>PinProbe A1 SCPI Reference | 5 / 12</span>
+  </div>
+</div>
+<!-- P6 -->
+<div class="page">
+  <div class="page-header">
+    <div>
+      <h1>System State Query Commands</h1>
+      <div class="subtitle">PinProbe A1 Box Control SCPI Command Reference</div>
+    </div>
+    <svg class="logo" viewBox="4400 6500 18750 3520" role="img" aria-label="GTS"><use href="#gts-logo"></use></svg>
+    <div class="doc-meta">
+      <strong>2026-07-28</strong>
+      SCPI Reference<br>
+      PinProbe A1
+    </div>
+  </div>
+  <div class="main">
+<div class="section-title">System State Query Commands</div>
+<table class="compact">
+<thead><tr><th>Command</th><th>Parameter</th><th>Response</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>READ:SYSTem:STATe?</code></td><td></td><td>System State</td><td>Query system state</td></tr>
+<tr><td><code>READ:IO:ALL?</code></td><td></td><td><code>IN:0xHH,0xHH OUT:0xHH,0xHH</code></td><td>Query all raw input and output states</td></tr>
+</tbody>
+</table>
+<h4>System StateReturn Value</h4>
+<table class="compact">
+<thead><tr><th>Return Value</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>LOCK</code></td><td>System locked</td></tr>
+<tr><td><code>IDLE</code></td><td>System idle</td></tr>
+<tr><td><code>READY</code></td><td>System ready</td></tr>
+<tr><td><code>RUNNING</code></td><td>System running</td></tr>
+<tr><td><code>EMERGENCY</code></td><td>Emergency stop triggered</td></tr>
+<tr><td><code>COMPLETE</code></td><td>System operation complete</td></tr>
+<tr><td><code>SYS ERR</code></td><td>System error</td></tr>
+</tbody>
+</table>
+<h4>Example</h4>
+<pre data-lang="scpi"><code>READ:SYSTem:STATe?
+READ:IO:ALL?</code></pre>
+<div class="section-title">E-Stop, Risk Mode, and Boot Diagnostics</div>
+<table class="compact">
+<thead><tr><th>Command</th><th>Parameter</th><th>Response</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>CONFigure:ESTOP:TYPE</code></td><td><code>NC</code> / <code>NO</code></td><td><code>NC</code> / <code>NO</code></td><td>Configure E-stop input type and save to Flash</td></tr>
+<tr><td><code>READ:ESTOP:TYPE?</code></td><td></td><td><code>NC</code> / <code>NO</code></td><td>Query E-stop input type</td></tr>
+<tr><td><code>CONFigure:RISK:MODE</code></td><td><code>OFF</code> / <code>ON</code></td><td><code>OFF</code> / <code>ON</code></td><td>Configure Risk Mode and save to Flash</td></tr>
+<tr><td><code>READ:RISK:MODE?</code></td><td></td><td><code>OFF</code> / <code>ON</code></td><td>Query Risk Mode</td></tr>
+<tr><td><code>CONFigure:BOOT:DIAG</code></td><td><code>OFF</code> / <code>ON</code></td><td><code>OFF</code> / <code>ON</code></td><td>Configure bootloader diagnostic serial output and save to Flash</td></tr>
+<tr><td><code>READ:BOOT:DIAG?</code></td><td></td><td><code>OFF</code> / <code>ON</code></td><td>Query bootloader diagnostic serial output switch</td></tr>
+</tbody>
+</table>
+<h4>ParameterDescription</h4>
+<table class="compact">
+<thead><tr><th>Parameter</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>NC</code></td><td>E-stop normally closed</td></tr>
+<tr><td><code>NO</code></td><td>E-stop normally open</td></tr>
+<tr><td><code>OFF</code></td><td>Disable function</td></tr>
+<tr><td><code>ON</code></td><td>Enable function</td></tr>
+</tbody>
+</table>
+<h4>Example</h4>
+<pre data-lang="scpi"><code>CONFigure:ESTOP:TYPE NC
+READ:ESTOP:TYPE?
+CONFigure:RISK:MODE ON
+READ:RISK:MODE?
+CONFigure:BOOT:DIAG ON
+READ:BOOT:DIAG?</code></pre>
+  </div>
+  <div class="page-footer">
+    <span>Accurate · Simple · Fast · Agile | General Test Systems Inc.</span>
+    <span>PinProbe A1 SCPI Reference | 6 / 12</span>
+  </div>
+</div>
+<!-- P7 -->
+<div class="page">
+  <div class="page-header">
+    <div>
+      <h1>OTA Firmware Upgrade Commands</h1>
+      <div class="subtitle">PinProbe A1 Box Control SCPI Command Reference</div>
+    </div>
+    <svg class="logo" viewBox="4400 6500 18750 3520" role="img" aria-label="GTS"><use href="#gts-logo"></use></svg>
+    <div class="doc-meta">
+      <strong>2026-07-28</strong>
+      SCPI Reference<br>
+      PinProbe A1
+    </div>
+  </div>
+  <div class="main">
+<div class="section-title">OTA Firmware Upgrade Commands</div>
+<table class="compact">
+<thead><tr><th>Command</th><th>Parameter</th><th>Response</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>SYSTem:OTA:STATus?</code></td><td></td><td><code>STATE:... SIZE:... RECV:...</code></td><td>Query OTA receiving and verification status</td></tr>
+<tr><td><code>SYSTem:OTA:BOOT?</code></td><td></td><td><code>FLASH:... FLAGS:... MAN:...</code></td><td>Query Bootloader and OTA Manifest status</td></tr>
+<tr><td><code>SYSTem:OTA:BEGIN</code></td><td><code>&lt;size&gt;,&lt;crc32&gt;,&lt;version&gt;,&lt;image_id&gt;</code></td><td><code>OK</code> or <code>ERR,&lt;code&gt;,&lt;name&gt;</code></td><td>Start one OTA upload</td></tr>
+<tr><td><code>SYSTem:OTA:DATA</code></td><td><code>&lt;offset&gt;,#&lt;n&gt;&lt;len&gt;&lt;data&gt;</code></td><td><code>OK,NEXT:&lt;offset&gt;</code> or <code>ERR,&lt;code&gt;,&lt;name&gt;</code></td><td>Write one OTA data block</td></tr>
+<tr><td><code>SYSTem:OTA:END</code></td><td></td><td><code>OK</code> or <code>ERR,&lt;code&gt;,&lt;name&gt;</code></td><td>End OTA data receiving</td></tr>
+<tr><td><code>SYSTem:OTA:VERify?</code></td><td></td><td>Status text or error text</td><td>Verify OTA image</td></tr>
+<tr><td><code>SYSTem:OTA:COMMit</code></td><td></td><td><code>OK</code> or error text</td><td>Commit upgrade request; device resets after success</td></tr>
+<tr><td><code>SYSTem:OTA:ABORt</code></td><td></td><td><code>OK</code> or error text</td><td>Abort current OTA process</td></tr>
+</tbody>
+</table>
+<h4>OTA StatusResponse</h4>
+<p><code>SYSTem:OTA:STATus?</code> response format:</p>
+<pre data-lang="text"><code>STATE:&lt;state&gt; SIZE:&lt;bytes&gt; RECV:&lt;bytes&gt; BLOCKS:&lt;recv&gt;/&lt;total&gt; NEXT:&lt;offset&gt; CRC:0x&lt;crc32&gt; VER:0x&lt;version&gt; IMG:&lt;id&gt; ERR:&lt;code&gt;</code></pre>
+<p><code>SYSTem:OTA:BOOT?</code> response format:</p>
+<pre data-lang="text"><code>FLASH:&lt;0|1&gt; FLAGS:&lt;0|1&gt; MAN:&lt;0|1&gt; SEQ:&lt;n&gt; ACT:&lt;n&gt; PEND:&lt;slot&gt; PREV:&lt;slot&gt; BSTATE:&lt;n&gt; ATT:&lt;n&gt;/&lt;max&gt; BERR:&lt;code&gt; MSTATE:&lt;state&gt; SIZE:&lt;bytes&gt; CRC:0x&lt;crc32&gt; VER:0x&lt;version&gt; IMG:&lt;id&gt;</code></pre>
+<h4>OTA Example</h4>
+<pre data-lang="scpi"><code>SYSTem:OTA:STATus?
+SYSTem:OTA:BEGIN 4096,305419896,65536,1
+SYSTem:OTA:DATA 0,#3128&lt;128 bytes binary payload&gt;
+SYSTem:OTA:END
+SYSTem:OTA:VERify?
+SYSTem:OTA:COMMit</code></pre>
+  </div>
+  <div class="page-footer">
+    <span>Accurate · Simple · Fast · Agile | General Test Systems Inc.</span>
+    <span>PinProbe A1 SCPI Reference | 7 / 12</span>
+  </div>
+</div>
+<!-- P8 -->
+<div class="page">
+  <div class="page-header">
+    <div>
+      <h1>Error and Exception Handling</h1>
+      <div class="subtitle">PinProbe A1 Box Control SCPI Command Reference</div>
+    </div>
+    <svg class="logo" viewBox="4400 6500 18750 3520" role="img" aria-label="GTS"><use href="#gts-logo"></use></svg>
+    <div class="doc-meta">
+      <strong>2026-07-28</strong>
+      SCPI Reference<br>
+      PinProbe A1
+    </div>
+  </div>
+  <div class="main">
+<div class="section-title">Error and Exception Handling</div>
+<h4>SCPI Parser Errors</h4>
+<p>When parameters are missing/invalid, a command is unknown, Flash save fails, or low-level hardware communication fails, firmware writes to the SCPI error queue. Queue capacity is <code>17</code> entries. Read with:</p>
+<pre data-lang="scpi"><code>SYSTem:ERRor:COUNt?
+SYSTem:ERRor:NEXT?
+*CLS</code></pre>
+<table class="compact">
+<thead><tr><th>Scenario</th><th>Typical Behavior</th><th>Recommended Handling</th></tr></thead>
+<tbody>
+<tr><td>Unknown command</td><td>Serial port may output <code>**ERROR: -113, &quot;Undefined header&quot;</code>; queue may return <code>-113,&quot;Undefined header&quot;</code></td><td>Stop sending this command; check spelling and hierarchy</td></tr>
+<tr><td>Missing parameter</td><td><code>-109,&quot;Missing parameter&quot;</code></td><td>Provide required parameter</td></tr>
+<tr><td>Illegal parameter value</td><td><code>-224,&quot;Illegal parameter value&quot;</code> or <code>-222,&quot;Data out of range&quot;</code></td><td>Check enum values, duplicate LED mapping, and numeric range</td></tr>
+<tr><td>Flash save failure</td><td><code>-320,&quot;Storage fault&quot;</code></td><td>Configuration may not persist; retry and read back the related query command</td></tr>
+<tr><td>UART/RS485 hardware or communication failure</td><td><code>-240,&quot;Hardware error&quot;</code> or <code>-360,&quot;Communication error&quot;</code></td><td>Query <code>READ:LOG:STATus?</code> / <code>READ:IO:ALL?</code>, and check IO expansion board link</td></tr>
+</tbody>
+</table>
+<div class="note-box">SCPI error queue is read by dequeue; <code>SYSTem:ERRor:NEXT?</code> pops one entry each time. <code>*CLS</code> clears status and error queue.</div>
+<h4>Command Responses Beginning with <code>ERR...</code></h4>
+<p>Some commands return errors in normal responses instead of the SCPI error queue: <code>ERR...</code>:</p>
+<table class="compact">
+<thead><tr><th>Command</th><th>Error Format</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>SYSTem:FLASH:ID?</code></td><td><code>ERR INIT=&lt;name&gt;</code> or <code>ERR ID=&lt;name&gt;</code></td><td>W25Q128 initialization or JEDEC ID read failed</td></tr>
+<tr><td>OTA Command</td><td><code>ERR,&lt;code&gt;,&lt;name&gt;</code></td><td>OTA process error; see table below</td></tr>
+</tbody>
+</table>
+<h4>OTA Error Codes</h4>
+<table class="compact">
+<thead><tr><th>Code</th><th>Name</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>0</code></td><td><code>OK</code></td><td>Success</td></tr>
+<tr><td><code>1</code></td><td><code>BUSY</code></td><td>OTA process busy</td></tr>
+<tr><td><code>2</code></td><td><code>BAD_STATE</code></td><td>Current state does not allow this OTA step</td></tr>
+<tr><td><code>3</code></td><td><code>BAD_PARAM</code></td><td>Parameter error</td></tr>
+<tr><td><code>4</code></td><td><code>FLASH_FAIL</code></td><td>Flash operation failed</td></tr>
+<tr><td><code>5</code></td><td><code>SIZE_OVERFLOW</code></td><td>Image size exceeds allowed range</td></tr>
+<tr><td><code>6</code></td><td><code>CRC_FAIL</code></td><td>CRC verification failed</td></tr>
+<tr><td><code>7</code></td><td><code>CAN_TIMEOUT</code></td><td>CAN distribution timeout</td></tr>
+<tr><td><code>8</code></td><td><code>CAN_NACK</code></td><td>CAN node rejected</td></tr>
+<tr><td><code>9</code></td><td><code>NODE_NOT_READY</code></td><td>Node not ready</td></tr>
+<tr><td><code>10</code></td><td><code>BOOT_FAIL</code></td><td>Bootloader upgrade failed</td></tr>
+<tr><td><code>11</code></td><td><code>APP_NOT_CONFIRMED</code></td><td>App not confirmed</td></tr>
+<tr><td><code>12</code></td><td><code>BLOCK_MISSING</code></td><td>OTA data block missing</td></tr>
+<tr><td><code>13</code></td><td><code>BAD_MANIFEST</code></td><td>Invalid manifest</td></tr>
+<tr><td><code>14</code></td><td><code>UNSUPPORTED_IMAGE</code></td><td>Unsupported image type</td></tr>
+</tbody>
+</table>
+<h4>Runtime Exception Handling</h4>
+<p>Runtime safety events and actuator exceptions are mainly reported through device logs. Recommended order:</p>
+  </div>
+  <div class="page-footer">
+    <span>Accurate · Simple · Fast · Agile | General Test Systems Inc.</span>
+    <span>PinProbe A1 SCPI Reference | 8 / 12</span>
+  </div>
+</div>
+<!-- P9 -->
+<div class="page">
+  <div class="page-header">
+    <div>
+      <h1>Error and Exception Handling</h1>
+      <div class="subtitle">PinProbe A1 Box Control SCPI Command Reference (cont.)</div>
+    </div>
+    <svg class="logo" viewBox="4400 6500 18750 3520" role="img" aria-label="GTS"><use href="#gts-logo"></use></svg>
+    <div class="doc-meta">
+      <strong>2026-07-28</strong>
+      SCPI Reference<br>
+      PinProbe A1
+    </div>
+  </div>
+  <div class="main">
+<ol class="small-list">
+<li>When command response begins with <code>ERR</code> or <code>ERROR</code> immediately read <code>SYSTem:ERRor:NEXT?</code> until no error remains.</li>
+<li>Periodically read <code>READ:LOG:STATus?</code>; if <code>PEND</code> is nonzero, read <code>READ:LOG:NEXT?</code> or <code>READ:LOG:ALL?</code>.</li>
+<li>When <code>[ERROR]</code> is found, stop automatic testing and collect <code>READ:SYSTem:STATe?</code> / <code>READ:IO:ALL?</code> / <code>READ:CYLInder1:STATe?</code> / <code>READ:CYLInder2:STATe?</code>.</li>
+<li>When <code>[WARN]</code> is found, decide by event name; manually confirm USB failures, RS485 faults, and IO write failures before continuing.</li>
+</ol>
+<div class="note-box">Recommended input air pressure: about <code>0.33 MPa</code>; set the electronic pressure gauge threshold to about <code>0.3 MPa</code>.</div>
+<table class="compact">
+<thead><tr><th>Exception</th><th>Log Level</th><th>Firmware Action</th><th>Recovery Recommendation</th></tr></thead>
+<tbody>
+<tr><td>E-stop <code>ESTOP</code></td><td><code>[ERROR]</code></td><td>Enter <code>EMERGENCY</code>, red light, open door, and lock system</td><td>After resetting E-stop and clearing laser path, press Start again to unlock and recover</td></tr>
+<tr><td>Laser anti-pinch <code>LASER</code></td><td><code>[ERROR]</code></td><td>If obstruction is detected late in closing, enter <code>EMERGENCY</code>, red light, open door, and lock system</td><td>Clear obstruction, then press Start again to unlock and recover</td></tr>
+<tr><td>RS485 fault <code>RS485_FAULT</code></td><td><code>[WARN]</code></td><td>Mark IO link unavailable; pause this operation and request yellow alarm</td><td>Wait for <code>RS485_RECOVERED</code>, then read IO and system state to confirm</td></tr>
+<tr><td>Risk Mode pressure event <code>RISK_PRESSURE</code></td><td><code>[WARN]</code></td><td>In Risk Mode, use pressure and learned time to determine door-close completion</td><td>Check door lower-limit or pressure sensor state</td></tr>
+<tr><td>Low air pressure <code>AIR_LOW</code></td><td><code>[WARN]</code></td><td>Record diagnostic log only; E-stop is not triggered</td><td>Wait for <code>clear_after</code>  record or check air path</td></tr>
+<tr><td>IO write failure <code>IO_WRITE_FAIL</code></td><td><code>[WARN]</code></td><td>Related actuator command may not actually output</td><td>Check IO board communication, power, and actuator wiring</td></tr>
+<tr><td>USB insertion failure <code>USB_INSERT_FAIL</code></td><td><code>[WARN]</code></td><td>USB may retract, fast red flash, or yellow flash in <code>COMPLETE</code></td><td>Query <code>READ:CYLInder2:STATe?</code>, check USB insertion cylinder and position sensor</td></tr>
+<tr><td>USB retraction failure <code>USB_RETRACT_FAIL</code></td><td><code>[WARN]</code></td><td>Fast red flashing; return to <code>IDLE</code></td><td>Query <code>READ:CYLInder2:STATe?</code>, check USB retraction cylinder and position sensor</td></tr>
+</tbody>
+</table>
+<div class="section-title">Debug Switch Commands</div>
+<table class="compact">
+<thead><tr><th>Command</th><th>Parameter</th><th>Response</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>CONFigure:DEBUg:STATe</code></td><td><code>OFF</code> / <code>ON</code></td><td><code>OFF</code> / <code>ON</code></td><td>Enable/disable runtime state-transition debug output</td></tr>
+<tr><td><code>READ:DEBUg:STATe?</code></td><td></td><td><code>OFF</code> / <code>ON</code></td><td>Query state-transition debug-output switch</td></tr>
+<tr><td><code>CONFigure:DEBUg:ACTion</code></td><td><code>OFF</code> / <code>ON</code></td><td><code>OFF</code> / <code>ON</code></td><td>Enable/disable runtime action-duration debug output</td></tr>
+<tr><td><code>READ:DEBUg:ACTion?</code></td><td></td><td><code>OFF</code> / <code>ON</code></td><td>Query action-duration debug-output switch</td></tr>
+<tr><td><code>CONFigure:DEBUg:EVENt</code></td><td><code>OFF</code> / <code>ON</code></td><td><code>OFF</code> / <code>ON</code></td><td>Enable/disable runtime event debug output</td></tr>
+<tr><td><code>READ:DEBUg:EVENt?</code></td><td></td><td><code>OFF</code> / <code>ON</code></td><td>Query event debug-output switch</td></tr>
+<tr><td><code>CONFigure:DEBUg:IO</code></td><td><code>OFF</code> / <code>ON</code></td><td><code>OFF</code> / <code>ON</code></td><td>Enable/disable runtime IO debug output</td></tr>
+<tr><td><code>READ:DEBUg:IO?</code></td><td></td><td><code>OFF</code> / <code>ON</code></td><td>Query IO debug-output switch</td></tr>
+</tbody>
+</table>
+<div class="note-box">Debug switches are runtime state; default is <code>OFF</code>, not written to Flash.</div>
+<h4>Example</h4>
+<pre data-lang="scpi"><code>CONFigure:DEBUg:STATe ON
+READ:DEBUg:STATe?
+CONFigure:DEBUg:IO OFF
+READ:DEBUg:IO?</code></pre>
+  </div>
+  <div class="page-footer">
+    <span>Accurate · Simple · Fast · Agile | General Test Systems Inc.</span>
+    <span>PinProbe A1 SCPI Reference | 9 / 12</span>
+  </div>
+</div>
+<!-- P10 -->
+<div class="page tight">
+  <div class="page-header">
+    <div>
+      <h1>Device Log Commands</h1>
+      <div class="subtitle">PinProbe A1 Box Control SCPI Command Reference</div>
+    </div>
+    <svg class="logo" viewBox="4400 6500 18750 3520" role="img" aria-label="GTS"><use href="#gts-logo"></use></svg>
+    <div class="doc-meta">
+      <strong>2026-07-28</strong>
+      SCPI Reference<br>
+      PinProbe A1
+    </div>
+  </div>
+  <div class="main">
+<div class="section-title">Device Log Commands</div>
+<table class="compact">
+<thead><tr><th>Command</th><th>Parameter</th><th>Response</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>CONFigure:LOG:UART</code></td><td><code>OFF</code> / <code>ON</code></td><td><code>OFF</code> / <code>ON</code></td><td>Enable/disable live UART logging</td></tr>
+<tr><td><code>READ:LOG:UART?</code></td><td></td><td><code>OFF</code> / <code>ON</code></td><td>Read live UART logging setting</td></tr>
+<tr><td><code>READ:LOG:NEXT?</code></td><td></td><td>One log entry or <code>EMPTY</code></td><td>Read the next pending device log</td></tr>
+<tr><td><code>READ:LOG:ALL?</code></td><td></td><td>Multi-line logs or <code>EMPTY</code></td><td>Read all pending device logs</td></tr>
+<tr><td><code>READ:LOG:STATus?</code></td><td></td><td><code>PEND:... CAP:... NEXT:...</code></td><td>Read the log buffer status</td></tr>
+<tr><td><code>CONFigure:LOG:CLEar</code></td><td></td><td><code>OK</code></td><td>Clear the log buffer and counters</td></tr>
+</tbody>
+</table>
+<h4>Log Status Response</h4>
+<pre data-lang="text"><code>PEND:&lt;pending&gt; CAP:&lt;capacity&gt; NEXT:&lt;next_seq&gt; DROP:&lt;drop_count&gt; RDROP:&lt;realtime_drop_count&gt; UART:&lt;0|1&gt;</code></pre>
+<h4>Log Line Format</h4>
+<p>Logs usually start with timestamp and node number:</p>
+<pre data-lang="text"><code>[T+12.345s][N0][INFO][ACTION] CLOSE_DONE duration=300ms</code></pre>
+<p>Format:</p>
+<pre data-lang="text"><code>[T+&lt;time since boot&gt;][N&lt;node number&gt;][&lt;level&gt;][&lt;module&gt;] &lt;event and parameters&gt;</code></pre>
+<table class="compact">
+<thead><tr><th>Field</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>T+</code></td><td>Boot-relative time; restarts after reset</td></tr>
+<tr><td><code>N</code></td><td>Node number; single-device default is <code>N0</code></td></tr>
+<tr><td><code>INFO</code></td><td>Normal state, action, command, or recovery</td></tr>
+<tr><td><code>WARN</code></td><td>Exception or diagnostic record to check</td></tr>
+<tr><td><code>ERROR</code></td><td>Severe event, e.g. E-stop or laser anti-pinch</td></tr>
+<tr><td><code>STATE</code> / <code>ACTION</code> / <code>EVENT</code> / <code>IO</code></td><td>State, action, event, or IO snapshot</td></tr>
+</tbody>
+</table>
+<h4>Exception Log Description</h4>
+<p>Use the log level to judge exceptions. E-stop and laser anti-pinch use <code>[ERROR][EVENT]</code>; other diagnostics usually use <code>[WARN][EVENT]</code>:</p>
+<table class="compact">
+<thead><tr><th>Exception Event</th><th>Log Example</th><th>Meaning and Operation Notes</th></tr></thead>
+<tbody>
+<tr><td>E-stop triggered</td><td><code>[T+15.120s][N0][ERROR][EVENT] ESTOP close_elapsed=820ms</code></td><td>Opens door and locks; reset E-stop, press Start</td></tr>
+<tr><td>Object obstruction</td><td><code>[T+16.020s][N0][ERROR][EVENT] LASER close_elapsed=1720ms</code></td><td>Opens door and locks; clear obstruction, press Start</td></tr>
+<tr><td>RS485 fault</td><td><code>[T+12.345s][N0][WARN][EVENT] RS485_FAULT arg0=0 arg1=0</code></td><td>IO link unavailable; wait for recovery log</td></tr>
+<tr><td>Risk pressure</td><td><code>[T+16.100s][N0][WARN][EVENT] RISK_PRESSURE close_elapsed=1800ms</code></td><td>Close-pressure condition; check workpiece/resistance</td></tr>
+<tr><td>Air low / recovered</td><td><code>[T+20.000s][N0][WARN][EVENT] AIR_LOW low_after=500ms</code></td><td>Low pressure or recovery; check <code>low_after/clear_after</code></td></tr>
+<tr><td>IO write fail</td><td><code>[T+21.000s][N0][WARN][EVENT] IO_WRITE_FAIL target=2 cmd=0x0003</code></td><td>Output write failed; check actuator and IO link</td></tr>
+<tr><td>USB insert fail</td><td><code>[T+22.000s][N0][WARN][EVENT] USB_INSERT_FAIL elapsed=2001ms reason=timeout</code></td><td>USB not inserted; check <code>reason</code> cause</td></tr>
+<tr><td>USB retract fail</td><td><code>[T+23.000s][N0][WARN][EVENT] USB_RETRACT_FAIL elapsed=2001ms reason=sensor_conflict</code></td><td>USB not retracted; check <code>reason</code> cause</td></tr>
+</tbody>
+</table>
+  </div>
+  <div class="page-footer">
+    <span>Accurate · Simple · Fast · Agile | General Test Systems Inc.</span>
+    <span>PinProbe A1 SCPI Reference | 10 / 12</span>
+  </div>
+</div>
+<!-- P11 -->
+<div class="page tight">
+  <div class="page-header">
+    <div>
+      <h1>Log Commands / Summary</h1>
+      <div class="subtitle">PinProbe A1 Box Control SCPI Command Reference (cont.)</div>
+    </div>
+    <svg class="logo" viewBox="4400 6500 18750 3520" role="img" aria-label="GTS"><use href="#gts-logo"></use></svg>
+    <div class="doc-meta">
+      <strong>2026-07-28</strong>
+      SCPI Reference<br>
+      PinProbe A1
+    </div>
+  </div>
+  <div class="main">
+<h4>USB Reasons</h4>
+<table class="compact">
+<thead><tr><th><code>reason</code></th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>timeout</code></td><td>USB travel exceeded 2000 ms without reaching position</td></tr>
+<tr><td><code>sensor_conflict</code></td><td>USB upper/lower sensors active at the same time</td></tr>
+<tr><td><code>dual_output</code></td><td>USB insert/retract outputs active at the same time</td></tr>
+<tr><td><code>unknown</code></td><td>Unrecognized reason code</td></tr>
+</tbody>
+</table>
+<p>A normal information log is generated when RS485 communication recovers:</p>
+<pre data-lang="text"><code>[T+13.500s][N0][INFO][EVENT] RS485_RECOVERED arg0=0 arg1=0</code></pre>
+<p>This record means the IO link recovered; the device exits RS485 protection and requests alarm light off. <code>ESTOP</code> and <code>LASER</code> open the door and lock the system; clear the cause, then press Start. <code>RISK_PRESSURE</code> has no separate recovery event; judge from later system, IO, and action logs.</p>
+<h4>Reading Tips</h4>
+<ol class="small-list">
+<li>Send <code>READ:LOG:STATus?</code> first to check pending and drop counts.</li>
+<li>Use <code>READ:LOG:NEXT?</code> one by one, or <code>READ:LOG:ALL?</code> for all entries.</li>
+<li>Filter <code>[WARN]</code> and <code>[ERROR]</code>; after <code>RS485_FAULT</code>, wait for <code>RS485_RECOVERED</code>.</li>
+<li>If <code>DROP</code> or <code>RDROP</code> is nonzero, logs are incomplete; collect system and IO states.</li>
+</ol>
+<div class="note-box"><code>READ:LOG:NEXT?</code> and <code>READ:LOG:ALL?</code> are dequeue reads; returned records are not repeated. The buffer holds <code>76</code> RAM entries and clears after reset or power loss. <code>DROP</code> counts overwritten pending records; <code>RDROP</code> counts records lost when real-time UART cannot send fast enough. <code>CONFigure:LOG:CLEar</code> clears logs and both drop counters. With <code>CONFigure:LOG:UART ON</code>, logs appear as unsolicited text on the SCPI port. Keep <code>OFF</code> if async text cannot be handled.</div>
+<h4>Example</h4>
+<pre data-lang="scpi"><code>CONFigure:LOG:UART ON
+READ:LOG:UART?
+READ:LOG:STATus?
+READ:LOG:NEXT?
+READ:LOG:ALL?
+CONFigure:LOG:CLEar</code></pre>
+<div class="section-title">Command Summary</div>
+<table class="compact">
+<thead><tr><th>Category</th><th>Command</th></tr></thead>
+<tbody>
+<tr><td>Basic</td><td><code>*CLS</code>, <code>*IDN?</code>, <code>*RST</code>, <code>*STB?</code>, <code>*WAI</code>, <code>*OPC?</code></td></tr>
+<tr><td>System</td><td><code>SYSTem:ERRor[:NEXT]?</code>, <code>SYSTem:ERRor:COUNt?</code>, <code>SYSTem:VERSion?</code>, <code>SYSTem:UPTime?</code>, <code>SYSTem:REBoot</code>, <code>SYSTem:FLASH:ID?</code></td></tr>
+<tr><td>IDN</td><td><code>SYSTem:IDN1</code>, <code>SYSTem:IDN1?</code>, <code>SYSTem:IDN2</code>, <code>SYSTem:IDN2?</code>, <code>SYSTem:IDN3</code>, <code>SYSTem:IDN3?</code>, <code>SYSTem:IDN4</code>, <code>SYSTem:IDN4?</code></td></tr>
+<tr><td>Act.</td><td><code>CONFigure:CYLInder#</code>, <code>READ:CYLInder#:STATe?</code>, <code>CONFigure:USB:AUTO</code>, <code>READ:USB:AUTO?</code>, <code>CONFigure:LOCK</code>, <code>READ:LOCK:STATe?</code>, <code>CONFigure:LED</code>, <code>READ:LED:STATe?</code>, <code>CONFigure:LED:MAP</code>, <code>READ:LED:MAP?</code></td></tr>
+<tr><td>Status</td><td><code>READ:SYSTem:STATe?</code>, <code>READ:IO:ALL?</code></td></tr>
+<tr><td>Cfg.</td><td><code>CONFigure:BAUDrate</code>, <code>CONFigure:ESTOP:TYPE</code>, <code>READ:ESTOP:TYPE?</code>, <code>CONFigure:RISK:MODE</code>, <code>READ:RISK:MODE?</code>, <code>CONFigure:BOOT:DIAG</code>, <code>READ:BOOT:DIAG?</code></td></tr>
+<tr><td>OTA</td><td><code>SYSTem:OTA:STATus?</code>, <code>SYSTem:OTA:BOOT?</code>, <code>SYSTem:OTA:BEGIN</code>, <code>SYSTem:OTA:DATA</code>, <code>SYSTem:OTA:END</code>, <code>SYSTem:OTA:VERify?</code>, <code>SYSTem:OTA:COMMit</code>, <code>SYSTem:OTA:ABORt</code></td></tr>
+<tr><td>Dbg.</td><td><code>CONFigure:DEBUg:STATe</code>, <code>READ:DEBUg:STATe?</code>, <code>CONFigure:DEBUg:ACTion</code>, <code>READ:DEBUg:ACTion?</code>, <code>CONFigure:DEBUg:EVENt</code>, <code>READ:DEBUg:EVENt?</code>, <code>CONFigure:DEBUg:IO</code>, <code>READ:DEBUg:IO?</code></td></tr>
+<tr><td>Log</td><td><code>CONFigure:LOG:UART</code>, <code>READ:LOG:UART?</code>, <code>READ:LOG:NEXT?</code>, <code>READ:LOG:ALL?</code>, <code>READ:LOG:STATus?</code>, <code>CONFigure:LOG:CLEar</code></td></tr>
+</tbody>
+</table>
+  </div>
+  <div class="page-footer">
+    <span>Accurate · Simple · Fast · Agile | General Test Systems Inc.</span>
+    <span>PinProbe A1 SCPI Reference | 11 / 12</span>
+  </div>
+</div>
+<!-- P12 -->
+<div class="page">
+  <div class="page-header">
+    <div>
+      <h1>Revision History</h1>
+      <div class="subtitle">PinProbe A1 Box Control SCPI Command Reference</div>
+    </div>
+    <svg class="logo" viewBox="4400 6500 18750 3520" role="img" aria-label="GTS"><use href="#gts-logo"></use></svg>
+    <div class="doc-meta">
+      <strong>2026-07-28</strong>
+      SCPI Reference<br>
+      PinProbe A1
+    </div>
+  </div>
+  <div class="main">
+<div class="section-title">Revision History</div>
+<table class="compact">
+<thead><tr><th>Date</th><th>New Commands</th><th>Revision</th></tr></thead>
+<tbody>
+<tr><td><code>2026-07-28</code></td><td><code>CONFigure:CYLInder2</code> / <code>READ:CYLInder2:STATe?</code></td><td>Revised USB manual control and state return semantics: <code>CLOSE/CLOSED</code> indicates USB inserted/connected; <code>OPEN/OPENED</code> indicates USB unplugged/retracted; hardware output behavior is unchanged.</td></tr>
+<tr><td><code>2026-07-27</code></td><td><code>CONFigure:USB:AUTO</code> / <code>READ:USB:AUTO?</code></td><td>Added automatic USB plug/unplug sequence commands; factory configured by device hardware, <span class="danger-text">Do not modify</span>; devices with USB cylinder are <code>ON</code>, devices without USB cylinder are <code>OFF</code>; customer software uses <code>READ:USB:AUTO?</code> to confirm whether enabled.</td></tr>
+</tbody>
+</table>
+  </div>
+  <div class="page-footer">
+    <span>Accurate · Simple · Fast · Agile | General Test Systems Inc.</span>
+    <span>PinProbe A1 SCPI Reference | 12 / 12</span>
+  </div>
+</div>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+

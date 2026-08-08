@@ -698,6 +698,7 @@ SYSTem:ERRor:NEXT?
 <li>发现 <code>[ERROR]</code> 时停止自动测试流程，采集 <code>READ:SYSTem:STATe?</code>、<code>READ:IO:ALL?</code>、<code>READ:CYLInder1:STATe?</code>、<code>READ:CYLInder2:STATe?</code>。</li>
 <li>发现 <code>[WARN]</code> 时结合事件名判断是否可继续；USB 插拔失败、RS485 故障、IO 写入失败建议人工确认后再继续。</li>
 </ol>
+<div class="note-box">输入气压建议保持在 <code>0.33 MPa</code> 左右；电子气压表阈值建议设在 <code>0.3 MPa</code> 左右。</div>
 <table class="compact">
 <thead><tr><th>异常</th><th>日志级别</th><th>固件动作</th><th>恢复建议</th></tr></thead>
 <tbody>

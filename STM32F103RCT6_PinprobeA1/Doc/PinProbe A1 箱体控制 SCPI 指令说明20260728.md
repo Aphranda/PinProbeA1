@@ -246,6 +246,8 @@ READ:IO:ALL?
 | `CONFigure:BOOT:DIAG`   | `OFF` / `ON` | `OFF` / `ON` | 配置 Bootloader 诊断串口输出，并保存到 Flash |
 | `READ:BOOT:DIAG?`       |                  | `OFF` / `ON` | 查询 Bootloader 诊断串口输出开关             |
 
+> 输入气压建议保持在 `0.33 MPa` 左右；电子气压表阈值建议设在 `0.3 MPa` 左右。
+
 ### 参数说明
 
 | 参数    | 说明     |

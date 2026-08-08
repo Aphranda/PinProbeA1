@@ -22,6 +22,7 @@ TRAILING_MERGE_UNITS = 52.0
 class Block:
     kind: str
     text: str = ""
+    src: str = ""
     level: int = 0
     headers: list[str] | None = None
     rows: list[list[str]] | None = None
@@ -101,6 +102,20 @@ def parse_markdown(path: Path) -> tuple[str, list[Block]]:
             blocks.append(Block(kind="code", text=lang, lines=code_lines))
             continue
 
+        image = re.match(r"^!\[([^\]]*)\]\(([^)]+)\)\s*$", stripped)
+        if image:
+            alt = image.group(1).strip()
+            src = image.group(2).strip()
+            if (src.startswith("<") and src.endswith(">")):
+                src = src[1:-1].strip()
+            image_path = Path(src)
+            if not image_path.is_absolute():
+                image_path = path.parent / src
+            image_src = image_path.resolve().as_uri() if image_path.exists() else src
+            blocks.append(Block(kind="image", text=alt, src=image_src))
+            i += 1
+            continue
+
         heading = re.match(r"^(#{1,6})\s+(.+)$", line)
         if heading:
             level = len(heading.group(1))
@@ -142,7 +157,7 @@ def parse_markdown(path: Path) -> tuple[str, list[Block]]:
         i += 1
         while i < len(lines):
             nxt = lines[i].strip()
-            if not nxt or nxt == "---" or nxt.startswith("#") or nxt.startswith(">") or nxt.startswith("```") or re.match(r"^\|(.+)\|\s*$", nxt) or re.match(r"^\d+\.\s+", nxt) or re.match(r"^[-*]\s+", nxt):
+            if not nxt or nxt == "---" or nxt.startswith("#") or nxt.startswith(">") or nxt.startswith("```") or re.match(r"^!\[([^\]]*)\]\(([^)]+)\)\s*$", nxt) or re.match(r"^\|(.+)\|\s*$", nxt) or re.match(r"^\d+\.\s+", nxt) or re.match(r"^[-*]\s+", nxt):
                 break
             paragraph.append(nxt)
             i += 1
@@ -171,6 +186,8 @@ def block_units(block: Block) -> float:
         return 1.0 + sum(0.85 + len(item) / 110.0 for item in (block.items or []))
     if block.kind == "code":
         return 1.1 + len(block.lines or []) * 0.45
+    if block.kind == "image":
+        return 16.0
     if block.kind == "table":
         rows = block.rows or []
         headers = block.headers or []
@@ -250,6 +267,8 @@ def paginate(title: str, blocks: list[Block]) -> list[Page]:
             lookahead = [block]
             for next_block in pending:
                 if next_block.kind == "heading" and next_block.level == 2:
+                    break
+                if next_block.kind == "image":
                     break
                 lookahead.append(next_block)
             section_units = sum(block_units(item) for item in lookahead)
@@ -371,6 +390,10 @@ def block_to_html(block: Block) -> str:
         lang = html.escape(block.text)
         code = html.escape("\n".join(block.lines or []))
         return f'<pre data-lang="{lang}"><code>{code}</code></pre>'
+    if block.kind == "image":
+        caption = inline_md(block.text) if block.text else ""
+        caption_html = f"<figcaption>{caption}</figcaption>" if caption else ""
+        return f'<figure class="doc-image"><img src="{html.escape(block.src)}" alt="{html.escape(block.text)}">{caption_html}</figure>'
     if block.kind == "table":
         headers = block.headers or []
         rows = block.rows or []
@@ -426,6 +449,8 @@ def build_html(
     cover_doc_name = title
     if cover_doc_name.startswith(cover_product):
         cover_doc_name = cover_doc_name[len(cover_product):].strip()
+    elif cover_doc_name.startswith("PinProbeA1"):
+        cover_doc_name = cover_doc_name[len("PinProbeA1"):].strip()
     cover_img_html = ""
     if cover_image is not None:
         cover_img_html = f'<div class="cover-image-wrap"><img src="{html.escape(cover_image.resolve().as_uri())}" alt="PinProbe A1 箱体示意图"></div>'
@@ -576,6 +601,25 @@ def build_html(
     margin:5px 0 7px;
   }}
   .danger-text {{ color:#c1121f; font-weight:800; }}
+  .doc-image {{
+    margin:7px 0 9px;
+    padding:5px;
+    border:1px solid #d6deea;
+    background:#f8fafc;
+  }}
+  .doc-image img {{
+    width:100%;
+    height:auto;
+    max-height:82mm;
+    object-fit:contain;
+    display:block;
+  }}
+  .doc-image figcaption {{
+    margin-top:4px;
+    color:#5b6573;
+    font-size:9.8px;
+    text-align:center;
+  }}
   .small-list {{ font-size:10.8px; color:#2f3542; padding-left:17px; margin:4px 0 7px; }}
   li {{ margin:1px 0; }}
   .chips {{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin:0 0 9px; }}

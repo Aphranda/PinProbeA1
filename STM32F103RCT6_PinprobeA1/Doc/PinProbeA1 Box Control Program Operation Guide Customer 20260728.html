@@ -1,9 +1,9 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
+﻿<!DOCTYPE html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PinProbe A1 箱体控制程序操作说明</title>
+<title>PinProbe A1 Box Control Program Operation Guide</title>
 <style>
   * { box-sizing:border-box; margin:0; padding:0; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
   body {
@@ -200,7 +200,7 @@
 <div class="page cover-page">
   <div class="page-header cover-header">
     <div class="cover-header-text">
-      <div class="cover-doc-label">客户交付文档</div>
+      <div class="cover-doc-label">Customer Delivery Document</div>
       <div class="cover-doc-subtitle">Customer Delivery</div>
     </div>
     <svg class="logo" viewBox="4400 6500 18750 3520" role="img" aria-label="GTS"><use href="#gts-logo"></use></svg>
@@ -214,30 +214,30 @@
     <div class="cover-layout">
       <div class="cover-copy">
         <div class="cover-kicker">PinProbe A1</div>
-        <div class="cover-title">箱体控制程序操作说明</div>
+        <div class="cover-title">Box Control Program Operation Guide</div>
         <div class="cover-divider"></div>
-        <div class="cover-subtitle">连接设备 · 常用控制 · 异常处理</div>
+        <div class="cover-subtitle">Device Connection / Common Controls / Exception Handling</div>
         <div class="cover-info-line">
-          <span>客户联调资料</span>
+          <span>Customer Integration Material</span>
           <span>SCPI / UART</span>
           <span>2026-07-28</span>
         </div>
-        <div class="cover-note">本文用于客户侧上位机联调、设备控制与维护参考。</div>
+        <div class="cover-note">This document is intended for customer-side host integration, device control, and maintenance reference.</div>
       </div>
       <div class="cover-image-wrap"><img src="file:///E:/OneDrive/4.Code/STM32/PinProbeA1/STM32F103RCT6_PinprobeA1/Doc/untitled.642.png" alt="PinProbe A1 box illustration"></div>
     </div>
   </div>
   <div class="page-footer">
     <span>Accurate · Simple · Fast · Agile | General Test Systems Inc.</span>
-    <span>PinProbe A1 操作说明 | 1 / 5</span>
+    <span>PinProbe A1 Operation Guide | 1 / 5</span>
   </div>
 </div>
 <!-- P2 -->
 <div class="page">
   <div class="page-header">
     <div>
-      <h1>PinProbe A1 箱体控制程序操作说明</h1>
-      <div class="subtitle">客户外发资料</div>
+      <h1>PinProbe A1 Box Control Program Operation Guide</h1>
+      <div class="subtitle">Customer Release Material</div>
     </div>
     <svg class="logo" viewBox="4400 6500 18750 3520" role="img" aria-label="GTS"><use href="#gts-logo"></use></svg>
     <div class="doc-meta">
@@ -247,45 +247,45 @@
     </div>
   </div>
   <div class="main">
-<div class="note-box">适用程序：<code>PinProbeA1箱体控制程序.exe</code> 文档版本：<code>2026-07-28</code> 适用设备：PinProbe A1 箱体控制设备</div>
-<div class="section-title">1. 使用前准备</div>
+<div class="note-box">Applicable program: <code>PinProbeA1 Box Control Program.exe</code> Document version: <code>2026-07-28</code> Applicable device: PinProbe A1 box control device</div>
+<div class="section-title">1. Preparation Before Use</div>
 <ol class="small-list">
-<li>将 PinProbe A1 设备连接到电脑串口或 USB 转串口模块。</li>
-<li>确认设备已上电，串口驱动已正确安装。</li>
-<li>双击运行 <code>PinProbeA1箱体控制程序.exe</code>。</li>
-<li>默认通信参数为 <code>115200 bps</code>，无需修改波特率。</li>
+<li>Connect the PinProbe A1 device to the computer serial port or a USB-to-serial module.</li>
+<li>Confirm the device is powered on and the serial driver is installed correctly.</li>
+<li>Double-click <code>PinProbeA1 Box Control Program.exe</code>.</li>
+<li>Default communication parameter is <code>115200 bps</code>; baud rate does not need to be changed.</li>
 </ol>
-<div class="note-box">程序为免安装工具，外发包中可直接运行。若 Windows 弹出安全提示，请选择“仍要运行”。</div>
-<div class="section-title">2. 连接设备</div>
+<div class="note-box">The program is portable and can run directly from the delivery package. If Windows shows a security prompt, choose &quot;Run anyway&quot;.</div>
+<div class="section-title">2. Connect the Device</div>
 <ol class="small-list">
-<li>在左上角“串口设置”区域点击“刷新”。</li>
-<li>在“端口”下拉框选择设备对应串口，例如 <code>COM3</code>、<code>COM5</code>。</li>
-<li>点击“连接”。</li>
-<li>连接成功后，状态栏显示“已连接”，程序会自动查询设备信息。</li>
-<li>可点击“查询设备”确认设备返回 <code>GTS,PINPROBEA1,...</code>。</li>
+<li>In the upper-left &quot;Serial Settings&quot; area, click &quot;Refresh&quot;.</li>
+<li>Select the device serial port from the &quot;Port&quot; drop-down list, such as <code>COM3</code>, <code>COM5</code>.</li>
+<li>Click &quot;Connect&quot;.</li>
+<li>After connection succeeds, the status bar shows &quot;Connected&quot;, and the program automatically queries device information.</li>
+<li>Click &quot;Query Device&quot; to confirm the device returns <code>GTS,PINPROBEA1,...</code>.</li>
 </ol>
-<p>若连接失败，请检查：</p>
+<p>If connection fails, check:</p>
 <table class="compact">
-<thead><tr><th>问题</th><th>处理方式</th></tr></thead>
+<thead><tr><th>Issue</th><th>Handling Method</th></tr></thead>
 <tbody>
-<tr><td>找不到串口</td><td>检查 USB 转串口驱动、线缆和设备供电</td></tr>
-<tr><td>串口被占用</td><td>关闭其他串口工具后重新连接</td></tr>
-<tr><td>无响应</td><td>确认设备上电、端口选择正确，重新插拔串口线后点击“刷新”</td></tr>
+<tr><td>Serial port not found</td><td>Check USB-to-serial driver, cable, and device power supply</td></tr>
+<tr><td>Serial port occupied</td><td>Close other serial tools and reconnect</td></tr>
+<tr><td>No response</td><td>Confirm device power and selected port; replug serial cable and click &quot;Refresh&quot;</td></tr>
 </tbody>
 </table>
-<figure class="doc-image"><img src="file:///E:/OneDrive/4.Code/STM32/PinProbeA1/STM32F103RCT6_PinprobeA1/Doc/assets/pinprobe_gui_main.png" alt="箱体控制程序主界面"><figcaption>箱体控制程序主界面</figcaption></figure>
+<figure class="doc-image"><img src="file:///E:/OneDrive/4.Code/STM32/PinProbeA1/STM32F103RCT6_PinprobeA1/Doc/assets/软件主体.png" alt="Box control program main interface"><figcaption>Box control program main interface</figcaption></figure>
   </div>
   <div class="page-footer">
     <span>Accurate · Simple · Fast · Agile | General Test Systems Inc.</span>
-    <span>PinProbe A1 操作说明 | 2 / 5</span>
+    <span>PinProbe A1 Operation Guide | 2 / 5</span>
   </div>
 </div>
 <!-- P3 -->
 <div class="page">
   <div class="page-header">
     <div>
-      <h1>3. 常用控制</h1>
-      <div class="subtitle">PinProbe A1 箱体控制程序操作说明</div>
+      <h1>3. Common Controls</h1>
+      <div class="subtitle">PinProbe A1 Box Control Program Operation Guide</div>
     </div>
     <svg class="logo" viewBox="4400 6500 18750 3520" role="img" aria-label="GTS"><use href="#gts-logo"></use></svg>
     <div class="doc-meta">
@@ -295,74 +295,74 @@
     </div>
   </div>
   <div class="main">
-<div class="section-title">3. 常用控制</div>
-<p>左侧“SCPI 命令面板”提供常用操作按钮。客户日常使用建议优先使用按钮，不需要手动输入指令。</p>
-<h4>3.1 门/气缸</h4>
+<div class="section-title">3. Common Controls</div>
+<p>The left &quot;SCPI Command Panel&quot; contains common buttons. Daily use should rely on buttons, not manual commands.</p>
+<h4>3.1 Door / Cylinder</h4>
 <table class="compact">
-<thead><tr><th>按钮</th><th>功能</th></tr></thead>
+<thead><tr><th>Button</th><th>Function</th></tr></thead>
 <tbody>
-<tr><td>“开门”</td><td>打开箱门</td></tr>
-<tr><td>“关门”</td><td>关闭箱门</td></tr>
-<tr><td>“读门状态”</td><td>查询箱门当前位置和动作状态</td></tr>
-<tr><td>“USB 插入”</td><td>手动插入 USB 接头（发送 <code>CONFigure:CYLInder2 CLOSE</code>）</td></tr>
-<tr><td>“USB 拔出”</td><td>手动拔出/回退 USB 接头（发送 <code>CONFigure:CYLInder2 OPEN</code>）</td></tr>
-<tr><td>“读 USB 状态”</td><td>查询 USB 插拔机构状态</td></tr>
-<tr><td>“读USB自动(出厂)”</td><td>查询 USB 自动拔插流程出厂配置</td></tr>
+<tr><td>&quot;Open Door&quot;</td><td>Open the box door</td></tr>
+<tr><td>&quot;Close Door&quot;</td><td>Close the box door</td></tr>
+<tr><td>&quot;Read Door State&quot;</td><td>Query door position/action state</td></tr>
+<tr><td>&quot;USB Insert&quot;</td><td>Insert USB manually (send <code>CONFigure:CYLInder2 CLOSE</code>)</td></tr>
+<tr><td>&quot;USB Unplug&quot;</td><td>Unplug/retract USB manually (send <code>CONFigure:CYLInder2 OPEN</code>)</td></tr>
+<tr><td>&quot;Read USB State&quot;</td><td>Query USB insert/retract state</td></tr>
+<tr><td>&quot;Read USB Auto (Factory)&quot;</td><td>Query factory USB auto setting</td></tr>
 </tbody>
 </table>
-<h4>3.2 USB 自动流程</h4>
-<p>USB 自动拔插流程为出厂配置项，出厂时已按设备硬件配置完成。带 USB 气缸的设备配置为 <code>ON</code>，不带 USB 气缸的设备配置为 <code>OFF</code>。</p>
-<p>建议客户使用方式：</p>
+<h4>3.2 USB Automatic Sequence</h4>
+<p>USB auto plug/unplug is factory-set by hardware. Devices with a USB cylinder use <code>ON</code>; others use <code>OFF</code>.</p>
+<p>Recommended use:</p>
 <ol class="small-list">
-<li>连接设备后先点击“读USB自动(出厂)”确认当前出厂配置。</li>
-<li>带 USB 气缸的设备保持 <code>ON</code>，设备会在关门前自动插入 USB，插入到位后才关门；开门到位后自动回退 USB。</li>
-<li>该配置<span class="danger-text">禁止修改</span>；如需人工单独调试 USB 插拔动作，可直接使用“USB 插入”和“USB 拔出”。</li>
+<li>After connection, click &quot;Read USB Auto (Factory)&quot; to confirm.</li>
+<li>With a USB cylinder, keep <code>ON</code>; USB inserts before close and retracts after open.</li>
+<li>This setting <span class="danger-text">must not be modified</span>; use &quot;USB Insert&quot; / &quot;USB Unplug&quot; for debug.</li>
 </ol>
-<h4>3.3 门锁和指示灯</h4>
+<h4>3.3 Door Lock and Indicator Light</h4>
 <table class="compact">
-<thead><tr><th>按钮</th><th>功能</th></tr></thead>
+<thead><tr><th>Button</th><th>Function</th></tr></thead>
 <tbody>
-<tr><td>“解锁”</td><td>设备上电解锁，允许执行动作</td></tr>
-<tr><td>“锁定”</td><td>设备锁定，停止普通动作</td></tr>
-<tr><td>“读锁状态”</td><td>查询锁定/解锁状态</td></tr>
-<tr><td>“绿灯 / 红灯 / 黄灯 / 关灯”</td><td>手动控制指示灯</td></tr>
-<tr><td>“读 LED 状态”</td><td>查询指示灯状态</td></tr>
+<tr><td>&quot;Unlock&quot;</td><td>Unlock after power-on; allow actions</td></tr>
+<tr><td>&quot;Lock&quot;</td><td>Lock device; stop normal actions</td></tr>
+<tr><td>&quot;Read Lock State&quot;</td><td>Query locked/unlocked state</td></tr>
+<tr><td>&quot;Green / Red / Yellow / Off&quot;</td><td>Manually control indicator light</td></tr>
+<tr><td>&quot;Read LED State&quot;</td><td>Query indicator-light state</td></tr>
 </tbody>
 </table>
-<div class="section-title">4. 状态监控</div>
-<p>右侧“状态监控”页用于查看设备当前状态。</p>
-<p>常用功能：</p>
+<div class="section-title">4. Status Monitoring</div>
+<p>The right &quot;Status Monitor&quot; tab shows current device state.</p>
+<p>Functions:</p>
 <table class="compact">
-<thead><tr><th>功能</th><th>说明</th></tr></thead>
+<thead><tr><th>Function</th><th>Description</th></tr></thead>
 <tbody>
-<tr><td>“自动轮询”</td><td>周期刷新系统、门、USB、锁、LED 和日志状态</td></tr>
-<tr><td>“间隔(ms)”</td><td>轮询间隔，建议不低于 <code>500 ms</code></td></tr>
-<tr><td>“立即刷新”</td><td>手动刷新一次状态</td></tr>
-<tr><td>“IO 指示灯”</td><td>快速观察输入/输出状态</td></tr>
+<tr><td>&quot;Auto Poll&quot;</td><td>Periodically refresh system, door, USB, lock, LED, and logs</td></tr>
+<tr><td>&quot;Interval (ms)&quot;</td><td>Polling interval; recommend <code>500 ms</code>+</td></tr>
+<tr><td>&quot;Refresh Now&quot;</td><td>Refresh status once manually</td></tr>
+<tr><td>&quot;IO Indicators&quot;</td><td>Quickly observe input/output states</td></tr>
 </tbody>
 </table>
-<p>客户日常判断建议以以下状态为主：</p>
+<p>Key daily states:</p>
 <table class="compact">
-<thead><tr><th>状态项</th><th>常见返回</th><th>含义</th></tr></thead>
+<thead><tr><th>Status Item</th><th>Common Return</th><th>Meaning</th></tr></thead>
 <tbody>
-<tr><td>系统状态</td><td><code>LOCK</code> / <code>IDLE</code> / <code>READY</code></td><td>锁定、空闲、准备关门</td></tr>
-<tr><td>系统状态</td><td><code>RUNNING</code> / <code>COMPLETE</code> / <code>EMERGENCY</code></td><td>动作中、完成、急停或安全保护</td></tr>
-<tr><td>门/USB 状态</td><td><code>OPENING</code> / <code>CLOSING</code></td><td>动作中</td></tr>
-<tr><td>门/USB 状态</td><td><code>OPENED</code> / <code>CLOSED</code> / <code>CYL ERR</code></td><td>已到位或执行器异常</td></tr>
+<tr><td>System State</td><td><code>LOCK</code> / <code>IDLE</code> / <code>READY</code></td><td>Locked, idle, or ready</td></tr>
+<tr><td>System State</td><td><code>RUNNING</code> / <code>COMPLETE</code> / <code>EMERGENCY</code></td><td>Running, complete, or protected</td></tr>
+<tr><td>Door / USB State</td><td><code>OPENING</code> / <code>CLOSING</code></td><td>Action in progress</td></tr>
+<tr><td>Door / USB State</td><td><code>OPENED</code> / <code>CLOSED</code> / <code>CYL ERR</code></td><td>At position or actuator exception</td></tr>
 </tbody>
 </table>
   </div>
   <div class="page-footer">
     <span>Accurate · Simple · Fast · Agile | General Test Systems Inc.</span>
-    <span>PinProbe A1 操作说明 | 3 / 5</span>
+    <span>PinProbe A1 Operation Guide | 3 / 5</span>
   </div>
 </div>
 <!-- P4 -->
 <div class="page">
   <div class="page-header">
     <div>
-      <h1>5. 日志和异常处理</h1>
-      <div class="subtitle">PinProbe A1 箱体控制程序操作说明</div>
+      <h1>5. Logs and Exception Handling</h1>
+      <div class="subtitle">PinProbe A1 Box Control Program Operation Guide</div>
     </div>
     <svg class="logo" viewBox="4400 6500 18750 3520" role="img" aria-label="GTS"><use href="#gts-logo"></use></svg>
     <div class="doc-meta">
@@ -372,72 +372,72 @@
     </div>
   </div>
   <div class="main">
-<div class="section-title">5. 日志和异常处理</div>
-<p>下方“命令日志 / 响应输出”区域会显示指令发送、设备响应和异常信息。</p>
-<p>常用操作：</p>
+<div class="section-title">5. Logs and Exception Handling</div>
+<p>The lower log area shows commands, responses, and exceptions.</p>
+<p>Operations:</p>
 <table class="compact">
-<thead><tr><th>功能</th><th>说明</th></tr></thead>
+<thead><tr><th>Function</th><th>Description</th></tr></thead>
 <tbody>
-<tr><td>“清空日志”</td><td>清除程序窗口中的显示内容</td></tr>
-<tr><td>“自动滚动”</td><td>新日志出现时自动滚动到底部</td></tr>
-<tr><td>“实时旁听”</td><td>持续接收下位机自发输出的实时日志，适合联调和异常复现</td></tr>
-<tr><td>“导出日志”</td><td>将当前窗口日志保存为 <code>.log</code> 或 <code>.txt</code> 文件，便于售后分析</td></tr>
+<tr><td>&quot;Clear Log&quot;</td><td>Clear program-window content</td></tr>
+<tr><td>&quot;Auto Scroll&quot;</td><td>Scroll to bottom when new logs appear</td></tr>
+<tr><td>&quot;Real-time Listen&quot;</td><td>Receive live controller logs for integration/replay</td></tr>
+<tr><td>&quot;Export Log&quot;</td><td>Save logs as <code>.log</code> or <code>.txt</code> for analysis</td></tr>
 </tbody>
 </table>
-<p>遇到异常时建议按以下顺序处理：</p>
+<p>When an exception occurs:</p>
 <ol class="small-list">
-<li>停止自动测试或连续操作。</li>
-<li>查看日志中是否存在 <code>ERROR</code>、<code>ERR</code>、<code>WARN</code>。</li>
-<li>在“状态监控”页点击“立即刷新”。</li>
-<li>读取门状态、USB 状态、锁状态和系统状态。</li>
-<li>导出日志并反馈给技术支持。</li>
+<li>Stop auto test or continuous operation.</li>
+<li>Check logs for <code>ERROR</code>, <code>ERR</code>, or <code>WARN</code>.</li>
+<li>Click &quot;Refresh Now&quot; in &quot;Status Monitor&quot;.</li>
+<li>Read door, USB, lock, and system states.</li>
+<li>Export logs for technical support.</li>
 </ol>
-<p>常见异常提示：</p>
+<p>Common prompts:</p>
 <table class="compact">
-<thead><tr><th>提示</th><th>含义</th><th>建议处理</th></tr></thead>
+<thead><tr><th>Prompt</th><th>Meaning</th><th>Handling</th></tr></thead>
 <tbody>
-<tr><td><code>ESTOP</code></td><td>急停触发</td><td>检查急停按钮，复位后重新解锁</td></tr>
-<tr><td><code>LASER</code></td><td>防夹或遮挡触发</td><td>清除遮挡物，确认安全后重新操作</td></tr>
-<tr><td><code>RS485_FAULT</code></td><td>IO 通信异常</td><td>检查设备连接和供电，等待恢复或重启设备</td></tr>
-<tr><td><code>USB_INSERT_FAIL</code></td><td>USB 插入未到位或机构异常</td><td>检查 USB 插入机构和治具位置</td></tr>
-<tr><td><code>USB_RETRACT_FAIL</code></td><td>USB 回退未到位或机构异常</td><td>检查 USB 回退机构和治具位置</td></tr>
-<tr><td><code>IO_WRITE_FAIL</code></td><td>执行器输出失败</td><td>检查 IO 模块、电源和线缆</td></tr>
+<tr><td><code>ESTOP</code></td><td>E-stop triggered</td><td>Check E-stop button; reset and unlock again</td></tr>
+<tr><td><code>LASER</code></td><td>Anti-pinch or obstruction</td><td>Clear obstruction; confirm safety and retry</td></tr>
+<tr><td><code>RS485_FAULT</code></td><td>IO communication fault</td><td>Check connection/power; wait or restart</td></tr>
+<tr><td><code>USB_INSERT_FAIL</code></td><td>USB insertion failed</td><td>Check USB insert mechanism and fixture</td></tr>
+<tr><td><code>USB_RETRACT_FAIL</code></td><td>USB retraction failed</td><td>Check USB retract mechanism and fixture</td></tr>
+<tr><td><code>IO_WRITE_FAIL</code></td><td>Actuator output failed</td><td>Check IO module, power, and cables</td></tr>
 </tbody>
 </table>
-<div class="section-title">6. 自定义命令</div>
-<p>“自定义命令”页可手动输入 SCPI 指令，适合维护和联调使用。</p>
-<p>使用方式：</p>
+<div class="section-title">6. Custom Commands</div>
+<p>Use &quot;Custom Command&quot; for manual SCPI during maintenance/integration.</p>
+<p>Usage:</p>
 <ol class="small-list">
-<li>在输入框中输入完整指令，例如 <code>*IDN?</code>。</li>
-<li>点击“发送”或按 Enter。</li>
-<li>在下方日志区查看响应。</li>
-<li>命令历史可点击重用。</li>
+<li>Enter a command, e.g. <code>*IDN?</code>.</li>
+<li>Click &quot;Send&quot; or press Enter.</li>
+<li>View the lower log response.</li>
+<li>Click history to reuse.</li>
 </ol>
-<p>普通客户日常使用不需要手动输入指令。详细指令含义请参考随包提供的《PinProbe A1 箱体控制 SCPI 指令说明》。</p>
-<div class="section-title">7. 压力测试</div>
-<p>“压力测试”页用于批量循环发送指令，主要用于出厂验证、老化测试或售后复现问题。</p>
-<p>建议：</p>
+<p>Daily use needs no manual input. See the bundled SCPI Command Reference.</p>
+<div class="section-title">7. Stress Test</div>
+<p>&quot;Stress Test&quot; loops commands for factory check, aging test, or issue replay.</p>
+<p>Recommendations:</p>
 <table class="compact">
-<thead><tr><th>项目</th><th>建议值</th></tr></thead>
+<thead><tr><th>Item</th><th>Recommended Value</th></tr></thead>
 <tbody>
-<tr><td>命令间隔</td><td>不低于 <code>500 ms</code></td></tr>
-<tr><td>循环次数</td><td>客户现场验证建议设置有限次数</td></tr>
-<tr><td>超时时间</td><td>根据设备动作时长设置，门动作相关命令建议预留足够时间</td></tr>
+<tr><td>Command interval</td><td>No lower than <code>500 ms</code></td></tr>
+<tr><td>Loop count</td><td>Use finite count for site verification</td></tr>
+<tr><td>Timeout</td><td>Set by action duration; reserve door-command time</td></tr>
 </tbody>
 </table>
-<p>压力测试运行期间，程序会暂停部分自动轮询，以减少串口冲突。测试结束后可重新开启“自动轮询”。</p>
+<p>During stress test, some auto polling is paused to reduce serial conflicts. Re-enable &quot;Auto Poll&quot; after testing.</p>
   </div>
   <div class="page-footer">
     <span>Accurate · Simple · Fast · Agile | General Test Systems Inc.</span>
-    <span>PinProbe A1 操作说明 | 4 / 5</span>
+    <span>PinProbe A1 Operation Guide | 4 / 5</span>
   </div>
 </div>
 <!-- P5 -->
 <div class="page">
   <div class="page-header">
     <div>
-      <h1>8. 固件升级</h1>
-      <div class="subtitle">PinProbe A1 箱体控制程序操作说明</div>
+      <h1>8. Firmware Upgrade</h1>
+      <div class="subtitle">PinProbe A1 Box Control Program Operation Guide</div>
     </div>
     <svg class="logo" viewBox="4400 6500 18750 3520" role="img" aria-label="GTS"><use href="#gts-logo"></use></svg>
     <div class="doc-meta">
@@ -447,44 +447,50 @@
     </div>
   </div>
   <div class="main">
-<div class="section-title">8. 固件升级</div>
-<p>“固件升级”页用于 OTA 升级。客户现场如无技术支持指导，不建议自行升级。</p>
-<p>基本流程：</p>
+<div class="section-title">8. Firmware Upgrade</div>
+<p>The &quot;Firmware Upgrade&quot; tab is for OTA upgrade. Customer sites should not upgrade without technical support guidance.</p>
+<p>Basic procedure:</p>
 <ol class="small-list">
-<li>点击“选择...”选择 <code>.bin</code> 固件文件。</li>
-<li>确认程序显示的文件大小和 CRC32 信息正常。</li>
-<li>点击“完整验证”，程序会自动完成上传、校验、提交和重启后的状态检查。</li>
-<li>等待日志提示“完整验证通过”，再继续后续操作。</li>
+<li>Click &quot;Select...&quot; and choose the <code>.bin</code> firmware file.</li>
+<li>Confirm displayed file size and CRC32 information are normal.</li>
+<li>Click &quot;Full Verification&quot;; the program completes upload, verification, commit, and post-reboot status check.</li>
+<li>Wait for &quot;Full verification passed&quot; in logs before continuing.</li>
 </ol>
-<p>“开始上传”和“提交升级”用于技术支持分步排查，客户现场优先使用“完整验证”。</p>
-<figure class="doc-image"><img src="file:///E:/OneDrive/4.Code/STM32/PinProbeA1/STM32F103RCT6_PinprobeA1/Doc/assets/pinprobe_gui_ota.png" alt="固件升级页面"><figcaption>固件升级页面</figcaption></figure>
-<p>注意事项：</p>
+<p>&quot;Start Upload&quot; and &quot;Commit Upgrade&quot; are for technical support troubleshooting; customer sites should use &quot;Full Verification&quot; first.</p>
+<figure class="doc-image"><img src="file:///E:/OneDrive/4.Code/STM32/PinProbeA1/STM32F103RCT6_PinprobeA1/Doc/assets/烧录区域.png" alt="Firmware upgrade page"><figcaption>Firmware upgrade page</figcaption></figure>
+<p>Notes:</p>
 <table class="compact">
-<thead><tr><th>注意项</th><th>说明</th></tr></thead>
+<thead><tr><th>Notice Item</th><th>Description</th></tr></thead>
 <tbody>
-<tr><td>固件文件</td><td>必须选择 PinProbe A1 App 固件 <code>.bin</code> 文件</td></tr>
-<tr><td>供电</td><td>升级过程中不得断电</td></tr>
-<tr><td>串口</td><td>升级过程中不要断开串口</td></tr>
-<tr><td>操作</td><td>升级过程中不要同时进行门、USB、锁等动作</td></tr>
-<tr><td>失败处理</td><td>若升级失败，请导出日志并联系技术支持</td></tr>
+<tr><td>Firmware file</td><td>Must select a PinProbe A1 App firmware <code>.bin</code> File</td></tr>
+<tr><td>Power</td><td>Do not power off during upgrade</td></tr>
+<tr><td>Serial port</td><td>Do not disconnect serial port during upgrade</td></tr>
+<tr><td>Operation</td><td>Do not perform door, USB, lock, or other actions during upgrade</td></tr>
+<tr><td>Failure Handling</td><td>If upgrade fails, export logs and contact technical support</td></tr>
 </tbody>
 </table>
-<div class="section-title">9. 外发包文件说明</div>
+<div class="section-title">9. Delivery Package Files</div>
 <table class="compact">
-<thead><tr><th>文件</th><th>说明</th></tr></thead>
+<thead><tr><th>File</th><th>Description</th></tr></thead>
 <tbody>
-<tr><td><code>PinProbeA1箱体控制程序.exe</code></td><td>箱体控制上位机程序</td></tr>
-<tr><td><code>PinProbeA1箱体控制程序操作说明_客户版_20260728.pdf</code></td><td>本操作说明</td></tr>
-<tr><td><code>PinProbe A1 箱体控制 SCPI 指令说明20260728.pdf</code></td><td>SCPI 指令说明</td></tr>
+<tr><td><code>PinProbeA1 Box Control Program.exe</code></td><td>Box control host program</td></tr>
+<tr><td><code>PinProbeA1 Box Control Program Operation Guide Customer 20260728.pdf</code></td><td>This operation guide</td></tr>
+<tr><td><code>PinProbe A1 Box Control SCPI Command Reference 20260728.pdf</code></td><td>SCPI command reference</td></tr>
 </tbody>
 </table>
-<div class="section-title">10. 推荐操作顺序</div>
-<p>运行程序 → 刷新并选择串口 → 点击“连接” → 点击“查询设备” → 点击“读锁状态”和“读系统状态” → 按现场需求执行解锁、开门、关门、USB 自动或手动控制；出现异常时导出日志并反馈。</p>
+<div class="section-title">10. Recommended Operation Sequence</div>
+<p>Run program -> refresh and select serial port -> click &quot;Connect&quot; -> click &quot;Query Device&quot; -> click &quot;Read Lock State&quot; and &quot;Read System State&quot; -> perform unlock, open door, close door, USB automatic or manual control as required; export logs if an exception occurs.</p>
   </div>
   <div class="page-footer">
     <span>Accurate · Simple · Fast · Agile | General Test Systems Inc.</span>
-    <span>PinProbe A1 操作说明 | 5 / 5</span>
+    <span>PinProbe A1 Operation Guide | 5 / 5</span>
   </div>
 </div>
 </body>
 </html>
+
+
+
+
+
+

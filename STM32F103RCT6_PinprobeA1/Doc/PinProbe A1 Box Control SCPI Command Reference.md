@@ -242,6 +242,8 @@ CONFigure:ESTOP:TYPE?
 |`OFF`|Risk mode disabled|
 |`ON`|Risk mode enabled|
 
+> Recommended input air pressure: about `0.33 MPa`; set the electronic pressure gauge threshold to about `0.3 MPa`.
+
 ### Example
 
 ```scpi
