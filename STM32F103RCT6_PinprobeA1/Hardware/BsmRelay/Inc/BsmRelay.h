@@ -32,6 +32,7 @@ typedef enum {
     door_button2        = 0x0400,
     stop_button         = 0x0800,
     power_button        = 0x1000,
+    dut_sensor          = 0x2000,
 }inputIO;
 
 typedef enum{

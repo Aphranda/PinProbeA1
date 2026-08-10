@@ -635,6 +635,29 @@ static scpi_result_t SCPI_ReadUsbAutoQ(scpi_t *context)
     return SCPI_RES_OK;
 }
 
+static scpi_result_t SCPI_ConfigureDutAuto(scpi_t *context)
+{
+    int32_t param;
+    if (!SCPI_ParamChoice(context, risk_mode_source, &param, TRUE))
+        return SCPI_RES_ERR;
+    if (Flash_SetDutAutoEnable((uint8_t)(param != 0)) != FLASH_OK)
+        PUSH_ERR(context, -320 /*Storage fault*/, "Flash write");
+    if (Flash_Save() != FLASH_OK)
+        PUSH_ERR(context, -320 /*Storage fault*/, "Flash save");
+    const char *name;
+    SCPI_ChoiceToName(risk_mode_source, param, &name);
+    SCPI_ResultCharacters(context, name, strlen(name));
+    return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_ReadDutAutoQ(scpi_t *context)
+{
+    const char *name;
+    SCPI_ChoiceToName(risk_mode_source, Flash_GetDutAutoEnable() ? 1 : 0, &name);
+    SCPI_ResultCharacters(context, name, strlen(name));
+    return SCPI_RES_OK;
+}
+
 /// @brief 查询所有IO状态（输入+输出）
 /// @note 命令: READ:IO:ALL?
 ///       返回: IN:0xHH,0xHH OUT:0xHH,0xHH（16进制原始值）
@@ -647,6 +670,17 @@ static scpi_result_t SCPI_ReadIOAll(scpi_t *context)
     snprintf(buf, sizeof(buf), "IN:0x%02X,0x%02X OUT:0x%02X,0x%02X",
              io.raw_in_lo, io.raw_in_hi, io.raw_out_lo, io.raw_out_hi);
     SCPI_ResultCharacters(context, buf, strlen(buf));
+    return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_ReadDutStateQ(scpi_t *context)
+{
+    Vector_IOState_t io;
+    (void)RamVector_ReadLocalIO(&io);
+
+    /* raw_in_hi 对应 IN[1]，这里按 8 位位图判断 DUT 到位传感 */
+    const char *name = ((io.raw_in_hi & (uint8_t)(dut_sensor >> 8U)) != 0U) ? "INPOS" : "OUTPOS";
+    SCPI_ResultCharacters(context, name, strlen(name));
     return SCPI_RES_OK;
 }
 
@@ -1185,6 +1219,10 @@ const scpi_command_t scpi_commands[] = {
         .callback = SCPI_ReadIOAll,
     },
     {
+        .pattern = "READ:DUT:STATe?",
+        .callback = SCPI_ReadDutStateQ,
+    },
+    {
         .pattern = "CONFigure:ESTOP:TYPE",
         .callback = SCPI_ConfigureEstopType,
     },
@@ -1215,6 +1253,14 @@ const scpi_command_t scpi_commands[] = {
     {
         .pattern = "READ:USB:AUTO?",
         .callback = SCPI_ReadUsbAutoQ,
+    },
+    {
+        .pattern = "CONFigure:DUT:AUTO",
+        .callback = SCPI_ConfigureDutAuto,
+    },
+    {
+        .pattern = "READ:DUT:AUTO?",
+        .callback = SCPI_ReadDutAutoQ,
     },
     /* 调试开关 (运行时控制, 默认 OFF) */
     {

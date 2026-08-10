@@ -92,6 +92,7 @@ VectorDebugFlags_t vector_debug_flags = {
 #define IN_DOOR_BTN_ANY  (IN_DOOR_BTN1 | IN_DOOR_BTN2)
 #define IN_ESTOP_BTN    0x08   /* 急停按钮 (NC常闭或NO常开, Flash可配) */
 #define IN_POWER_BTN    0x10   /* 电源按钮: 长按切换锁定/解锁 */
+#define IN_DUT_SENSOR   0x20   /* DUT 到位传感: 对应 BsmRelay.h 的 dut_sensor */
 
 /* ── 输出低字节 OUT[0] (执行器) ── */
 #define OUT_DOOR_OPEN   0x01   /* 气缸伸出 → 门上升 (开门) */
@@ -111,6 +112,7 @@ VectorDebugFlags_t vector_debug_flags = {
 #define IS_BOTH_BTN(h)    (((h) & IN_DOOR_BTN_ANY) == IN_DOOR_BTN_ANY)  /* 两个门按钮同时按下? */
 #define IS_ESTOP(h)       ((h) & IN_ESTOP_BTN)      /* 急停按钮触点闭合? (NO模式) */
 #define IS_POWER_BTN(h)   ((h) & IN_POWER_BTN)      /* 电源按钮按下? */
+#define IS_DUT_INPLACE(h) ((h) & IN_DUT_SENSOR)     /* DUT 到位? */
 #define IS_UNLOCKED(o)    ((o) & OUT_POWER)          /* 系统已解锁? */
 #define IS_DOOR_OPENING(o)  ((o) & OUT_DOOR_OPEN)    /* 气缸正在伸出? */
 #define IS_DOOR_CLOSING(o)  ((o) & OUT_DOOR_CLOSE)   /* 气缸正在回缩? */
@@ -335,6 +337,7 @@ void StateVector_Input(void)
         ? IS_ESTOP(in_hi)           /* NO 模式: bit=1 → 触发 */
         : !IS_ESTOP(in_hi);         /* NC 模式: bit=0 → 触发 (默认) */
     uint8_t usb_auto_enabled = Flash_GetUsbAutoEnable();
+    uint8_t dut_auto_enabled = usb_auto_enabled ? Flash_GetDutAutoEnable() : 0U;
     if (!usb_auto_enabled) {
         close_pending_after_usb = 0U;
     }
@@ -902,6 +905,7 @@ void StateVector_Input(void)
         if (system_status == V_STATE_READY) {
             uint8_t usb_inserted = (!usb_auto_enabled ||
                                     (IS_USB_UP(in_lo) && !IS_USB_DOWN(in_lo))) ? 1U : 0U;
+            uint8_t dut_ready = (!dut_auto_enabled || IS_DUT_INPLACE(in_hi)) ? 1U : 0U;
 
             if (usb_auto_enabled && close_pending_after_usb && usb_inserted &&
                 !IS_DOOR_CLOSING(out_lo) && RamVector_GetCylinderCmd() == VCMD_NONE) {
@@ -920,7 +924,7 @@ void StateVector_Input(void)
             if (IS_BOTH_BTN(in_hi) && door_close_confirm_tick &&
                 ((now - door_close_confirm_tick) >= DOOR_CLOSE_CONFIRM_MS) && !release_start_tick) {
                 if (usb_auto_enabled && !usb_inserted) {
-                    if (!usb_fault && !IS_USB_INSERTING(out_lo) &&
+                    if (dut_ready && !usb_fault && !IS_USB_INSERTING(out_lo) &&
                         RamVector_GetCylinderCmd() == VCMD_NONE) {
                         RamVector_PostCylinder(VCMD_CYLINDER2_CLOSE, CMD_PRIO_USER);
                         close_pending_after_usb = 1U;

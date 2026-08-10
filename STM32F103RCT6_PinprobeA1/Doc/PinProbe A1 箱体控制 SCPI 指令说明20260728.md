@@ -215,6 +215,7 @@ READ:LED:MAP?
 | ---------------------- | ---- | ------------------------------ | -------------------------- |
 | `READ:SYSTem:STATe?` |      | [系统状态](#系统状态返回值)     | 查询系统状态               |
 | `READ:IO:ALL?`       |      | `IN:0xHH,0xHH OUT:0xHH,0xHH` | 查询全部原始输入和输出状态 |
+| `READ:DUT:STATe?`    |      | `INPOS` / `OUTPOS`             | 查询 DUT 到位状态          |
 
 ### 系统状态返回值
 
@@ -233,7 +234,10 @@ READ:LED:MAP?
 ```scpi
 READ:SYSTem:STATe?
 READ:IO:ALL?
+READ:DUT:STATe?
 ```
+
+> `READ:DUT:STATe?` 读取 `dut_sensor`，`INPOS` 表示 DUT 到位，`OUTPOS` 表示 DUT 未到位。
 
 ## 急停、风险模式与 Boot 诊断指令
 

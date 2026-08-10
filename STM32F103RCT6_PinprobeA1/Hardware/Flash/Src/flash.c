@@ -28,6 +28,7 @@
 #define FLASH_LED_IO_MIN            5U
 #define FLASH_LED_IO_MAX            7U
 #define FLASH_VERSION_USB_AUTO      0x00020003UL
+#define FLASH_VERSION_DUT_AUTO      0x00020004UL
 
 /**
  * @brief CRC32多项式 (标准IEEE 802.3)
@@ -127,6 +128,9 @@ static Flash_Status_t Flash_VerifyConfig(const Flash_Config_t *cfg)
         return FLASH_ERR_PARAM;
 
     if (cfg->version >= FLASH_VERSION_USB_AUTO && cfg->usb_auto_enable > 1U)
+        return FLASH_ERR_PARAM;
+
+    if (cfg->version >= FLASH_VERSION_DUT_AUTO && cfg->dut_auto_enable > 1U)
         return FLASH_ERR_PARAM;
 
     return FLASH_OK;
@@ -282,6 +286,7 @@ void Flash_LoadDefaults(void)
     config_cache.led_red_io = 6U;
     config_cache.led_yellow_io = 7U;
     config_cache.usb_auto_enable = 0U;
+    config_cache.dut_auto_enable = 0U;
 
     /* 保留字段已初始化为0 (memset) */
 
@@ -319,8 +324,16 @@ Flash_Status_t Flash_Init(void)
     if (status == FLASH_OK)
     {
         config_valid = 1;
+        uint8_t upgrade = 0U;
         if (config_cache.version < FLASH_VERSION_USB_AUTO) {
             config_cache.usb_auto_enable = 0U;
+            upgrade = 1U;
+        }
+        if (config_cache.version < FLASH_VERSION_DUT_AUTO) {
+            config_cache.dut_auto_enable = 0U;
+            upgrade = 1U;
+        }
+        if (upgrade) {
             config_cache.version = FLASH_CONFIG_VERSION;
             status = Flash_Save();
         }
@@ -611,6 +624,18 @@ Flash_Status_t Flash_SetBootDiagUart(uint8_t enable)
 uint8_t Flash_GetBootDiagUart(void)
 {
     return config_cache.boot_diag_uart ? 1U : 0U;
+}
+
+Flash_Status_t Flash_SetDutAutoEnable(uint8_t enable)
+{
+    if (enable > 1U) return FLASH_ERR_PARAM;
+    config_cache.dut_auto_enable = enable;
+    return FLASH_OK;
+}
+
+uint8_t Flash_GetDutAutoEnable(void)
+{
+    return config_cache.dut_auto_enable ? 1U : 0U;
 }
 
 Flash_Status_t Flash_SetUsbAutoEnable(uint8_t enable)

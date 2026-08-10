@@ -254,6 +254,12 @@ READ:LED:STATe?         → GREEN
 |---|------|------|----------|------|------|
 | 26 | `READ:SYSTem:STATe?` | 查询 | `SCPI_ReadSystemState` | — | 查询系统整体运行状态 |
 
+### DUT 到位查询
+
+| 指令 | 类型 | 回调函数 | 响应 | 说明 |
+|------|------|----------|------|------|
+| `READ:DUT:STATe?` | 查询 | `SCPI_ReadDutStateQ` | `INPOS` / `OUTPOS` | 查询 DUT 是否到位 |
+
 ### 返回值
 
 | 返回值 | 说明 |
@@ -275,6 +281,7 @@ READ:SYSTem:STATe?    → IDLE
 READ:SYSTem:STATe?    → RUNNING
 READ:SYSTem:STATe?    → COMPLETE
 READ:SYSTem:STATe?    → EMERGENCY
+READ:DUT:STATe?       → INPOS
 ```
 
 ---
