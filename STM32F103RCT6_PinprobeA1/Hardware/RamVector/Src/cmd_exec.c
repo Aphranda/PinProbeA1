@@ -5,6 +5,15 @@
 #include "cmd_exec.h"
 #include "BsmRelay.h"
 #include "app_log.h"
+#include "flash.h"
+
+#define CMD_USB_IN_SENSOR       0x08U
+#define CMD_USB_OUT_SENSOR      0x10U
+#define CMD_OUT_USB_INSERT      0x04U
+#define CMD_OUT_USB_RETRACT     0x08U
+#define CMD_USB_FAIL_SENSOR_CONFLICT  2U
+#define CMD_USB_FAIL_DUAL_OUTPUT      3U
+#define CMD_USB_FAIL_IO_MISMATCH      4U
 
 /* 外部 SCPI choice 表 */
 extern scpi_choice_def_t cylinder_source[];
@@ -14,6 +23,52 @@ extern scpi_choice_def_t led_source[];
 void CmdExec_Init(void)
 {
     /* nothing yet */
+}
+
+static uint8_t CmdExec_UsbStartAllowed(Vector_Cmd_t cmd, const Vector_IOState_t *io)
+{
+    uint8_t in_lo = io->raw_in_lo;
+    uint8_t out_lo = io->raw_out_lo;
+    uint8_t usb_inserted = ((in_lo & CMD_USB_IN_SENSOR) && !(in_lo & CMD_USB_OUT_SENSOR)) ? 1U : 0U;
+    uint8_t usb_retracted = ((in_lo & CMD_USB_OUT_SENSOR) && !(in_lo & CMD_USB_IN_SENSOR)) ? 1U : 0U;
+    uint8_t usb_inserting = (out_lo & CMD_OUT_USB_INSERT) ? 1U : 0U;
+    uint8_t usb_retracting = (out_lo & CMD_OUT_USB_RETRACT) ? 1U : 0U;
+
+    if (!Flash_GetUsbAutoEnable() ||
+        (cmd != VCMD_CYLINDER2_CLOSE && cmd != VCMD_CYLINDER2_OPEN)) {
+        return 1U;
+    }
+
+    if ((in_lo & CMD_USB_IN_SENSOR) && (in_lo & CMD_USB_OUT_SENSOR)) {
+        AppLog_TimedEvent(cmd == VCMD_CYLINDER2_CLOSE ?
+                          APPLOG_EVT_USB_INSERT_FAIL : APPLOG_EVT_USB_RETRACT_FAIL,
+                          0U,
+                          CMD_USB_FAIL_SENSOR_CONFLICT);
+        return 0U;
+    }
+
+    if (usb_inserting && usb_retracting) {
+        AppLog_TimedEvent(cmd == VCMD_CYLINDER2_CLOSE ?
+                          APPLOG_EVT_USB_INSERT_FAIL : APPLOG_EVT_USB_RETRACT_FAIL,
+                          0U,
+                          CMD_USB_FAIL_DUAL_OUTPUT);
+        return 0U;
+    }
+
+    if (cmd == VCMD_CYLINDER2_CLOSE) {
+        if ((usb_retracting && !usb_retracted) ||
+            (!usb_inserting && !usb_retracting && !usb_retracted && !usb_inserted)) {
+            AppLog_TimedEvent(APPLOG_EVT_USB_INSERT_FAIL, 0U, CMD_USB_FAIL_IO_MISMATCH);
+            return 0U;
+        }
+    } else {
+        if (!usb_inserting && !usb_retracting && !usb_retracted && !usb_inserted) {
+            AppLog_TimedEvent(APPLOG_EVT_USB_RETRACT_FAIL, 0U, CMD_USB_FAIL_IO_MISMATCH);
+            return 0U;
+        }
+    }
+
+    return 1U;
 }
 
 static void CmdExec_Lock(Vector_Cmd_t cmd)
@@ -55,11 +110,17 @@ static void CmdExec_Cylinder(Vector_Cmd_t cmd)
         ok = Cylinder_Write(1, cylinder_source[0]); /* CLOSE */
         break;
     case VCMD_CYLINDER2_OPEN:
+        if (!CmdExec_UsbStartAllowed(cmd, &io)) {
+            return;
+        }
         if ((out_lo & 0x08U) == 0U)
             AppLog_Action(APPLOG_ACT_CYLINDER_OPEN, 0, 2);
         ok = Cylinder_Write(2, cylinder_source[0]); /* USB 拔出/回退 */
         break;
     case VCMD_CYLINDER2_CLOSE:
+        if (!CmdExec_UsbStartAllowed(cmd, &io)) {
+            return;
+        }
         if ((out_lo & 0x04U) == 0U)
             AppLog_Action(APPLOG_ACT_CYLINDER_CLOSE, 0, 2);
         ok = Cylinder_Write(2, cylinder_source[1]); /* USB 插入 */

@@ -2171,6 +2171,9 @@ class PinProbeApp:
         """写入日志 (VS Code 风格着色)"""
         if not self._widget_exists("log_text"):
             return
+        old_state = str(self.log_text.cget("state"))
+        if old_state == tk.DISABLED:
+            self.log_text.configure(state=tk.NORMAL)
         ts = datetime.now().strftime("%H:%M:%S")
         self.log_text.insert(tk.END, f"[{ts}] ", "TIME")
         self.log_text.insert(tk.END, f"{message}\n", tag)
@@ -2179,9 +2182,18 @@ class PinProbeApp:
             self.log_text.delete("1.0", f"{line_count - MAX_LOG_LINES}.0")
         if self.auto_scroll.get():
             self.log_text.see(tk.END)
+        if old_state == tk.DISABLED:
+            self.log_text.configure(state=tk.DISABLED)
 
     def _clear_log(self):
+        if not self._widget_exists("log_text"):
+            return
+        old_state = str(self.log_text.cget("state"))
+        if old_state == tk.DISABLED:
+            self.log_text.configure(state=tk.NORMAL)
         self.log_text.delete("1.0", tk.END)
+        if old_state == tk.DISABLED:
+            self.log_text.configure(state=tk.DISABLED)
 
     def _clear_device_log(self):
         self._send_scpi("CONFigure:LOG:CLEar")
