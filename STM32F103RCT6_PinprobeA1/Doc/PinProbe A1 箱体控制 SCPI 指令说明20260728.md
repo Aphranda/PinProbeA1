@@ -1,6 +1,6 @@
 # PinProbe A1 箱体控制 SCPI 指令说明
 
-> 文档更新时间：`2026-07-28`。本文用于客户侧上位机联调、设备控制与维护参考。
+> 文档更新时间：`2026-08-11`。本文用于客户侧上位机联调、设备控制与维护参考。
 
 ---
 
@@ -106,6 +106,8 @@ CONFigure:BAUDrate 115200
 | `READ:CYLInder2:STATe?`   |                  | [执行器状态](#执行器状态)    | 查询 USB 插拔机构当前状态             |
 | `CONFigure:USB:AUTO`      | `OFF` / `ON`     | `OFF` / `ON`                 | USB 自动拔插流程出厂配置项，禁止修改；出厂已按设备硬件配置完成 |
 | `READ:USB:AUTO?`          |                  | `OFF` / `ON`                 | 查询 USB 自动拔插流程出厂配置，确认当前设备是否启用该流程 |
+| `CONFigure:DUT:AUTO`      | `OFF` / `ON`     | `OFF` / `ON`                 | 配置 DUT 到位检测是否参与 USB 自动流程，并保存到 Flash |
+| `READ:DUT:AUTO?`          |                  | `OFF` / `ON`                 | 查询 DUT 到位检测是否参与 USB 自动流程 |
 
 > USB 动作按连接状态定义：`CYLInder2 CLOSE` 表示插入/连接 USB，`CYLInder2 OPEN` 表示拔出/回退 USB。
 
@@ -123,17 +125,20 @@ CONFigure:BAUDrate 115200
 
 ### USB 自动流程
 
-`CONFigure:USB:AUTO ON` 后，设备会把 USB 插入、回退动作绑定到门流程：
+`CONFigure:USB:AUTO ON` 后，设备会把 USB 插入、回退动作绑定到门流程；`CONFigure:DUT:AUTO ON` 时，DUT 到位检测参与自动流程：
 
 | 场景 | 自动动作 |
 | ---- | -------- |
-| `READY` 状态下双按钮确认满 500 ms | 先执行 `CONFigure:CYLInder2 CLOSE` 插入 USB；确认 USB 插入到位后，才自动执行关门 |
+| `CONFigure:USB:AUTO OFF` | USB 自动拔插和 DUT 到位检测全部旁路，按普通门流程执行 |
+| `CONFigure:USB:AUTO ON` 且 `CONFigure:DUT:AUTO OFF` | DUT 到位检测不参与自动流程；双按钮确认后直接执行 USB 自动插入流程 |
+| `CONFigure:USB:AUTO ON` 且 `CONFigure:DUT:AUTO ON` | 先检查 `dut_sensor`。DUT 到位后才执行 `CONFigure:CYLInder2 CLOSE` 插入 USB；确认 USB 插入到位后，才自动执行关门 |
+| DUT 未到位 | 不执行 USB 插入和关门，系统保持等待；`READ:DUT:STATe?` 仍可查询实际传感器状态 |
 | USB 插入未到位或传感异常 | 不执行关门；记录 `USB_INSERT_FAIL`。门仍在打开位置时会先执行 `CONFigure:CYLInder2 OPEN` 回退 USB，并红灯快闪提示 |
 | `COMPLETE` 状态下按键开门 | 先自动开门；门打开到位并回到 `IDLE` 后，若 USB 未回退到位，再执行 `CONFigure:CYLInder2 OPEN` 回退 USB |
 | USB 回退未到位或输出异常 | 记录 `USB_RETRACT_FAIL`，红灯快闪提示；必要时退回 `IDLE` 并等待按钮释放后才能重新进入关门准备 |
 | 诊断兜底（正常流程不应出现） | 若关门完成后仍检测到 USB 未插到位，记录 `USB_INSERT_FAIL`，黄灯闪烁提示；USB 到位后自动恢复绿灯 |
 
-> `CONFigure:USB:AUTO ON/OFF` 为出厂配置项，禁止修改；出厂时已按设备硬件配置完成。带 USB 气缸的设备配置为 `ON`，设备会自动接管 USB 插入/回退流程：关门前先插入 USB，插入到位后才关门；开门到位后自动回退 USB。不带 USB 气缸的设备配置为 `OFF`。客户侧建议使用 `READ:USB:AUTO?` 确认当前出厂配置。
+> `CONFigure:USB:AUTO ON/OFF` 为出厂配置项，禁止修改；出厂时已按设备硬件配置完成。带 USB 气缸的设备配置为 `ON`，不带 USB 气缸的设备配置为 `OFF`。`CONFigure:DUT:AUTO ON/OFF` 为现场配置项，保存到 Flash；仅在 `USB:AUTO ON` 时决定 DUT 到位检测是否参与自动流程。`READ:DUT:STATe?` 始终读取实际 `dut_sensor`，查询不受 `USB:AUTO` 或 `DUT:AUTO` 旁路影响。
 
 ### 示例
 
@@ -145,6 +150,9 @@ CONFigure:CYLInder2 CLOSE
 CONFigure:CYLInder2 OPEN
 READ:CYLInder2:STATe?
 READ:USB:AUTO?
+CONFigure:DUT:AUTO ON
+READ:DUT:AUTO?
+READ:DUT:STATe?
 ```
 
 ## 锁定与指示灯指令
@@ -237,7 +245,7 @@ READ:IO:ALL?
 READ:DUT:STATe?
 ```
 
-> `READ:DUT:STATe?` 读取 `dut_sensor`，`INPOS` 表示 DUT 到位，`OUTPOS` 表示 DUT 未到位。
+> `READ:DUT:STATe?` 读取 `dut_sensor`，`INPOS` 表示 DUT 到位，`OUTPOS` 表示 DUT 未到位；该查询始终有效，不受自动流程旁路设置影响。`READ:DUT:AUTO?` 查询 DUT 到位检测是否参与 USB 自动流程。
 
 ## 急停、风险模式与 Boot 诊断指令
 
@@ -508,8 +516,8 @@ CONFigure:LOG:CLEar
 | 基础   | `*CLS`, `*IDN?`, `*RST`, `*STB?`, `*WAI`, `*OPC?`                                                                                                                                      |
 | 系统   | `SYSTem:ERRor[:NEXT]?`, `SYSTem:ERRor:COUNt?`, `SYSTem:VERSion?`, `SYSTem:UPTime?`, `SYSTem:REBoot`, `SYSTem:FLASH:ID?`                                                                |
 | IDN    | `SYSTem:IDN1`, `SYSTem:IDN1?`, `SYSTem:IDN2`, `SYSTem:IDN2?`, `SYSTem:IDN3`, `SYSTem:IDN3?`, `SYSTem:IDN4`, `SYSTem:IDN4?`                                                         |
-| 执行器 | `CONFigure:CYLInder#`, `READ:CYLInder#:STATe?`, `CONFigure:USB:AUTO`, `READ:USB:AUTO?`, `CONFigure:LOCK`, `READ:LOCK:STATe?`, `CONFigure:LED`, `READ:LED:STATe?`, `CONFigure:LED:MAP`, `READ:LED:MAP?` |
-| 状态   | `READ:SYSTem:STATe?`, `READ:IO:ALL?`                                                                                                                                                           |
+| 执行器 | `CONFigure:CYLInder#`, `READ:CYLInder#:STATe?`, `CONFigure:USB:AUTO`, `READ:USB:AUTO?`, `CONFigure:DUT:AUTO`, `READ:DUT:AUTO?`, `CONFigure:LOCK`, `READ:LOCK:STATe?`, `CONFigure:LED`, `READ:LED:STATe?`, `CONFigure:LED:MAP`, `READ:LED:MAP?` |
+| 状态   | `READ:SYSTem:STATe?`, `READ:IO:ALL?`, `READ:DUT:STATe?`                                                                                                                                                           |
 | 配置   | `CONFigure:BAUDrate`, `CONFigure:ESTOP:TYPE`, `READ:ESTOP:TYPE?`, `CONFigure:RISK:MODE`, `READ:RISK:MODE?`, `CONFigure:BOOT:DIAG`, `READ:BOOT:DIAG?`                  |
 | OTA    | `SYSTem:OTA:STATus?`, `SYSTem:OTA:BOOT?`, `SYSTem:OTA:BEGIN`, `SYSTem:OTA:DATA`, `SYSTem:OTA:END`, `SYSTem:OTA:VERify?`, `SYSTem:OTA:COMMit`, `SYSTem:OTA:ABORt`                   |
 | 调试   | `CONFigure:DEBUg:STATe`, `READ:DEBUg:STATe?`, `CONFigure:DEBUg:ACTion`, `READ:DEBUg:ACTion?`, `CONFigure:DEBUg:EVENt`, `READ:DEBUg:EVENt?`, `CONFigure:DEBUg:IO`, `READ:DEBUg:IO?` |
@@ -519,5 +527,6 @@ CONFigure:LOG:CLEar
 
 | 日期 | 新增指令 | 修订内容 |
 | ---- | -------- | -------- |
+| `2026-08-11` | `CONFigure:DUT:AUTO`、`READ:DUT:AUTO?`、`READ:DUT:STATe?` | 增加 DUT 到位检测自动流程参与开关，并明确 `USB:AUTO OFF` 时 USB 自动拔插和 DUT 检测全部旁路；`USB:AUTO ON` 时可独立开关 DUT 检测；DUT 状态查询始终读取实际传感器，不受旁路影响。 |
 | `2026-07-28` | `CONFigure:CYLInder2`、`READ:CYLInder2:STATe?` | 修订 USB 手动控制和状态返回语义：`CLOSE/CLOSED` 表示 USB 插入/连接，`OPEN/OPENED` 表示 USB 拔出/回退；硬件输出动作不变。 |
 | `2026-07-27` | `CONFigure:USB:AUTO`、`READ:USB:AUTO?` | 增加 USB 自动拔插流程相关指令；出厂时已按设备硬件配置完成，禁止修改；带 USB 气缸设备为 `ON`，不带 USB 气缸设备为 `OFF`；客户侧使用 `READ:USB:AUTO?` 确认是否开启。 |

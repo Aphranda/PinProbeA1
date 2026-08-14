@@ -1,5 +1,7 @@
 ## PinProbe A1 Box Control SCPI Command Reference
 
+> Document updated: `2026-08-11`. This document is intended for customer-side host integration, device control, and maintenance reference.
+
 ---
 
 ## Device Information
@@ -88,6 +90,10 @@ CONFigure:BAUDrate 115200
 |--|--|--|
 |`CONFigure:CYLInder2`|`OPEN` / `CLOSE`|Unplug or plug the USB connector|
 |`READ:CYLInder2:STATe?`|[Return Value](#actuator-state)|Query current USB state|
+|`CONFigure:USB:AUTO`|`OFF` / `ON`|Configure factory USB automatic sequence setting; saved to Flash|
+|`READ:USB:AUTO?`||Query the USB automatic sequence setting|
+|`CONFigure:DUT:AUTO`|`OFF` / `ON`|Configure whether DUT presence detection participates in the USB automatic sequence; saved to Flash|
+|`READ:DUT:AUTO?`||Query whether DUT presence detection participates in the USB automatic sequence|
 
 > USB commands are named by connection state: `CYLInder2 CLOSE` plugs/connects USB, and `CYLInder2 OPEN` unplugs/retracts USB.
 
@@ -105,6 +111,22 @@ CONFigure:BAUDrate 115200
 
 For `CYLInder2`, `CLOSING/CLOSED` means USB plugging/plugged, and `OPENING/OPENED` means USB unplugging/unplugged.
 
+### USB Automatic Sequence
+
+`CONFigure:USB:AUTO ON` links USB insertion/retraction to the door sequence. When `CONFigure:DUT:AUTO ON`, DUT presence detection participates in the automatic sequence.
+
+|Scenario|Automatic Action|
+|--|--|
+|`CONFigure:USB:AUTO OFF`|Bypass USB automatic insertion/retraction and DUT presence detection; use the normal door sequence|
+|`CONFigure:USB:AUTO ON` and `CONFigure:DUT:AUTO OFF`|DUT presence detection does not participate; after button confirmation, run the USB automatic insertion sequence directly|
+|`CONFigure:USB:AUTO ON` and `CONFigure:DUT:AUTO ON`|Check `dut_sensor` first; insert USB only after the DUT is in position, then close after USB insertion is confirmed|
+|DUT not in position|Do not insert USB or close the door; keep waiting. `READ:DUT:STATe?` still reports the actual sensor state|
+|USB insertion not reached or sensor fault|Do not close the door; log `USB_INSERT_FAIL`; retract USB if the door is still open; fast-flash red|
+|`COMPLETE` and open-door button pressed|Open the door first; after the door reaches open position and returns to `IDLE`, retract USB if still inserted|
+|USB retraction not reached or output fault|Log `USB_RETRACT_FAIL`; fast-flash red; return to `IDLE` if needed|
+
+> `CONFigure:USB:AUTO` is factory configured by device hardware. When `USB:AUTO OFF`, DUT detection is bypassed in the automatic flow. `CONFigure:DUT:AUTO` is a field setting saved to Flash and is effective only when `USB:AUTO ON`. Query commands are not bypassed: `READ:DUT:STATe?` always reads the actual `dut_sensor`.
+
 ### Example
 
 ```scpi
@@ -114,6 +136,10 @@ CONFigure:CYLInder2 CLOSE    # Plug USB
 CONFigure:CYLInder2 OPEN     # Unplug USB
 READ:CYLInder1:STATe?        # Query door state
 READ:CYLInder2:STATe?        # Query USB state
+READ:USB:AUTO?               # Query USB automatic sequence setting
+CONFigure:DUT:AUTO ON        # Enable DUT detection participation
+READ:DUT:AUTO?               # Query DUT automatic participation
+READ:DUT:STATe?              # Query actual DUT sensor state
 ```
 
 ## Lock Control Commands
@@ -170,6 +196,7 @@ READ:LED:STATe?        # Query LED state
 |Command|Parameter|Description|
 |--|--|--|
 |`READ:SYSTem:STATe?`||Query system state|
+|`READ:DUT:STATe?`|`INPOS` / `OUTPOS`|Query actual DUT presence sensor state|
 
 ### System State Return Values
 
@@ -187,7 +214,10 @@ READ:LED:STATe?        # Query LED state
 
 ```scpi
 READ:SYSTem:STATe?    # Query system state
+READ:DUT:STATe?       # Query actual DUT sensor state
 ```
+
+> `READ:DUT:STATe?` reads `dut_sensor`: `INPOS` means DUT in position, and `OUTPOS` means DUT not in position. This query always remains valid, regardless of `USB:AUTO` or `DUT:AUTO` bypass settings.
 
 ## IO Status Query Command
 

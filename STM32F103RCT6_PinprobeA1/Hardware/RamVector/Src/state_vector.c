@@ -105,8 +105,10 @@ VectorDebugFlags_t vector_debug_flags = {
 /* ── 速查宏: 把位运算封装为布尔语义 ── */
 #define IS_DOOR_UP(v)     ((v) & IN_DOOR_UP)       /* 门在上限位? */
 #define IS_DOOR_DOWN(v)   ((v) & IN_DOOR_DOWN)     /* 门在下限位? */
-#define IS_USB_UP(v)      ((v) & IN_USB_UP)         /* USB 在上位/插入到位? */
-#define IS_USB_DOWN(v)    ((v) & IN_USB_DOWN)       /* USB 在下位/回退到位? */
+#define IS_USB_UP(v)      ((v) & IN_USB_UP)         /* USB 上位: 插入/连接到位 */
+#define IS_USB_DOWN(v)    ((v) & IN_USB_DOWN)       /* USB 下位: 回退/拔出到位 */
+#define IS_USB_INSERTED(v)  (IS_USB_UP(v) && !IS_USB_DOWN(v))
+#define IS_USB_RETRACTED(v) (IS_USB_DOWN(v) && !IS_USB_UP(v))
 #define IS_ANY_LASER(v,h) (((v) & IN_LASER_ANY) || ((h) & IN_LASER4))  /* 任意激光被遮挡? */
 #define IS_ANY_BTN(h)     ((h) & IN_DOOR_BTN_ANY)   /* 任意门按钮按下? */
 #define IS_BOTH_BTN(h)    (((h) & IN_DOOR_BTN_ANY) == IN_DOOR_BTN_ANY)  /* 两个门按钮同时按下? */
@@ -137,6 +139,13 @@ VectorDebugFlags_t vector_debug_flags = {
 #define USB_FAIL_TIMEOUT          1U
 #define USB_FAIL_SENSOR_CONFLICT  2U
 #define USB_FAIL_DUAL_OUTPUT      3U
+#define USB_FAIL_IO_MISMATCH      4U
+#define USB_SENSOR_CONFLICT(v)    (IS_USB_UP(v) && IS_USB_DOWN(v))
+#define USB_OUTPUT_CONFLICT(o)    (IS_USB_INSERTING(o) && IS_USB_RETRACTING(o))
+#define USB_IO_INSERT_OK(v,o)     (IS_USB_INSERTED(v) && !USB_OUTPUT_CONFLICT(o) && !IS_USB_RETRACTING(o))
+#define USB_IO_RETRACT_OK(v,o)    (IS_USB_RETRACTED(v) && !USB_OUTPUT_CONFLICT(o) && !IS_USB_INSERTING(o))
+#define USB_IO_MISMATCH(v,o)      ((IS_USB_INSERTED(v) && IS_USB_RETRACTING(o) && !IS_USB_INSERTING(o)) || \
+                                   (IS_USB_RETRACTED(v) && IS_USB_INSERTING(o) && !IS_USB_RETRACTING(o)))
 
 /*
  * 消抖宏: 连续 DOOR_DEBOUNCE_CNT 次读到高电平才确认, 任一次低电平就复位。
@@ -500,7 +509,7 @@ void StateVector_Input(void)
                 }
             }
 
-            if (IS_USB_UP(in_lo) && IS_USB_DOWN(in_lo)) {
+            if (USB_SENSOR_CONFLICT(in_lo)) {
                 usb_state = VECTOR_CYL_STATE_ERR;
                 if (usb_auto_enabled && !usb_insert_fail_logged &&
                     (usb_inserting || usb_move_dir == VECTOR_CYL_STATE_CLOSING || IS_DOOR_CLOSING(out_lo))) {
@@ -526,7 +535,7 @@ void StateVector_Input(void)
                     usb_retract_fail_logged = 1;
                 }
                 usb_fault = 1;
-            } else if (usb_inserting && usb_retracting) {
+            } else if (USB_OUTPUT_CONFLICT(out_lo)) {
                 usb_state = VECTOR_CYL_STATE_ERR;
                 if (usb_auto_enabled &&
                     (usb_move_dir == VECTOR_CYL_STATE_OPENING || IS_DOOR_OPENING(out_lo)) &&
@@ -551,8 +560,35 @@ void StateVector_Input(void)
                     usb_insert_fail_logged = 1;
                 }
                 usb_fault = 1;
+            } else if (USB_IO_MISMATCH(in_lo, out_lo)) {
+                usb_state = VECTOR_CYL_STATE_ERR;
+                if (usb_auto_enabled &&
+                    (usb_inserting || usb_move_dir == VECTOR_CYL_STATE_CLOSING) &&
+                    !usb_insert_fail_logged) {
+                    uint32_t elapsed = usb_move_start_tick ? (now - usb_move_start_tick) : 0U;
+                    AppLog_TimedEvent(APPLOG_EVT_USB_INSERT_FAIL,
+                                      elapsed,
+                                      USB_FAIL_IO_MISMATCH);
+                    if (IS_DOOR_UP(in_lo)) {
+                        RamVector_PostCylinder(VCMD_CYLINDER2_OPEN, CMD_PRIO_SAFETY);
+                    }
+                    usb_alert_red_request = 1U;
+                    usb_alert_return_idle = 1U;
+                    usb_insert_fail_logged = 1U;
+                } else if (usb_auto_enabled &&
+                           (usb_retracting || usb_move_dir == VECTOR_CYL_STATE_OPENING) &&
+                           !usb_retract_fail_logged) {
+                    uint32_t elapsed = usb_move_start_tick ? (now - usb_move_start_tick) : 0U;
+                    AppLog_TimedEvent(APPLOG_EVT_USB_RETRACT_FAIL,
+                                      elapsed,
+                                      USB_FAIL_IO_MISMATCH);
+                    usb_alert_red_request = 1U;
+                    usb_alert_return_idle = 1U;
+                    usb_retract_fail_logged = 1U;
+                }
+                usb_fault = 1;
             } else if (usb_inserting) {
-                if (IS_USB_UP(in_lo)) {
+                if (IS_USB_INSERTED(in_lo)) {
                     usb_state = VECTOR_CYL_STATE_CLOSED;
                     usb_move_start_tick = 0;
                     usb_move_dir = 0;
@@ -581,7 +617,7 @@ void StateVector_Input(void)
                     usb_state = VECTOR_CYL_STATE_CLOSING;
                 }
             } else if (usb_retracting) {
-                if (IS_USB_DOWN(in_lo)) {
+                if (IS_USB_RETRACTED(in_lo)) {
                     usb_state = VECTOR_CYL_STATE_OPENED;
                     usb_move_start_tick = 0;
                     usb_move_dir = 0;
@@ -604,13 +640,13 @@ void StateVector_Input(void)
                 } else {
                     usb_state = VECTOR_CYL_STATE_OPENING;
                 }
-            } else if (IS_USB_UP(in_lo)) {
+            } else if (USB_IO_INSERT_OK(in_lo, out_lo)) {
                 usb_state = VECTOR_CYL_STATE_CLOSED;
                 usb_move_start_tick = 0;
                 usb_move_dir = 0;
                 usb_fault = 0;
                 usb_insert_fail_logged = 0;
-            } else if (IS_USB_DOWN(in_lo)) {
+            } else if (USB_IO_RETRACT_OK(in_lo, out_lo)) {
                 usb_state = VECTOR_CYL_STATE_OPENED;
                 usb_move_start_tick = 0;
                 usb_move_dir = 0;
@@ -644,7 +680,7 @@ void StateVector_Input(void)
                                     close_pending_after_usb) ? 1U : 0U;
             if (system_status == V_STATE_IDLE &&
                 !ready_intent &&
-                IS_DOOR_UP(in_lo) && !IS_USB_DOWN(in_lo) &&
+                IS_DOOR_UP(in_lo) && !USB_IO_RETRACT_OK(in_lo, out_lo) &&
                 !IS_USB_RETRACTING(out_lo)) {
                 RamVector_PostCylinder(VCMD_CYLINDER2_OPEN, CMD_PRIO_USER);
             }
@@ -702,7 +738,7 @@ void StateVector_Input(void)
                       && ((now - door_close_start_tick) > door_close_default_ms);
         if (limit_ok || risk_ok) {
             uint32_t close_elapsed = now - door_close_start_tick;
-            uint8_t usb_close_inserted = (IS_USB_UP(in_lo) && !IS_USB_DOWN(in_lo)) ? 1U : 0U;
+            uint8_t usb_close_inserted = USB_IO_INSERT_OK(in_lo, out_lo) ? 1U : 0U;
             if (risk_ok && !limit_ok)
                 AppLog_TimedEvent(APPLOG_EVT_RISK_PRESSURE, close_elapsed, 0);
             if (usb_auto_enabled && !usb_close_inserted && !usb_insert_fail_logged) {
@@ -903,13 +939,22 @@ void StateVector_Input(void)
          * 关门从上限位开始 → 记录为 "全行程关门" (用于学习关门时间)。
          */
         if (system_status == V_STATE_READY) {
-            uint8_t usb_inserted = (!usb_auto_enabled ||
-                                    (IS_USB_UP(in_lo) && !IS_USB_DOWN(in_lo))) ? 1U : 0U;
+            uint8_t usb_inserted = (!usb_auto_enabled || USB_IO_INSERT_OK(in_lo, out_lo)) ? 1U : 0U;
+            uint8_t usb_ready_to_insert = USB_IO_RETRACT_OK(in_lo, out_lo) ? 1U : 0U;
+            uint8_t usb_start_blocked = (USB_SENSOR_CONFLICT(in_lo) ||
+                                         USB_OUTPUT_CONFLICT(out_lo) ||
+                                         USB_IO_MISMATCH(in_lo, out_lo) ||
+                                         (!usb_inserted && !usb_ready_to_insert)) ? 1U : 0U;
             uint8_t dut_ready = (!dut_auto_enabled || IS_DUT_INPLACE(in_hi)) ? 1U : 0U;
 
             if (usb_auto_enabled && close_pending_after_usb && usb_inserted &&
                 !IS_DOOR_CLOSING(out_lo) && RamVector_GetCylinderCmd() == VCMD_NONE) {
-                RamVector_PostCylinder(VCMD_CYLINDER_CLOSE, CMD_PRIO_USER);
+                if (dut_ready) {
+                    RamVector_PostCylinder(VCMD_CYLINDER_CLOSE, CMD_PRIO_USER);
+                } else {
+                    AppLog_Event(APPLOG_EVT_DUT_NOT_INPLACE, dut_auto_enabled, system_status);
+                    release_start_tick = now;
+                }
                 close_pending_after_usb = 0U;
             }
 
@@ -923,8 +968,28 @@ void StateVector_Input(void)
             /* 第二阶段: 双按 + 500ms 到 → USB 插入; 插入到位后再执行关门 */
             if (IS_BOTH_BTN(in_hi) && door_close_confirm_tick &&
                 ((now - door_close_confirm_tick) >= DOOR_CLOSE_CONFIRM_MS) && !release_start_tick) {
-                if (usb_auto_enabled && !usb_inserted) {
-                    if (dut_ready && !usb_fault && !IS_USB_INSERTING(out_lo) &&
+                if (!dut_ready) {
+                    AppLog_Event(APPLOG_EVT_DUT_NOT_INPLACE, dut_auto_enabled, system_status);
+                    door_close_confirm_tick = 0; release_start_tick = now;
+                } else if (usb_auto_enabled && !usb_inserted) {
+                    if (usb_start_blocked) {
+                        if (!usb_insert_fail_logged) {
+                            uint8_t reason = USB_FAIL_IO_MISMATCH;
+                            if (USB_SENSOR_CONFLICT(in_lo)) {
+                                reason = USB_FAIL_SENSOR_CONFLICT;
+                            } else if (USB_OUTPUT_CONFLICT(out_lo)) {
+                                reason = USB_FAIL_DUAL_OUTPUT;
+                            }
+                            AppLog_TimedEvent(APPLOG_EVT_USB_INSERT_FAIL, 0U, reason);
+                            usb_insert_fail_logged = 1U;
+                        }
+                        if (IS_DOOR_UP(in_lo)) {
+                            RamVector_PostCylinder(VCMD_CYLINDER2_OPEN, CMD_PRIO_SAFETY);
+                        }
+                        usb_alert_red_request = 1U;
+                        usb_alert_return_idle = 1U;
+                        door_close_confirm_tick = 0; release_start_tick = now;
+                    } else if (!usb_fault && usb_ready_to_insert && !IS_USB_INSERTING(out_lo) &&
                         RamVector_GetCylinderCmd() == VCMD_NONE) {
                         RamVector_PostCylinder(VCMD_CYLINDER2_CLOSE, CMD_PRIO_USER);
                         close_pending_after_usb = 1U;
@@ -1006,7 +1071,7 @@ void StateVector_Input(void)
      *   黄灯持续闪烁; 物理传感恢复到 USB 上位后自动清除并恢复绿灯。
      */
     if (led_alert_yellow_blink_active) {
-        uint8_t usb_insert_ok = (IS_USB_UP(in_lo) && !IS_USB_DOWN(in_lo)) ? 1U : 0U;
+        uint8_t usb_insert_ok = USB_IO_INSERT_OK(in_lo, out_lo) ? 1U : 0U;
 
         if (!usb_auto_enabled || system_status != V_STATE_COMPLETE || usb_insert_ok) {
             led_alert_yellow_blink_active = 0U;

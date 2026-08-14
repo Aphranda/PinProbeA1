@@ -102,7 +102,8 @@ UI_TEXT = {
         "send": "Send",
         "cmd_history": "Command History (click to reuse)",
         "clear_history": "Clear History",
-        "clear_log": "Clear Log",
+        "clear_log": "Clear Window",
+        "clear_device_log": "Clear Device Log",
         "auto_scroll": "Auto Scroll",
         "live_listen": "Real-time Listen",
         "export_log": "Export Log",
@@ -261,7 +262,8 @@ UI_TEXT = {
         "send": "发送",
         "cmd_history": "命令历史 (点击重用)",
         "clear_history": "清空历史",
-        "clear_log": "清空日志",
+        "clear_log": "清空窗口",
+        "clear_device_log": "清设备日志",
         "auto_scroll": "自动滚动",
         "live_listen": "实时旁听",
         "export_log": "导出日志",
@@ -430,6 +432,10 @@ SCPI_COMMANDS = {
         ("USB自动 ON", "CONFigure:USB:AUTO ON"),
         ("USB自动 OFF", "CONFigure:USB:AUTO OFF"),
         ("读USB自动(出厂)", "READ:USB:AUTO?"),
+        ("DUT检测 ON", "CONFigure:DUT:AUTO ON"),
+        ("DUT检测 OFF", "CONFigure:DUT:AUTO OFF"),
+        ("读DUT检测", "READ:DUT:AUTO?"),
+        ("读DUT状态", "READ:DUT:STATe?"),
     ],
     "门锁": [
         ("🔓 解锁", "CONFigure:LOCK UNLOCK"),
@@ -450,6 +456,7 @@ SCPI_COMMANDS = {
     "系统状态": [
         ("读系统状态", "READ:SYSTem:STATe?"),
         ("读全部IO", "READ:IO:ALL?"),
+        ("读DUT状态", "READ:DUT:STATe?"),
     ],
     "急停": [
         ("常闭 NC (默认)", "CONFigure:ESTOP:TYPE NC"),
@@ -533,6 +540,10 @@ SCPI_LABEL_EN = {
     "USB自动 ON": "USB Auto ON",
     "USB自动 OFF": "USB Auto OFF",
     "读USB自动(出厂)": "Read USB Auto (Factory)",
+    "DUT检测 ON": "DUT Check ON",
+    "DUT检测 OFF": "DUT Check OFF",
+    "读DUT检测": "Read DUT Check",
+    "读DUT状态": "Read DUT State",
     "🔓 解锁": "Unlock",
     "🔒 锁定": "Lock",
     "读锁状态": "Read Lock State",
@@ -591,6 +602,8 @@ AUTO_POLL_COMMANDS = [
     ("门状态", "READ:CYLInder1:STATe?"),
     ("USB状态", "READ:CYLInder2:STATe?"),
     ("USB自动", "READ:USB:AUTO?"),
+    ("DUT检测", "READ:DUT:AUTO?"),
+    ("DUT状态", "READ:DUT:STATe?"),
     ("锁状态", "READ:LOCK:STATe?"),
     ("LED状态", "READ:LED:STATe?"),
     ("日志状态", "READ:LOG:STATus?"),
@@ -602,6 +615,8 @@ AUTO_POLL_LABEL_EN = {
     "门状态": "Door State",
     "USB状态": "USB State",
     "USB自动": "USB Auto",
+    "DUT检测": "DUT Check",
+    "DUT状态": "DUT State",
     "锁状态": "Lock State",
     "LED状态": "LED State",
     "日志状态": "Log Status",
@@ -624,6 +639,7 @@ IO_BIT_MAP = {
     ("IN", 1, 0x04): "关门按钮2",
     ("IN", 1, 0x08): "急停按钮(stop)",
     ("IN", 1, 0x10): "电源按钮(power)",
+    ("IN", 1, 0x20): "DUT到位",
     # 输出 OUT[0]
     ("OUT", 0, 0x01): "开门(open)",
     ("OUT", 0, 0x02): "关门(close)",
@@ -649,6 +665,7 @@ IO_LABEL_EN = {
     "关门按钮2": "Close button 2",
     "急停按钮(stop)": "E-stop button",
     "电源按钮(power)": "Power button",
+    "DUT到位": "DUT in-position",
     "开门(open)": "Open door",
     "关门(close)": "Close door",
     "USB插入": "USB insert",
@@ -708,6 +725,8 @@ PRESSURE_PRESETS = {
             "READ:SYSTem:STATe?",
             "READ:CYLInder1:STATe?",
             "READ:CYLInder2:STATe?",
+            "READ:DUT:AUTO?",
+            "READ:DUT:STATe?",
             "READ:LOCK:STATe?",
             "READ:LED:STATe?",
         ],
@@ -737,6 +756,7 @@ PRESSURE_PRESETS = {
             "READ:SYSTem:STATe?",
             "READ:CYLInder1:STATe?",
             "READ:CYLInder2:STATe?",
+            "READ:DUT:STATe?",
             "READ:LOCK:STATe?",
             "CONFigure:LED GREEN",
             "CONFigure:LED RED",
@@ -801,7 +821,7 @@ LED_DEF_LABEL_EN = {
     "关门钮2": "Close 2",
     "急停": "E-stop",
     "电源钮": "Pwr Btn",
-    "IN14": "IN14",
+    "DUT到位": "DUT In",
     "IN15": "IN15",
     "IN16": "IN16",
     "开门": "Open",
@@ -1736,7 +1756,7 @@ class PinProbeApp:
             ("IN", 1, 0x04, "关门钮2"),
             ("IN", 1, 0x08, "急停"),
             ("IN", 1, 0x10, "电源钮"),
-            ("IN", 1, 0x20, "IN14"),
+            ("IN", 1, 0x20, "DUT到位"),
             ("IN", 1, 0x40, "IN15"),
             ("IN", 1, 0x80, "IN16"),
         ]
@@ -2037,6 +2057,8 @@ class PinProbeApp:
         toolbar.pack(fill=tk.X, padx=3, pady=2)
 
         ttk.Button(toolbar, text=self._tr("clear_log"), command=self._clear_log).pack(side=tk.LEFT)
+        ttk.Button(toolbar, text=self._tr("clear_device_log"), command=self._clear_device_log).pack(
+            side=tk.LEFT, padx=(5, 0))
         ttk.Checkbutton(toolbar, text=self._tr("auto_scroll"), variable=self.auto_scroll).pack(
             side=tk.LEFT, padx=10)
         ttk.Checkbutton(toolbar, text=self._tr("live_listen"), variable=self.live_listen,
@@ -2160,6 +2182,9 @@ class PinProbeApp:
 
     def _clear_log(self):
         self.log_text.delete("1.0", tk.END)
+
+    def _clear_device_log(self):
+        self._send_scpi("CONFigure:LOG:CLEar")
 
     def _export_log(self):
         """导出日志到文件"""

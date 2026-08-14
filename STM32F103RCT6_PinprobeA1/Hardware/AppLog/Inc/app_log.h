@@ -62,6 +62,7 @@ typedef enum {
     APPLOG_EVT_IO_WRITE_FAIL,
     APPLOG_EVT_USB_INSERT_FAIL,
     APPLOG_EVT_USB_RETRACT_FAIL,
+    APPLOG_EVT_DUT_NOT_INPLACE,
 } AppLog_EventId_t;
 
 typedef struct {

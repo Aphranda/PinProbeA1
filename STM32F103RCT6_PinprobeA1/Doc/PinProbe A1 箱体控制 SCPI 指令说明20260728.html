@@ -104,6 +104,25 @@
     margin:5px 0 7px;
   }
   .danger-text { color:#c1121f; font-weight:800; }
+  .doc-image {
+    margin:7px 0 9px;
+    padding:5px;
+    border:1px solid #d6deea;
+    background:#f8fafc;
+  }
+  .doc-image img {
+    width:100%;
+    height:auto;
+    max-height:82mm;
+    object-fit:contain;
+    display:block;
+  }
+  .doc-image figcaption {
+    margin-top:4px;
+    color:#5b6573;
+    font-size:9.8px;
+    text-align:center;
+  }
   .small-list { font-size:10.8px; color:#2f3542; padding-left:17px; margin:4px 0 7px; }
   li { margin:1px 0; }
   .chips { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin:0 0 9px; }
@@ -186,7 +205,7 @@
     </div>
     <svg class="logo" viewBox="4400 6500 18750 3520" role="img" aria-label="GTS"><use href="#gts-logo"></use></svg>
     <div class="doc-meta">
-      <strong>2026-07-28</strong>
+      <strong>2026-08-11</strong>
       SCPI Reference<br>
       PinProbe A1
     </div>
@@ -201,16 +220,16 @@
         <div class="cover-info-line">
           <span>客户联调资料</span>
           <span>SCPI / UART</span>
-          <span>2026-07-28</span>
+          <span>2026-08-11</span>
         </div>
-        <div class="cover-note">文档更新时间：<code>2026-07-28</code>。本文用于客户侧上位机联调、设备控制与维护参考。</div>
+        <div class="cover-note">文档更新时间：<code>2026-08-11</code>。本文用于客户侧上位机联调、设备控制与维护参考。</div>
       </div>
       <div class="cover-image-wrap"><img src="file:///E:/OneDrive/4.Code/STM32/PinProbeA1/STM32F103RCT6_PinprobeA1/Doc/untitled.642.png" alt="PinProbe A1 箱体示意图"></div>
     </div>
   </div>
   <div class="page-footer">
     <span>Accurate · Simple · Fast · Agile | General Test Systems Inc.</span>
-    <span>PinProbe A1 指令说明 | 1 / 12</span>
+    <span>PinProbe A1 指令说明 | 1 / 13</span>
   </div>
 </div>
 <!-- P2 -->
@@ -222,7 +241,7 @@
     </div>
     <svg class="logo" viewBox="4400 6500 18750 3520" role="img" aria-label="GTS"><use href="#gts-logo"></use></svg>
     <div class="doc-meta">
-      <strong>2026-07-28</strong>
+      <strong>2026-08-11</strong>
       SCPI Reference<br>
       PinProbe A1
     </div>
@@ -279,7 +298,7 @@
   </div>
   <div class="page-footer">
     <span>Accurate · Simple · Fast · Agile | General Test Systems Inc.</span>
-    <span>PinProbe A1 指令说明 | 2 / 12</span>
+    <span>PinProbe A1 指令说明 | 2 / 13</span>
   </div>
 </div>
 <!-- P3 -->
@@ -291,7 +310,7 @@
     </div>
     <svg class="logo" viewBox="4400 6500 18750 3520" role="img" aria-label="GTS"><use href="#gts-logo"></use></svg>
     <div class="doc-meta">
-      <strong>2026-07-28</strong>
+      <strong>2026-08-11</strong>
       SCPI Reference<br>
       PinProbe A1
     </div>
@@ -336,7 +355,7 @@ SYSTem:IDN4 &quot;V0.0.9&quot;
   </div>
   <div class="page-footer">
     <span>Accurate · Simple · Fast · Agile | General Test Systems Inc.</span>
-    <span>PinProbe A1 指令说明 | 3 / 12</span>
+    <span>PinProbe A1 指令说明 | 3 / 13</span>
   </div>
 </div>
 <!-- P4 -->
@@ -348,7 +367,7 @@ SYSTem:IDN4 &quot;V0.0.9&quot;
     </div>
     <svg class="logo" viewBox="4400 6500 18750 3520" role="img" aria-label="GTS"><use href="#gts-logo"></use></svg>
     <div class="doc-meta">
-      <strong>2026-07-28</strong>
+      <strong>2026-08-11</strong>
       SCPI Reference<br>
       PinProbe A1
     </div>
@@ -364,6 +383,8 @@ SYSTem:IDN4 &quot;V0.0.9&quot;
 <tr><td><code>READ:CYLInder2:STATe?</code></td><td></td><td>执行器状态</td><td>查询 USB 插拔机构当前状态</td></tr>
 <tr><td><code>CONFigure:USB:AUTO</code></td><td><code>OFF</code> / <code>ON</code></td><td><code>OFF</code> / <code>ON</code></td><td>USB 自动拔插流程出厂配置项，<span class="danger-text">禁止修改</span>；出厂已按设备硬件配置完成</td></tr>
 <tr><td><code>READ:USB:AUTO?</code></td><td></td><td><code>OFF</code> / <code>ON</code></td><td>查询 USB 自动拔插流程出厂配置，确认当前设备是否启用该流程</td></tr>
+<tr><td><code>CONFigure:DUT:AUTO</code></td><td><code>OFF</code> / <code>ON</code></td><td><code>OFF</code> / <code>ON</code></td><td>配置 DUT 到位检测是否参与 USB 自动流程，并保存到 Flash</td></tr>
+<tr><td><code>READ:DUT:AUTO?</code></td><td></td><td><code>OFF</code> / <code>ON</code></td><td>查询 DUT 到位检测是否参与 USB 自动流程</td></tr>
 </tbody>
 </table>
 <div class="note-box">USB 动作按连接状态定义：<code>CYLInder2 CLOSE</code> 表示插入/连接 USB，<code>CYLInder2 OPEN</code> 表示拔出/回退 USB。</div>
@@ -381,18 +402,42 @@ SYSTem:IDN4 &quot;V0.0.9&quot;
 </tbody>
 </table>
 <h4>USB 自动流程</h4>
-<p><code>CONFigure:USB:AUTO ON</code> 后，设备会把 USB 插入、回退动作绑定到门流程：</p>
+<p><code>CONFigure:USB:AUTO ON</code> 后，设备会把 USB 插入、回退动作绑定到门流程；<code>CONFigure:DUT:AUTO ON</code> 时，DUT 到位检测参与自动流程：</p>
 <table class="compact">
 <thead><tr><th>场景</th><th>自动动作</th></tr></thead>
 <tbody>
-<tr><td><code>READY</code> 状态下双按钮确认满 500 ms</td><td>先执行 <code>CONFigure:CYLInder2 CLOSE</code> 插入 USB；确认 USB 插入到位后，才自动执行关门</td></tr>
+<tr><td><code>CONFigure:USB:AUTO OFF</code></td><td>USB 自动拔插和 DUT 到位检测全部旁路，按普通门流程执行</td></tr>
+<tr><td><code>CONFigure:USB:AUTO ON</code> 且 <code>CONFigure:DUT:AUTO OFF</code></td><td>DUT 到位检测不参与自动流程；双按钮确认后直接执行 USB 自动插入流程</td></tr>
+<tr><td><code>CONFigure:USB:AUTO ON</code> 且 <code>CONFigure:DUT:AUTO ON</code></td><td>先检查 <code>dut_sensor</code>。DUT 到位后才执行 <code>CONFigure:CYLInder2 CLOSE</code> 插入 USB；确认 USB 插入到位后，才自动执行关门</td></tr>
+<tr><td>DUT 未到位</td><td>不执行 USB 插入和关门，系统保持等待；<code>READ:DUT:STATe?</code> 仍可查询实际传感器状态</td></tr>
 <tr><td>USB 插入未到位或传感异常</td><td>不执行关门；记录 <code>USB_INSERT_FAIL</code>。门仍在打开位置时会先执行 <code>CONFigure:CYLInder2 OPEN</code> 回退 USB，并红灯快闪提示</td></tr>
 <tr><td><code>COMPLETE</code> 状态下按键开门</td><td>先自动开门；门打开到位并回到 <code>IDLE</code> 后，若 USB 未回退到位，再执行 <code>CONFigure:CYLInder2 OPEN</code> 回退 USB</td></tr>
 <tr><td>USB 回退未到位或输出异常</td><td>记录 <code>USB_RETRACT_FAIL</code>，红灯快闪提示；必要时退回 <code>IDLE</code> 并等待按钮释放后才能重新进入关门准备</td></tr>
 <tr><td>诊断兜底（正常流程不应出现）</td><td>若关门完成后仍检测到 USB 未插到位，记录 <code>USB_INSERT_FAIL</code>，黄灯闪烁提示；USB 到位后自动恢复绿灯</td></tr>
 </tbody>
 </table>
-<div class="note-box"><code>CONFigure:USB:AUTO ON/OFF</code> 为出厂配置项，<span class="danger-text">禁止修改</span>；出厂时已按设备硬件配置完成。带 USB 气缸的设备配置为 <code>ON</code>，设备会自动接管 USB 插入/回退流程：关门前先插入 USB，插入到位后才关门；开门到位后自动回退 USB。不带 USB 气缸的设备配置为 <code>OFF</code>。客户侧建议使用 <code>READ:USB:AUTO?</code> 确认当前出厂配置。</div>
+<div class="note-box"><code>CONFigure:USB:AUTO ON/OFF</code> 为出厂配置项，<span class="danger-text">禁止修改</span>；出厂时已按设备硬件配置完成。带 USB 气缸的设备配置为 <code>ON</code>，不带 USB 气缸的设备配置为 <code>OFF</code>。<code>CONFigure:DUT:AUTO ON/OFF</code> 为现场配置项，保存到 Flash；仅在 <code>USB:AUTO ON</code> 时决定 DUT 到位检测是否参与自动流程。<code>READ:DUT:STATe?</code> 始终读取实际 <code>dut_sensor</code>，查询不受 <code>USB:AUTO</code> 或 <code>DUT:AUTO</code> 旁路影响。</div>
+  </div>
+  <div class="page-footer">
+    <span>Accurate · Simple · Fast · Agile | General Test Systems Inc.</span>
+    <span>PinProbe A1 指令说明 | 4 / 13</span>
+  </div>
+</div>
+<!-- P5 -->
+<div class="page">
+  <div class="page-header">
+    <div>
+      <h1>箱门与 USB 控制指令</h1>
+      <div class="subtitle">PinProbe A1 箱体控制 SCPI 指令说明（续）</div>
+    </div>
+    <svg class="logo" viewBox="4400 6500 18750 3520" role="img" aria-label="GTS"><use href="#gts-logo"></use></svg>
+    <div class="doc-meta">
+      <strong>2026-08-11</strong>
+      SCPI Reference<br>
+      PinProbe A1
+    </div>
+  </div>
+  <div class="main">
 <h4>示例</h4>
 <pre data-lang="scpi"><code>CONFigure:CYLInder1 OPEN
 CONFigure:CYLInder1 CLOSE
@@ -400,28 +445,10 @@ READ:CYLInder1:STATe?
 CONFigure:CYLInder2 CLOSE
 CONFigure:CYLInder2 OPEN
 READ:CYLInder2:STATe?
-READ:USB:AUTO?</code></pre>
-  </div>
-  <div class="page-footer">
-    <span>Accurate · Simple · Fast · Agile | General Test Systems Inc.</span>
-    <span>PinProbe A1 指令说明 | 4 / 12</span>
-  </div>
-</div>
-<!-- P5 -->
-<div class="page">
-  <div class="page-header">
-    <div>
-      <h1>锁定与指示灯指令</h1>
-      <div class="subtitle">PinProbe A1 箱体控制 SCPI 指令说明</div>
-    </div>
-    <svg class="logo" viewBox="4400 6500 18750 3520" role="img" aria-label="GTS"><use href="#gts-logo"></use></svg>
-    <div class="doc-meta">
-      <strong>2026-07-28</strong>
-      SCPI Reference<br>
-      PinProbe A1
-    </div>
-  </div>
-  <div class="main">
+READ:USB:AUTO?
+CONFigure:DUT:AUTO ON
+READ:DUT:AUTO?
+READ:DUT:STATe?</code></pre>
 <div class="section-title">锁定与指示灯指令</div>
 <table class="compact">
 <thead><tr><th>指令</th><th>参数</th><th>响应</th><th>说明</th></tr></thead>
@@ -443,6 +470,27 @@ READ:USB:AUTO?</code></pre>
 <pre data-lang="scpi"><code>CONFigure:LOCK LOCKED
 CONFigure:LOCK UNLOCK
 READ:LOCK:STATe?</code></pre>
+  </div>
+  <div class="page-footer">
+    <span>Accurate · Simple · Fast · Agile | General Test Systems Inc.</span>
+    <span>PinProbe A1 指令说明 | 5 / 13</span>
+  </div>
+</div>
+<!-- P6 -->
+<div class="page">
+  <div class="page-header">
+    <div>
+      <h1>LED 指示灯指令</h1>
+      <div class="subtitle">PinProbe A1 箱体控制 SCPI 指令说明</div>
+    </div>
+    <svg class="logo" viewBox="4400 6500 18750 3520" role="img" aria-label="GTS"><use href="#gts-logo"></use></svg>
+    <div class="doc-meta">
+      <strong>2026-08-11</strong>
+      SCPI Reference<br>
+      PinProbe A1
+    </div>
+  </div>
+  <div class="main">
 <div class="section-title">LED 指示灯指令</div>
 <table class="compact">
 <thead><tr><th>指令</th><th>参数</th><th>响应</th><th>说明</th></tr></thead>
@@ -483,10 +531,10 @@ READ:LED:MAP?</code></pre>
   </div>
   <div class="page-footer">
     <span>Accurate · Simple · Fast · Agile | General Test Systems Inc.</span>
-    <span>PinProbe A1 指令说明 | 5 / 12</span>
+    <span>PinProbe A1 指令说明 | 6 / 13</span>
   </div>
 </div>
-<!-- P6 -->
+<!-- P7 -->
 <div class="page">
   <div class="page-header">
     <div>
@@ -495,7 +543,7 @@ READ:LED:MAP?</code></pre>
     </div>
     <svg class="logo" viewBox="4400 6500 18750 3520" role="img" aria-label="GTS"><use href="#gts-logo"></use></svg>
     <div class="doc-meta">
-      <strong>2026-07-28</strong>
+      <strong>2026-08-11</strong>
       SCPI Reference<br>
       PinProbe A1
     </div>
@@ -507,6 +555,7 @@ READ:LED:MAP?</code></pre>
 <tbody>
 <tr><td><code>READ:SYSTem:STATe?</code></td><td></td><td>系统状态</td><td>查询系统状态</td></tr>
 <tr><td><code>READ:IO:ALL?</code></td><td></td><td><code>IN:0xHH,0xHH OUT:0xHH,0xHH</code></td><td>查询全部原始输入和输出状态</td></tr>
+<tr><td><code>READ:DUT:STATe?</code></td><td></td><td><code>INPOS</code> / <code>OUTPOS</code></td><td>查询 DUT 到位状态</td></tr>
 </tbody>
 </table>
 <h4>系统状态返回值</h4>
@@ -524,7 +573,9 @@ READ:LED:MAP?</code></pre>
 </table>
 <h4>示例</h4>
 <pre data-lang="scpi"><code>READ:SYSTem:STATe?
-READ:IO:ALL?</code></pre>
+READ:IO:ALL?
+READ:DUT:STATe?</code></pre>
+<div class="note-box"><code>READ:DUT:STATe?</code> 读取 <code>dut_sensor</code>，<code>INPOS</code> 表示 DUT 到位，<code>OUTPOS</code> 表示 DUT 未到位；该查询始终有效，不受自动流程旁路设置影响。<code>READ:DUT:AUTO?</code> 查询 DUT 到位检测是否参与 USB 自动流程。</div>
 <div class="section-title">急停、风险模式与 Boot 诊断指令</div>
 <table class="compact">
 <thead><tr><th>指令</th><th>参数</th><th>响应</th><th>说明</th></tr></thead>
@@ -537,6 +588,7 @@ READ:IO:ALL?</code></pre>
 <tr><td><code>READ:BOOT:DIAG?</code></td><td></td><td><code>OFF</code> / <code>ON</code></td><td>查询 Bootloader 诊断串口输出开关</td></tr>
 </tbody>
 </table>
+<div class="note-box">输入气压建议保持在 <code>0.33 MPa</code> 左右；电子气压表阈值建议设在 <code>0.3 MPa</code> 左右。</div>
 <h4>参数说明</h4>
 <table class="compact">
 <thead><tr><th>参数</th><th>说明</th></tr></thead>
@@ -557,10 +609,10 @@ READ:BOOT:DIAG?</code></pre>
   </div>
   <div class="page-footer">
     <span>Accurate · Simple · Fast · Agile | General Test Systems Inc.</span>
-    <span>PinProbe A1 指令说明 | 6 / 12</span>
+    <span>PinProbe A1 指令说明 | 7 / 13</span>
   </div>
 </div>
-<!-- P7 -->
+<!-- P8 -->
 <div class="page">
   <div class="page-header">
     <div>
@@ -569,7 +621,7 @@ READ:BOOT:DIAG?</code></pre>
     </div>
     <svg class="logo" viewBox="4400 6500 18750 3520" role="img" aria-label="GTS"><use href="#gts-logo"></use></svg>
     <div class="doc-meta">
-      <strong>2026-07-28</strong>
+      <strong>2026-08-11</strong>
       SCPI Reference<br>
       PinProbe A1
     </div>
@@ -604,10 +656,10 @@ SYSTem:OTA:COMMit</code></pre>
   </div>
   <div class="page-footer">
     <span>Accurate · Simple · Fast · Agile | General Test Systems Inc.</span>
-    <span>PinProbe A1 指令说明 | 7 / 12</span>
+    <span>PinProbe A1 指令说明 | 8 / 13</span>
   </div>
 </div>
-<!-- P8 -->
+<!-- P9 -->
 <div class="page">
   <div class="page-header">
     <div>
@@ -616,7 +668,7 @@ SYSTem:OTA:COMMit</code></pre>
     </div>
     <svg class="logo" viewBox="4400 6500 18750 3520" role="img" aria-label="GTS"><use href="#gts-logo"></use></svg>
     <div class="doc-meta">
-      <strong>2026-07-28</strong>
+      <strong>2026-08-11</strong>
       SCPI Reference<br>
       PinProbe A1
     </div>
@@ -674,10 +726,10 @@ SYSTem:ERRor:NEXT?
   </div>
   <div class="page-footer">
     <span>Accurate · Simple · Fast · Agile | General Test Systems Inc.</span>
-    <span>PinProbe A1 指令说明 | 8 / 12</span>
+    <span>PinProbe A1 指令说明 | 9 / 13</span>
   </div>
 </div>
-<!-- P9 -->
+<!-- P10 -->
 <div class="page">
   <div class="page-header">
     <div>
@@ -686,7 +738,7 @@ SYSTem:ERRor:NEXT?
     </div>
     <svg class="logo" viewBox="4400 6500 18750 3520" role="img" aria-label="GTS"><use href="#gts-logo"></use></svg>
     <div class="doc-meta">
-      <strong>2026-07-28</strong>
+      <strong>2026-08-11</strong>
       SCPI Reference<br>
       PinProbe A1
     </div>
@@ -698,7 +750,6 @@ SYSTem:ERRor:NEXT?
 <li>发现 <code>[ERROR]</code> 时停止自动测试流程，采集 <code>READ:SYSTem:STATe?</code>、<code>READ:IO:ALL?</code>、<code>READ:CYLInder1:STATe?</code>、<code>READ:CYLInder2:STATe?</code>。</li>
 <li>发现 <code>[WARN]</code> 时结合事件名判断是否可继续；USB 插拔失败、RS485 故障、IO 写入失败建议人工确认后再继续。</li>
 </ol>
-<div class="note-box">输入气压建议保持在 <code>0.33 MPa</code> 左右；电子气压表阈值建议设在 <code>0.3 MPa</code> 左右。</div>
 <table class="compact">
 <thead><tr><th>异常</th><th>日志级别</th><th>固件动作</th><th>恢复建议</th></tr></thead>
 <tbody>
@@ -735,10 +786,10 @@ READ:DEBUg:IO?</code></pre>
   </div>
   <div class="page-footer">
     <span>Accurate · Simple · Fast · Agile | General Test Systems Inc.</span>
-    <span>PinProbe A1 指令说明 | 9 / 12</span>
+    <span>PinProbe A1 指令说明 | 10 / 13</span>
   </div>
 </div>
-<!-- P10 -->
+<!-- P11 -->
 <div class="page">
   <div class="page-header">
     <div>
@@ -747,7 +798,7 @@ READ:DEBUg:IO?</code></pre>
     </div>
     <svg class="logo" viewBox="4400 6500 18750 3520" role="img" aria-label="GTS"><use href="#gts-logo"></use></svg>
     <div class="doc-meta">
-      <strong>2026-07-28</strong>
+      <strong>2026-08-11</strong>
       SCPI Reference<br>
       PinProbe A1
     </div>
@@ -801,10 +852,10 @@ READ:DEBUg:IO?</code></pre>
   </div>
   <div class="page-footer">
     <span>Accurate · Simple · Fast · Agile | General Test Systems Inc.</span>
-    <span>PinProbe A1 指令说明 | 10 / 12</span>
+    <span>PinProbe A1 指令说明 | 11 / 13</span>
   </div>
 </div>
-<!-- P11 -->
+<!-- P12 -->
 <div class="page">
   <div class="page-header">
     <div>
@@ -813,7 +864,7 @@ READ:DEBUg:IO?</code></pre>
     </div>
     <svg class="logo" viewBox="4400 6500 18750 3520" role="img" aria-label="GTS"><use href="#gts-logo"></use></svg>
     <div class="doc-meta">
-      <strong>2026-07-28</strong>
+      <strong>2026-08-11</strong>
       SCPI Reference<br>
       PinProbe A1
     </div>
@@ -854,8 +905,8 @@ CONFigure:LOG:CLEar</code></pre>
 <tr><td>基础</td><td><code>*CLS</code>, <code>*IDN?</code>, <code>*RST</code>, <code>*STB?</code>, <code>*WAI</code>, <code>*OPC?</code></td></tr>
 <tr><td>系统</td><td><code>SYSTem:ERRor[:NEXT]?</code>, <code>SYSTem:ERRor:COUNt?</code>, <code>SYSTem:VERSion?</code>, <code>SYSTem:UPTime?</code>, <code>SYSTem:REBoot</code>, <code>SYSTem:FLASH:ID?</code></td></tr>
 <tr><td>IDN</td><td><code>SYSTem:IDN1</code>, <code>SYSTem:IDN1?</code>, <code>SYSTem:IDN2</code>, <code>SYSTem:IDN2?</code>, <code>SYSTem:IDN3</code>, <code>SYSTem:IDN3?</code>, <code>SYSTem:IDN4</code>, <code>SYSTem:IDN4?</code></td></tr>
-<tr><td>执行器</td><td><code>CONFigure:CYLInder#</code>, <code>READ:CYLInder#:STATe?</code>, <code>CONFigure:USB:AUTO</code>, <code>READ:USB:AUTO?</code>, <code>CONFigure:LOCK</code>, <code>READ:LOCK:STATe?</code>, <code>CONFigure:LED</code>, <code>READ:LED:STATe?</code>, <code>CONFigure:LED:MAP</code>, <code>READ:LED:MAP?</code></td></tr>
-<tr><td>状态</td><td><code>READ:SYSTem:STATe?</code>, <code>READ:IO:ALL?</code></td></tr>
+<tr><td>执行器</td><td><code>CONFigure:CYLInder#</code>, <code>READ:CYLInder#:STATe?</code>, <code>CONFigure:USB:AUTO</code>, <code>READ:USB:AUTO?</code>, <code>CONFigure:DUT:AUTO</code>, <code>READ:DUT:AUTO?</code>, <code>CONFigure:LOCK</code>, <code>READ:LOCK:STATe?</code>, <code>CONFigure:LED</code>, <code>READ:LED:STATe?</code>, <code>CONFigure:LED:MAP</code>, <code>READ:LED:MAP?</code></td></tr>
+<tr><td>状态</td><td><code>READ:SYSTem:STATe?</code>, <code>READ:IO:ALL?</code>, <code>READ:DUT:STATe?</code></td></tr>
 <tr><td>配置</td><td><code>CONFigure:BAUDrate</code>, <code>CONFigure:ESTOP:TYPE</code>, <code>READ:ESTOP:TYPE?</code>, <code>CONFigure:RISK:MODE</code>, <code>READ:RISK:MODE?</code>, <code>CONFigure:BOOT:DIAG</code>, <code>READ:BOOT:DIAG?</code></td></tr>
 <tr><td>OTA</td><td><code>SYSTem:OTA:STATus?</code>, <code>SYSTem:OTA:BOOT?</code>, <code>SYSTem:OTA:BEGIN</code>, <code>SYSTem:OTA:DATA</code>, <code>SYSTem:OTA:END</code>, <code>SYSTem:OTA:VERify?</code>, <code>SYSTem:OTA:COMMit</code>, <code>SYSTem:OTA:ABORt</code></td></tr>
 <tr><td>调试</td><td><code>CONFigure:DEBUg:STATe</code>, <code>READ:DEBUg:STATe?</code>, <code>CONFigure:DEBUg:ACTion</code>, <code>READ:DEBUg:ACTion?</code>, <code>CONFigure:DEBUg:EVENt</code>, <code>READ:DEBUg:EVENt?</code>, <code>CONFigure:DEBUg:IO</code>, <code>READ:DEBUg:IO?</code></td></tr>
@@ -865,10 +916,10 @@ CONFigure:LOG:CLEar</code></pre>
   </div>
   <div class="page-footer">
     <span>Accurate · Simple · Fast · Agile | General Test Systems Inc.</span>
-    <span>PinProbe A1 指令说明 | 11 / 12</span>
+    <span>PinProbe A1 指令说明 | 12 / 13</span>
   </div>
 </div>
-<!-- P12 -->
+<!-- P13 -->
 <div class="page">
   <div class="page-header">
     <div>
@@ -877,7 +928,7 @@ CONFigure:LOG:CLEar</code></pre>
     </div>
     <svg class="logo" viewBox="4400 6500 18750 3520" role="img" aria-label="GTS"><use href="#gts-logo"></use></svg>
     <div class="doc-meta">
-      <strong>2026-07-28</strong>
+      <strong>2026-08-11</strong>
       SCPI Reference<br>
       PinProbe A1
     </div>
@@ -887,6 +938,7 @@ CONFigure:LOG:CLEar</code></pre>
 <table class="compact">
 <thead><tr><th>日期</th><th>新增指令</th><th>修订内容</th></tr></thead>
 <tbody>
+<tr><td><code>2026-08-11</code></td><td><code>CONFigure:DUT:AUTO</code>、<code>READ:DUT:AUTO?</code>、<code>READ:DUT:STATe?</code></td><td>增加 DUT 到位检测自动流程参与开关，并明确 <code>USB:AUTO OFF</code> 时 USB 自动拔插和 DUT 检测全部旁路；<code>USB:AUTO ON</code> 时可独立开关 DUT 检测；DUT 状态查询始终读取实际传感器，不受旁路影响。</td></tr>
 <tr><td><code>2026-07-28</code></td><td><code>CONFigure:CYLInder2</code>、<code>READ:CYLInder2:STATe?</code></td><td>修订 USB 手动控制和状态返回语义：<code>CLOSE/CLOSED</code> 表示 USB 插入/连接，<code>OPEN/OPENED</code> 表示 USB 拔出/回退；硬件输出动作不变。</td></tr>
 <tr><td><code>2026-07-27</code></td><td><code>CONFigure:USB:AUTO</code>、<code>READ:USB:AUTO?</code></td><td>增加 USB 自动拔插流程相关指令；出厂时已按设备硬件配置完成，<span class="danger-text">禁止修改</span>；带 USB 气缸设备为 <code>ON</code>，不带 USB 气缸设备为 <code>OFF</code>；客户侧使用 <code>READ:USB:AUTO?</code> 确认是否开启。</td></tr>
 </tbody>
@@ -894,7 +946,7 @@ CONFigure:LOG:CLEar</code></pre>
   </div>
   <div class="page-footer">
     <span>Accurate · Simple · Fast · Agile | General Test Systems Inc.</span>
-    <span>PinProbe A1 指令说明 | 12 / 12</span>
+    <span>PinProbe A1 指令说明 | 13 / 13</span>
   </div>
 </div>
 </body>

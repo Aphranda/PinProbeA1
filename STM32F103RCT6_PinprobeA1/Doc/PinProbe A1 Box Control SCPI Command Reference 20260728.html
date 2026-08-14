@@ -368,6 +368,8 @@ SYSTem:IDN4 &quot;V0.0.9&quot;
 <tr><td><code>READ:CYLInder2:STATe?</code></td><td></td><td>Actuator State</td><td>Query the current USB actuator state</td></tr>
 <tr><td><code>CONFigure:USB:AUTO</code></td><td><code>OFF</code> / <code>ON</code></td><td><code>OFF</code> / <code>ON</code></td><td>Factory USB auto setting; <span class="danger-text">do not modify</span></td></tr>
 <tr><td><code>READ:USB:AUTO?</code></td><td></td><td><code>OFF</code> / <code>ON</code></td><td>Query the factory USB auto setting</td></tr>
+<tr><td><code>CONFigure:DUT:AUTO</code></td><td><code>OFF</code> / <code>ON</code></td><td><code>OFF</code> / <code>ON</code></td><td>Set whether DUT presence detection participates in the USB automatic sequence; saved to Flash</td></tr>
+<tr><td><code>READ:DUT:AUTO?</code></td><td></td><td><code>OFF</code> / <code>ON</code></td><td>Query whether DUT presence detection participates in the USB automatic sequence</td></tr>
 </tbody>
 </table>
 <div class="note-box">USB state naming: <code>CYLInder2 CLOSE</code>=insert/connect; <code>OPEN</code>=unplug/retract.</div>
@@ -385,18 +387,20 @@ SYSTem:IDN4 &quot;V0.0.9&quot;
 </tbody>
 </table>
 <h4>USB Automatic Sequence</h4>
-<p><code>CONFigure:USB:AUTO ON</code> links USB insertion/retraction to door operation.</p>
+<p><code>CONFigure:USB:AUTO ON</code> links USB insertion/retraction to door operation; <code>CONFigure:DUT:AUTO ON</code> adds DUT presence gating to that automatic flow.</p>
 <table class="compact">
 <thead><tr><th>Scenario</th><th>Automatic Action</th></tr></thead>
 <tbody>
-<tr><td><code>READY</code>; both buttons confirmed 500 ms</td><td>Insert USB first; close after insertion is confirmed</td></tr>
-<tr><td>USB insertion not reached or sensor fault</td><td>Do not close; log <code>USB_INSERT_FAIL</code>; retract USB; fast-flash red</td></tr>
+<tr><td><code>USB:AUTO OFF</code></td><td>Bypass USB automation and DUT presence detection; run the normal door sequence</td></tr>
+<tr><td><code>USB:AUTO ON</code> and <code>DUT:AUTO OFF</code></td><td>DUT detection does not participate; button confirmation starts USB automatic insertion directly</td></tr>
+<tr><td><code>USB:AUTO ON</code> and <code>DUT:AUTO ON</code></td><td>Check <code>dut_sensor</code> first; insert USB only after DUT is in position, then close after USB insertion is confirmed</td></tr>
+<tr><td>DUT not in position</td><td>Do not insert USB or close; keep waiting. <code>READ:DUT:STATe?</code> still reports the actual sensor state</td></tr>
+<tr><td>USB insertion fault</td><td>Do not close; log <code>USB_INSERT_FAIL</code>; retract USB if the door is still open; fast-flash red</td></tr>
 <tr><td><code>COMPLETE</code>; open-door button pressed</td><td>Open door; after <code>IDLE</code>, retract USB if still inserted</td></tr>
-<tr><td>USB retraction not reached or output fault</td><td>Log <code>USB_RETRACT_FAIL</code>; fast-flash red; return <code>IDLE</code> if needed</td></tr>
-<tr><td>Diagnostic fallback</td><td>If USB is not inserted after closing, log <code>USB_INSERT_FAIL</code>; flash yellow; restore green when ready</td></tr>
+<tr><td>USB retraction fault</td><td>Log <code>USB_RETRACT_FAIL</code>; fast-flash red; return <code>IDLE</code> if needed</td></tr>
 </tbody>
 </table>
-<div class="note-box"><code>CONFigure:USB:AUTO</code> is factory-set; <span class="danger-text">do not modify</span>. Devices with a USB cylinder use <code>ON</code>; others use <code>OFF</code>. Confirm with <code>READ:USB:AUTO?</code>.</div>
+<div class="note-box"><code>CONFigure:USB:AUTO</code> is factory-set; <span class="danger-text">do not modify</span>. <code>CONFigure:DUT:AUTO</code> is saved to Flash and is effective only when <code>USB:AUTO ON</code>. Query commands are not bypassed: <code>READ:DUT:STATe?</code> always reads the actual <code>dut_sensor</code>.</div>
 <h4>Example</h4>
 <pre data-lang="scpi"><code>CONFigure:CYLInder1 OPEN
 CONFigure:CYLInder1 CLOSE
@@ -404,7 +408,10 @@ READ:CYLInder1:STATe?
 CONFigure:CYLInder2 CLOSE
 CONFigure:CYLInder2 OPEN
 READ:CYLInder2:STATe?
-READ:USB:AUTO?</code></pre>
+READ:USB:AUTO?
+CONFigure:DUT:AUTO ON
+READ:DUT:AUTO?
+READ:DUT:STATe?</code></pre>
   </div>
   <div class="page-footer">
     <span>Accurate · Simple · Fast · Agile | General Test Systems Inc.</span>
@@ -511,6 +518,7 @@ READ:LED:MAP?</code></pre>
 <tbody>
 <tr><td><code>READ:SYSTem:STATe?</code></td><td></td><td>System State</td><td>Query system state</td></tr>
 <tr><td><code>READ:IO:ALL?</code></td><td></td><td><code>IN:0xHH,0xHH OUT:0xHH,0xHH</code></td><td>Query all raw input and output states</td></tr>
+<tr><td><code>READ:DUT:STATe?</code></td><td></td><td><code>INPOS</code> / <code>OUTPOS</code></td><td>Query the actual DUT presence sensor state</td></tr>
 </tbody>
 </table>
 <h4>System StateReturn Value</h4>
@@ -528,7 +536,9 @@ READ:LED:MAP?</code></pre>
 </table>
 <h4>Example</h4>
 <pre data-lang="scpi"><code>READ:SYSTem:STATe?
-READ:IO:ALL?</code></pre>
+READ:IO:ALL?
+READ:DUT:STATe?</code></pre>
+<div class="note-box"><code>READ:DUT:STATe?</code> reads <code>dut_sensor</code>: <code>INPOS</code> means DUT in position, and <code>OUTPOS</code> means DUT not in position. This query always remains valid, regardless of <code>USB:AUTO</code> or <code>DUT:AUTO</code> bypass settings.</div>
 <div class="section-title">E-Stop, Risk Mode, and Boot Diagnostics</div>
 <table class="compact">
 <thead><tr><th>Command</th><th>Parameter</th><th>Response</th><th>Description</th></tr></thead>
@@ -858,8 +868,8 @@ CONFigure:LOG:CLEar</code></pre>
 <tr><td>Basic</td><td><code>*CLS</code>, <code>*IDN?</code>, <code>*RST</code>, <code>*STB?</code>, <code>*WAI</code>, <code>*OPC?</code></td></tr>
 <tr><td>System</td><td><code>SYSTem:ERRor[:NEXT]?</code>, <code>SYSTem:ERRor:COUNt?</code>, <code>SYSTem:VERSion?</code>, <code>SYSTem:UPTime?</code>, <code>SYSTem:REBoot</code>, <code>SYSTem:FLASH:ID?</code></td></tr>
 <tr><td>IDN</td><td><code>SYSTem:IDN1</code>, <code>SYSTem:IDN1?</code>, <code>SYSTem:IDN2</code>, <code>SYSTem:IDN2?</code>, <code>SYSTem:IDN3</code>, <code>SYSTem:IDN3?</code>, <code>SYSTem:IDN4</code>, <code>SYSTem:IDN4?</code></td></tr>
-<tr><td>Act.</td><td><code>CONFigure:CYLInder#</code>, <code>READ:CYLInder#:STATe?</code>, <code>CONFigure:USB:AUTO</code>, <code>READ:USB:AUTO?</code>, <code>CONFigure:LOCK</code>, <code>READ:LOCK:STATe?</code>, <code>CONFigure:LED</code>, <code>READ:LED:STATe?</code>, <code>CONFigure:LED:MAP</code>, <code>READ:LED:MAP?</code></td></tr>
-<tr><td>Status</td><td><code>READ:SYSTem:STATe?</code>, <code>READ:IO:ALL?</code></td></tr>
+<tr><td>Act.</td><td><code>CONFigure:CYLInder#</code>, <code>READ:CYLInder#:STATe?</code>, <code>CONFigure:USB:AUTO</code>, <code>READ:USB:AUTO?</code>, <code>CONFigure:DUT:AUTO</code>, <code>READ:DUT:AUTO?</code>, <code>CONFigure:LOCK</code>, <code>READ:LOCK:STATe?</code>, <code>CONFigure:LED</code>, <code>READ:LED:STATe?</code>, <code>CONFigure:LED:MAP</code>, <code>READ:LED:MAP?</code></td></tr>
+<tr><td>Status</td><td><code>READ:SYSTem:STATe?</code>, <code>READ:IO:ALL?</code>, <code>READ:DUT:STATe?</code></td></tr>
 <tr><td>Cfg.</td><td><code>CONFigure:BAUDrate</code>, <code>CONFigure:ESTOP:TYPE</code>, <code>READ:ESTOP:TYPE?</code>, <code>CONFigure:RISK:MODE</code>, <code>READ:RISK:MODE?</code>, <code>CONFigure:BOOT:DIAG</code>, <code>READ:BOOT:DIAG?</code></td></tr>
 <tr><td>OTA</td><td><code>SYSTem:OTA:STATus?</code>, <code>SYSTem:OTA:BOOT?</code>, <code>SYSTem:OTA:BEGIN</code>, <code>SYSTem:OTA:DATA</code>, <code>SYSTem:OTA:END</code>, <code>SYSTem:OTA:VERify?</code>, <code>SYSTem:OTA:COMMit</code>, <code>SYSTem:OTA:ABORt</code></td></tr>
 <tr><td>Dbg.</td><td><code>CONFigure:DEBUg:STATe</code>, <code>READ:DEBUg:STATe?</code>, <code>CONFigure:DEBUg:ACTion</code>, <code>READ:DEBUg:ACTion?</code>, <code>CONFigure:DEBUg:EVENt</code>, <code>READ:DEBUg:EVENt?</code>, <code>CONFigure:DEBUg:IO</code>, <code>READ:DEBUg:IO?</code></td></tr>
@@ -891,8 +901,9 @@ CONFigure:LOG:CLEar</code></pre>
 <table class="compact">
 <thead><tr><th>Date</th><th>New Commands</th><th>Revision</th></tr></thead>
 <tbody>
+<tr><td><code>2026-08-11</code></td><td><code>CONFigure:DUT:AUTO</code> / <code>READ:DUT:AUTO?</code> / <code>READ:DUT:STATe?</code></td><td>Added DUT presence participation control for the USB automatic sequence, with Flash persistence. When <code>USB:AUTO OFF</code>, both USB automation and DUT detection are bypassed; when <code>USB:AUTO ON</code>, DUT detection can be enabled or disabled independently. The DUT state query always reads the actual sensor and is not bypassed.</td></tr>
 <tr><td><code>2026-07-28</code></td><td><code>CONFigure:CYLInder2</code> / <code>READ:CYLInder2:STATe?</code></td><td>Revised USB manual control and state return semantics: <code>CLOSE/CLOSED</code> indicates USB inserted/connected; <code>OPEN/OPENED</code> indicates USB unplugged/retracted; hardware output behavior is unchanged.</td></tr>
-<tr><td><code>2026-07-27</code></td><td><code>CONFigure:USB:AUTO</code> / <code>READ:USB:AUTO?</code></td><td>Added automatic USB plug/unplug sequence commands; factory configured by device hardware, <span class="danger-text">Do not modify</span>; devices with USB cylinder are <code>ON</code>, devices without USB cylinder are <code>OFF</code>; customer software uses <code>READ:USB:AUTO?</code> to confirm whether enabled.</td></tr>
+<tr><td><code>2026-07-27</code></td><td><code>CONFigure:USB:AUTO</code> / <code>READ:USB:AUTO?</code></td><td>Added automatic USB plug/unplug sequence commands; factory configured by device hardware, <span class="danger-text">do not modify</span>; devices with USB cylinder are <code>ON</code>, devices without USB cylinder are <code>OFF</code>; customer software uses <code>READ:USB:AUTO?</code> to confirm whether enabled.</td></tr>
 </tbody>
 </table>
   </div>
