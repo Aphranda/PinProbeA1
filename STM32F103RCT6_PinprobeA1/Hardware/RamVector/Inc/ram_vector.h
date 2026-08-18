@@ -50,6 +50,8 @@ typedef enum {
 
     /* 状态就绪 (Idle→Ready 过渡) */
     VCMD_DOOR_READY         = 0x0500,
+    /* 门关闭意图: 入口命令, 由 StateVector 编排 USB/DUT 后再下发气缸动作 */
+    VCMD_DOOR_CLOSE_REQ     = 0x0501,
 
     /* 系统级 */
     VCMD_SYS_RESET          = 0x0600,

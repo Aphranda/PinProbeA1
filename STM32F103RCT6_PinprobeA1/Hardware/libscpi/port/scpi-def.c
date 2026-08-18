@@ -338,8 +338,10 @@ static scpi_result_t SCPI_ConfigureCylinder(scpi_t *context)
         AppLog_Event(APPLOG_EVT_SCPI_CYLINDER, cylinder_id, (uint32_t)param);
     if (cylinder_id == 2)
         RamVector_PostCylinder((param == 0) ? VCMD_CYLINDER2_CLOSE : VCMD_CYLINDER2_OPEN, CMD_PRIO_USER);
+    else if (param == 0)
+        RamVector_PostCylinder(VCMD_DOOR_CLOSE_REQ, CMD_PRIO_USER);
     else
-        RamVector_PostCylinder((param == 0) ? VCMD_CYLINDER_CLOSE : VCMD_CYLINDER_OPEN, CMD_PRIO_USER);
+        RamVector_PostCylinder(VCMD_CYLINDER_OPEN, CMD_PRIO_USER);
     SCPI_ResultCharacters(context, name, strlen(name));
     return SCPI_RES_OK;
 }

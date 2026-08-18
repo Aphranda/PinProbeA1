@@ -5,6 +5,7 @@
 #include "cmd_exec.h"
 #include "BsmRelay.h"
 #include "app_log.h"
+#include "state_vector.h"
 
 /* 外部 SCPI choice 表 */
 extern scpi_choice_def_t cylinder_source[];
@@ -63,6 +64,9 @@ static void CmdExec_Cylinder(Vector_Cmd_t cmd)
         if ((out_lo & 0x04U) == 0U)
             AppLog_Action(APPLOG_ACT_CYLINDER_CLOSE, 0, 2);
         ok = Cylinder_Write(2, cylinder_source[1]); /* USB 插入 */
+        break;
+    case VCMD_DOOR_CLOSE_REQ:
+        StateVector_RequestDoorClose();
         break;
     default:
         break;

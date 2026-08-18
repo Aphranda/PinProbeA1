@@ -143,6 +143,10 @@ VectorDebugFlags_t vector_debug_flags = {
 #define USB_OUTPUT_CONFLICT(o)    (IS_USB_INSERTING(o) && IS_USB_RETRACTING(o))
 #define USB_IO_INSERT_OK(v,o)     (IS_USB_INSERTED(v) && !USB_OUTPUT_CONFLICT(o) && !IS_USB_RETRACTING(o))
 #define USB_IO_RETRACT_OK(v,o)    (IS_USB_RETRACTED(v) && !USB_OUTPUT_CONFLICT(o) && !IS_USB_INSERTING(o))
+#define CLOSE_PENDING_NONE        0U
+#define CLOSE_PENDING_READY       1U
+#define CLOSE_PENDING_SCPI        2U
+#define DOOR_CLOSE_ARMED_HOLD_MS  1000U
 
 /*
  * 消抖宏: 连续 DOOR_DEBOUNCE_CNT 次读到高电平才确认, 任一次低电平就复位。
@@ -152,6 +156,21 @@ VectorDebugFlags_t vector_debug_flags = {
     if ((raw) & (mask)) { if (++(cnt) >= DOOR_DEBOUNCE_CNT) (db) = 1; } \
     else { (cnt) = 0; (db) = 0; } \
 } while(0)
+
+static volatile uint8_t door_close_request_pending;
+
+void StateVector_RequestDoorClose(void)
+{
+    door_close_request_pending = 1U;
+}
+
+static uint8_t StateVector_TakeDoorCloseRequest(void)
+{
+    uint8_t pending = door_close_request_pending;
+
+    door_close_request_pending = 0U;
+    return pending ? 1U : 0U;
+}
 
 void StateVector_Input(void)
 {
@@ -212,6 +231,8 @@ void StateVector_Input(void)
     static uint8_t  usb_move_dir, usb_fault;
     static uint8_t  last_usb_inserting, last_usb_retracting;
     static uint8_t  close_pending_after_usb;
+    static uint8_t  door_close_armed_after_usb;
+    static uint32_t door_close_armed_tick;
     static uint8_t  usb_insert_fail_logged, usb_retract_fail_logged;
     static uint32_t led_alert_red_blink_tick;
     static uint8_t  led_alert_red_blink_active, led_alert_red_blink_remaining, led_alert_red_blink_on;
@@ -257,7 +278,10 @@ void StateVector_Input(void)
         usb_fault = 0;
         usb_insert_fail_logged = 0;
         usb_retract_fail_logged = 0;
-        close_pending_after_usb = 0;
+        close_pending_after_usb = CLOSE_PENDING_NONE;
+        door_close_armed_after_usb = 0U;
+        door_close_armed_tick = 0U;
+        door_close_request_pending = 0U;
         last_usb_inserting = 0;
         last_usb_retracting = 0;
         led_alert_red_blink_active = 0;
@@ -284,7 +308,10 @@ void StateVector_Input(void)
         usb_fault = 1;
         usb_insert_fail_logged = 0;
         usb_retract_fail_logged = 0;
-        close_pending_after_usb = 0;
+        close_pending_after_usb = CLOSE_PENDING_NONE;
+        door_close_armed_after_usb = 0U;
+        door_close_armed_tick = 0U;
+        door_close_request_pending = 0U;
         last_usb_inserting = 0;
         last_usb_retracting = 0;
         led_alert_red_blink_active = 0;
@@ -345,7 +372,11 @@ void StateVector_Input(void)
     uint8_t usb_auto_enabled = Flash_GetUsbAutoEnable();
     uint8_t dut_auto_enabled = usb_auto_enabled ? Flash_GetDutAutoEnable() : 0U;
     if (!usb_auto_enabled) {
-        close_pending_after_usb = 0U;
+        if (close_pending_after_usb == CLOSE_PENDING_READY) {
+            close_pending_after_usb = CLOSE_PENDING_NONE;
+        }
+        door_close_armed_after_usb = 0U;
+        door_close_armed_tick = 0U;
     }
 
     if (vector_debug_flags.event) {
@@ -437,6 +468,8 @@ void StateVector_Input(void)
         if (door_closing && !last_door_closing && !IS_DOOR_DOWN(in_lo)) {
             door_close_start_tick = now;
             door_close_timing = 1;
+            door_close_armed_after_usb = 0U;
+            door_close_armed_tick = 0U;
             door_close_from_full = IS_DOOR_UP(in_lo) ? 1U : 0U;
             air_last_check_tick = 0;
             m_23 = m_100 = m_300 = false;
@@ -647,7 +680,9 @@ void StateVector_Input(void)
             uint8_t ready_intent = (IS_ANY_BTN(in_hi) ||
                                     IS_LED_YELLOW_STATE(led_state) ||
                                     door_ready_tick ||
-                                    close_pending_after_usb) ? 1U : 0U;
+                                    close_pending_after_usb ||
+                                    door_close_armed_after_usb ||
+                                    door_close_request_pending) ? 1U : 0U;
             if (system_status == V_STATE_IDLE &&
                 !ready_intent &&
                 IS_DOOR_UP(in_lo) && !USB_IO_RETRACT_OK(in_lo, out_lo) &&
@@ -834,8 +869,16 @@ void StateVector_Input(void)
      *  按钮事件通过 RamVector 命令槽发出, 由 ModBusTask 执行。
      * ══════════════════════════════════════════ */
     if (!estop && !laser_emergency) {
-        if (system_status != V_STATE_READY) {
-            close_pending_after_usb = 0U;
+        if (door_close_armed_after_usb &&
+            (IS_DOOR_CLOSING(out_lo) || IS_DOOR_DOWN(in_lo) ||
+             ((now - door_close_armed_tick) >= DOOR_CLOSE_ARMED_HOLD_MS))) {
+            door_close_armed_after_usb = 0U;
+            door_close_armed_tick = 0U;
+        }
+
+        if (system_status != V_STATE_READY &&
+            close_pending_after_usb == CLOSE_PENDING_READY) {
+            close_pending_after_usb = CLOSE_PENDING_NONE;
         }
 
         /*
@@ -881,6 +924,45 @@ void StateVector_Input(void)
         }
 
         /*
+         * ── 外部关门意图: SCPI/CAN 等入口只表达"要关门" ──
+         *
+         * StateVector 作为本机流程 owner, 统一编排:
+         *   USB:AUTO OFF → 直接下发门气缸关门动作
+         *   USB:AUTO ON  → DUT 检查 → USB 插入 → USB 到位反馈 → 门关门
+         */
+        if (StateVector_TakeDoorCloseRequest()) {
+            close_pending_after_usb = CLOSE_PENDING_SCPI;
+            poweron_position_ok = 1U;
+            door_ready_tick = 0U;
+            door_close_confirm_tick = 0U;
+        }
+
+        if (close_pending_after_usb == CLOSE_PENDING_SCPI) {
+            uint8_t usb_inserted = (!usb_auto_enabled || USB_IO_INSERT_OK(in_lo, out_lo)) ? 1U : 0U;
+            uint8_t dut_ready = (!dut_auto_enabled || IS_DUT_INPLACE(in_hi)) ? 1U : 0U;
+
+            if (!IS_UNLOCKED(out_lo)) {
+                close_pending_after_usb = CLOSE_PENDING_NONE;
+            } else if (!dut_ready) {
+                AppLog_Event(APPLOG_EVT_DUT_NOT_INPLACE, dut_auto_enabled, system_status);
+                close_pending_after_usb = CLOSE_PENDING_NONE;
+            } else if (!IS_DOOR_CLOSING(out_lo) && RamVector_GetCylinderCmd() == VCMD_NONE) {
+                if (usb_auto_enabled && !usb_inserted) {
+                    if (!usb_fault && !IS_USB_INSERTING(out_lo)) {
+                        RamVector_PostCylinder(VCMD_CYLINDER2_CLOSE, CMD_PRIO_USER);
+                    }
+                } else {
+                    RamVector_PostCylinder(VCMD_CYLINDER_CLOSE, CMD_PRIO_USER);
+                    if (usb_auto_enabled) {
+                        door_close_armed_after_usb = 1U;
+                        door_close_armed_tick = now;
+                    }
+                    close_pending_after_usb = CLOSE_PENDING_NONE;
+                }
+            }
+        }
+
+        /*
          * ── Idle 状态: 按关门按钮 → 亮黄灯 (进入 Ready) ──
          *
          * 操作: 任意一个门按钮按下 + 不在关门动作中 → 200ms 后亮黄灯。
@@ -917,11 +999,13 @@ void StateVector_Input(void)
                 !IS_DOOR_CLOSING(out_lo) && RamVector_GetCylinderCmd() == VCMD_NONE) {
                 if (dut_ready) {
                     RamVector_PostCylinder(VCMD_CYLINDER_CLOSE, CMD_PRIO_USER);
+                    door_close_armed_after_usb = 1U;
+                    door_close_armed_tick = now;
                 } else {
                     AppLog_Event(APPLOG_EVT_DUT_NOT_INPLACE, dut_auto_enabled, system_status);
                     release_start_tick = now;
                 }
-                close_pending_after_usb = 0U;
+                close_pending_after_usb = CLOSE_PENDING_NONE;
             }
 
             /* 第一阶段: 任意按钮按下 → 开始 500ms 倒计时 (不是双按就直接重置) */
@@ -941,11 +1025,15 @@ void StateVector_Input(void)
                     if (!usb_fault && !IS_USB_INSERTING(out_lo) &&
                         RamVector_GetCylinderCmd() == VCMD_NONE) {
                         RamVector_PostCylinder(VCMD_CYLINDER2_CLOSE, CMD_PRIO_USER);
-                        close_pending_after_usb = 1U;
+                        close_pending_after_usb = CLOSE_PENDING_READY;
                         door_close_confirm_tick = 0; release_start_tick = now;
                     }
                 } else if (!IS_DOOR_CLOSING(out_lo)) {
                     RamVector_PostCylinder(VCMD_CYLINDER_CLOSE, CMD_PRIO_USER);
+                    if (usb_auto_enabled) {
+                        door_close_armed_after_usb = 1U;
+                        door_close_armed_tick = now;
+                    }
                     door_close_confirm_tick = 0; release_start_tick = now;
                 }
             }
@@ -1049,7 +1137,10 @@ void StateVector_Input(void)
             door_ready_tick = 0U;
             door_close_confirm_tick = 0U;
             door_open_confirm_tick = 0U;
-            close_pending_after_usb = 0U;
+            close_pending_after_usb = CLOSE_PENDING_NONE;
+            door_close_armed_after_usb = 0U;
+            door_close_armed_tick = 0U;
+            door_close_request_pending = 0U;
             release_start_tick = now;
         }
         led_alert_red_blink_active = 1U;

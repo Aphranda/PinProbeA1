@@ -17,6 +17,7 @@ typedef struct {
 
 extern VectorDebugFlags_t vector_debug_flags;
 
+void StateVector_RequestDoorClose(void);
 void StateVector_Input(void);
 
 #endif
