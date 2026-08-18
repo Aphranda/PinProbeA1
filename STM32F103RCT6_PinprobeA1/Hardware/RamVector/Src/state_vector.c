@@ -139,7 +139,6 @@ VectorDebugFlags_t vector_debug_flags = {
 #define USB_FAIL_TIMEOUT          1U
 #define USB_FAIL_SENSOR_CONFLICT  2U
 #define USB_FAIL_DUAL_OUTPUT      3U
-#define USB_FAIL_IO_MISMATCH      4U
 #define USB_SENSOR_CONFLICT(v)    (IS_USB_UP(v) && IS_USB_DOWN(v))
 #define USB_OUTPUT_CONFLICT(o)    (IS_USB_INSERTING(o) && IS_USB_RETRACTING(o))
 #define USB_IO_INSERT_OK(v,o)     (IS_USB_INSERTED(v) && !USB_OUTPUT_CONFLICT(o) && !IS_USB_RETRACTING(o))
@@ -911,17 +910,7 @@ void StateVector_Input(void)
          * 关门从上限位开始 → 记录为 "全行程关门" (用于学习关门时间)。
          */
         if (system_status == V_STATE_READY) {
-            /*
-             * 自动流程的"USB 已插入"必须来自本次 close_pending_after_usb 动作上下文。
-             * 如果尚未发起插入动作, 传感器静态显示 USB 上位已到, 视为 IO 语义异常,
-             * 不能直接跳过 USB 插入并关门。
-             */
-            uint8_t usb_inserted = (!usb_auto_enabled ||
-                                    (close_pending_after_usb && USB_IO_INSERT_OK(in_lo, out_lo))) ? 1U : 0U;
-            uint8_t usb_ready_to_insert = USB_IO_RETRACT_OK(in_lo, out_lo) ? 1U : 0U;
-            uint8_t usb_start_blocked = (USB_SENSOR_CONFLICT(in_lo) ||
-                                         USB_OUTPUT_CONFLICT(out_lo) ||
-                                         (!usb_inserted && !usb_ready_to_insert)) ? 1U : 0U;
+            uint8_t usb_inserted = (!usb_auto_enabled || USB_IO_INSERT_OK(in_lo, out_lo)) ? 1U : 0U;
             uint8_t dut_ready = (!dut_auto_enabled || IS_DUT_INPLACE(in_hi)) ? 1U : 0U;
 
             if (usb_auto_enabled && close_pending_after_usb && usb_inserted &&
@@ -949,24 +938,7 @@ void StateVector_Input(void)
                     AppLog_Event(APPLOG_EVT_DUT_NOT_INPLACE, dut_auto_enabled, system_status);
                     door_close_confirm_tick = 0; release_start_tick = now;
                 } else if (usb_auto_enabled && !usb_inserted) {
-                    if (usb_start_blocked) {
-                        if (!usb_insert_fail_logged) {
-                            uint8_t reason = USB_FAIL_IO_MISMATCH;
-                            if (USB_SENSOR_CONFLICT(in_lo)) {
-                                reason = USB_FAIL_SENSOR_CONFLICT;
-                            } else if (USB_OUTPUT_CONFLICT(out_lo)) {
-                                reason = USB_FAIL_DUAL_OUTPUT;
-                            }
-                            AppLog_TimedEvent(APPLOG_EVT_USB_INSERT_FAIL, 0U, reason);
-                            usb_insert_fail_logged = 1U;
-                        }
-                        if (IS_DOOR_UP(in_lo)) {
-                            RamVector_PostCylinder(VCMD_CYLINDER2_OPEN, CMD_PRIO_SAFETY);
-                        }
-                        usb_alert_red_request = 1U;
-                        usb_alert_return_idle = 1U;
-                        door_close_confirm_tick = 0; release_start_tick = now;
-                    } else if (!usb_fault && usb_ready_to_insert && !IS_USB_INSERTING(out_lo) &&
+                    if (!usb_fault && !IS_USB_INSERTING(out_lo) &&
                         RamVector_GetCylinderCmd() == VCMD_NONE) {
                         RamVector_PostCylinder(VCMD_CYLINDER2_CLOSE, CMD_PRIO_USER);
                         close_pending_after_usb = 1U;

@@ -348,7 +348,7 @@ static scpi_result_t SCPI_ReadCylinderState(scpi_t *context)
 {
     int32_t number[2] = {0,0};
     uint16_t cylinder_id = 1;
-    SCPI_CommandNumbers(context, number, 0, 1);
+    SCPI_CommandNumbers(context, number, 1, 1);
     if(number[0] == 2) cylinder_id = 2;
 
     Vector_IOState_t io;

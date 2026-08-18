@@ -579,7 +579,6 @@ size_t AppLog_Format(const AppLog_Record_t *record, char *buffer, size_t buffer_
             case 1U: reason = "timeout"; break;
             case 2U: reason = "sensor_conflict"; break;
             case 3U: reason = "dual_output"; break;
-            case 4U: reason = "io_mismatch"; break;
             default: reason = "unknown"; break;
             }
             len = snprintf(buffer, buffer_size,
