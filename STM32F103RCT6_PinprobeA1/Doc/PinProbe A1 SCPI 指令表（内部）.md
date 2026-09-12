@@ -2,7 +2,7 @@
 
 > **来源**: [`Hardware/libscpi/port/scpi-def.c`](../Hardware/libscpi/port/scpi-def.c:567) — `scpi_commands[]` 命令表  
 > **参考文档**: [`Doc/PinProbe A1 箱体控制 SCPI 指令说明.md`](PinProbe%20A1%20箱体控制%20SCPI%20指令说明.md)  
-> **状态**: 此文档基于源代码自动整理，与实际固件行为保持一致
+> **状态**: 已实现指令基于源代码整理；控制模式相关指令为新增设计项，当前标记为“待实现”
 
 ---
 
@@ -17,7 +17,8 @@
 - [7. 锁定控制指令](#7-锁定控制指令)
 - [8. LED 指示灯控制指令](#8-led-指示灯控制指令)
 - [9. 系统状态查询指令](#9-系统状态查询指令)
-- ~~[10. 链路切换指令（已废弃）](#10-链路切换指令已废弃)~~
+- [10. 控制模式指令](#10-控制模式指令)
+- ~~[11. 链路切换指令（已废弃）](#11-链路切换指令已废弃)~~
 
 ---
 
@@ -286,14 +287,65 @@ READ:DUT:STATe?       → INPOS
 
 ---
 
-## ~~10. 链路切换指令（已废弃）~~
+## 10. 控制模式指令
+
+4 条指令，用于切换本地手动、远程软件和兼容混合控制模式，以及配置模式切换指令是否允许生效。
+
+| # | 指令 | 类型 | 回调函数 | 参数 | 说明 |
+|---|------|------|----------|------|------|
+| 27 | `CONFigure:MODE` | 写 | `SCPI_ConfigureControlMode` | `LOCAL` / `REMOTE` / `MIXED` | 切换当前控制模式；当前模式仅运行时有效，不保存到 Flash |
+| 28 | `READ:MODE?` | 查询 | `SCPI_ReadControlModeQ` | — | 查询当前控制模式，返回 `LOCAL` / `REMOTE` / `MIXED` |
+| 29 | `CONFigure:MODE:ENABle` | 写 | `SCPI_ConfigureControlModeEnable` | `ON` / `OFF` | 配置控制模式切换指令是否生效，并保存到 Flash |
+| 30 | `READ:MODE:ENABle?` | 查询 | `SCPI_ReadControlModeEnableQ` | — | 查询控制模式切换指令是否生效 |
+
+### 控制模式
+
+| 值 | 说明 |
+|----|------|
+| `LOCAL` | 本地手动控制；普通门/USB动作仅允许面板或物理按键执行，SCPI普通动作拒绝 |
+| `REMOTE` | 远程软件控制；普通门/USB动作仅允许SCPI执行，物理按键普通动作屏蔽 |
+| `MIXED` | 兼容混合控制；物理按键和SCPI均可执行普通门/USB动作，保持当前系统行为 |
+
+以下能力在三种模式下始终有效，不属于模式切换限制范围：
+
+- 状态、告警、错误队列、日志、IO、传感器、版本和诊断查询。
+- 急停、激光防夹、RS485故障保护、断电回锁及其他安全状态机。
+- 锁定/解锁和必要维护操作按独立的安全/维护权限处理。
+
+### 模式切换使能
+
+| 值 | 说明 |
+|----|------|
+| `ON` | 允许通过 `CONFigure:MODE` 在 `LOCAL`、`REMOTE`、`MIXED` 之间切换 |
+| `OFF` | 锁定当前模式，禁止普通模式切换；`CONFigure:MODE LOCAL` 和 `CONFigure:MODE:ENABle ON` 始终保留为恢复路径 |
+
+> `CONFigure:MODE:ENABle` 为掉电保存配置项，设置后固化到 Flash。`CONFigure:MODE` 仅用于切换当前控制模式，不作为 Flash 配置保存。
+>
+> 上电后当前模式默认是 `MIXED`，不从 Flash 恢复。`mode_enable` 从 Flash 恢复；为避免设备进入无法恢复的状态，不允许形成 `REMOTE + OFF` 组合，因此 `REMOTE` 模式下设置 `CONFigure:MODE:ENABle OFF` 必须拒绝。模式切换被拒绝时不得产生或保留普通门/USB动作请求。
+
+### 示例
+
+```
+CONFigure:MODE:ENABle ON     → ON
+CONFigure:MODE REMOTE        → REMOTE
+READ:MODE?                   → REMOTE
+READ:MODE:ENABle?            → ON
+CONFigure:MODE MIXED         → MIXED
+CONFigure:MODE LOCAL         → LOCAL
+CONFigure:MODE:ENABle OFF    → OFF
+CONFigure:MODE REMOTE        → 拒绝（当前为 OFF）
+```
+
+---
+
+## ~~11. 链路切换指令（已废弃）~~
 
 > ⚠️ **以下指令已废弃，不应在新开发中使用**
 
 | # | 指令 | 类型 | 回调函数 | 说明 |
 |---|------|------|----------|------|
-| ~~27~~ | ~~`CONFigure:LINK`~~ | ~~写~~ | ~~`SCPI_ConfigureLink`~~ | ~~配置射频链路切换到指定端口~~ |
-| ~~28~~ | ~~`READ:LINK:STATe?`~~ | ~~查询~~ | ~~`SCPI_ReadLinkState`~~ | ~~查询当前链路连接的目标端口~~ |
+| ~~31~~ | ~~`CONFigure:LINK`~~ | ~~写~~ | ~~`SCPI_ConfigureLink`~~ | ~~配置射频链路切换到指定端口~~ |
+| ~~32~~ | ~~`READ:LINK:STATe?`~~ | ~~查询~~ | ~~`SCPI_ReadLinkState`~~ | ~~查询当前链路连接的目标端口~~ |
 
 ### 废弃原因
 
@@ -336,10 +388,14 @@ READ:DUT:STATe?       → INPOS
 | 24 | `CONFigure:LED` | 写 | LED 控制 | `SCPI_ConfigureLED` | [`671`](../Hardware/libscpi/port/scpi-def.c:671) |
 | 25 | `READ:LED:STATe?` | 查询 | LED 控制 | `SCPI_ReadLEDState` | [`675`](../Hardware/libscpi/port/scpi-def.c:675) |
 | 26 | `READ:SYSTem:STATe?` | 查询 | 系统状态 | `SCPI_ReadSystemState` | [`679`](../Hardware/libscpi/port/scpi-def.c:679) |
+| 27 | `CONFigure:MODE` | 写 | 控制模式 | `SCPI_ConfigureControlMode` | 待实现 |
+| 28 | `READ:MODE?` | 查询 | 控制模式 | `SCPI_ReadControlModeQ` | 待实现 |
+| 29 | `CONFigure:MODE:ENABle` | 写 | 控制模式 | `SCPI_ConfigureControlModeEnable` | 待实现 |
+| 30 | `READ:MODE:ENABle?` | 查询 | 控制模式 | `SCPI_ReadControlModeEnableQ` | 待实现 |
 | ~~17~~ | ~~`CONFigure:SWITch#`~~ | ~~写~~ | ~~射频开关（废弃）~~ | ~~`SCPI_ConfigureSwitch`~~ | [`635`](../Hardware/libscpi/port/scpi-def.c:635) |
 | ~~18~~ | ~~`READ:SWITch#:STATe?`~~ | ~~查询~~ | ~~射频开关（废弃）~~ | ~~`SCPI_ReadSwitchState`~~ | [`643`](../Hardware/libscpi/port/scpi-def.c:643) |
-| ~~27~~ | ~~`CONFigure:LINK`~~ | ~~写~~ | ~~链路切换（废弃）~~ | ~~`SCPI_ConfigureLink`~~ | [`647`](../Hardware/libscpi/port/scpi-def.c:647) |
-| ~~28~~ | ~~`READ:LINK:STATe?`~~ | ~~查询~~ | ~~链路切换（废弃）~~ | ~~`SCPI_ReadLinkState`~~ | [`651`](../Hardware/libscpi/port/scpi-def.c:651) |
+| ~~31~~ | ~~`CONFigure:LINK`~~ | ~~写~~ | ~~链路切换（废弃）~~ | ~~`SCPI_ConfigureLink`~~ | [`647`](../Hardware/libscpi/port/scpi-def.c:647) |
+| ~~32~~ | ~~`READ:LINK:STATe?`~~ | ~~查询~~ | ~~链路切换（废弃）~~ | ~~`SCPI_ReadLinkState`~~ | [`651`](../Hardware/libscpi/port/scpi-def.c:651) |
 
 ## 附录 B：代码结构索引
 
