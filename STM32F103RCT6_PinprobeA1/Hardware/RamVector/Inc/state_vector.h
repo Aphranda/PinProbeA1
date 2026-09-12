@@ -6,6 +6,13 @@
 #define APP_RAMVECTOR_INC_STATE_VECTOR_H_
 
 #include <stdbool.h>
+#include <stdint.h>
+
+typedef enum {
+    CONTROL_MODE_MIXED  = 0,
+    CONTROL_MODE_LOCAL  = 1,
+    CONTROL_MODE_REMOTE = 2,
+} ControlMode_t;
 
 /* ── 运行时调试开关 (由 SCPI CONFigure:DEBUg:xxx 控制) ── */
 typedef struct {
@@ -16,6 +23,11 @@ typedef struct {
 } VectorDebugFlags_t;
 
 extern VectorDebugFlags_t vector_debug_flags;
+
+ControlMode_t ControlMode_Get(void);
+bool ControlMode_Set(ControlMode_t mode);
+bool ControlMode_AllowsScpiAction(void);
+bool ControlMode_AllowsPhysicalAction(void);
 
 void StateVector_RequestDoorClose(void);
 void StateVector_Input(void);

@@ -333,6 +333,10 @@ static scpi_result_t SCPI_ConfigureCylinder(scpi_t *context)
         return SCPI_RES_ERR;
     }
     SCPI_ChoiceToName(cylinder_source, param, &name);
+    if (!ControlMode_AllowsScpiAction())
+        PUSH_ERR(context, SCPI_ERROR_INVAL_WHILE_IN_LOCAL,
+                 "CYLInder action invalid in LOCAL");
+
     /* 多气缸: id=1 门, id=2 USB */
     if (vector_debug_flags.event)
         AppLog_Event(APPLOG_EVT_SCPI_CYLINDER, cylinder_id, (uint32_t)param);
@@ -505,6 +509,96 @@ static scpi_result_t SCPI_ReadLEDMapQ(scpi_t *context)
 
     snprintf(buf, sizeof(buf), "%c,%c,%c", colors[0], colors[1], colors[2]);
     SCPI_ResultText(context, buf);
+    return SCPI_RES_OK;
+}
+
+/* ===== 控制模式 ===== */
+
+static scpi_choice_def_t control_mode_source[] = {
+    {"MIXED",  CONTROL_MODE_MIXED},
+    {"LOCAL",  CONTROL_MODE_LOCAL},
+    {"REMOTE", CONTROL_MODE_REMOTE},
+    SCPI_CHOICE_LIST_END
+};
+
+static scpi_choice_def_t mode_enable_source[] = {
+    {"OFF", 0},
+    {"ON",  1},
+    SCPI_CHOICE_LIST_END
+};
+
+static scpi_result_t SCPI_ConfigureControlMode(scpi_t *context)
+{
+    int32_t param;
+    ControlMode_t current;
+    const char *name;
+
+    if (!SCPI_ParamChoice(context, control_mode_source, &param, TRUE))
+        return SCPI_RES_ERR;
+
+    current = ControlMode_Get();
+    /*
+     * LOCAL remains available as the recovery path while mode switching is
+     * disabled. Repeating the current mode is harmless and accepted.
+     */
+    if ((ControlMode_t)param != current &&
+        !Flash_GetModeEnable() &&
+        (ControlMode_t)param != CONTROL_MODE_LOCAL) {
+        PUSH_ERR(context, -224, "Mode switch disabled");
+    }
+
+    if (!ControlMode_Set((ControlMode_t)param))
+        PUSH_ERR(context, -224, "Control mode");
+
+    SCPI_ChoiceToName(control_mode_source, param, &name);
+    SCPI_ResultCharacters(context, name, strlen(name));
+    return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_ReadControlModeQ(scpi_t *context)
+{
+    const char *name;
+
+    SCPI_ChoiceToName(control_mode_source, (int32_t)ControlMode_Get(), &name);
+    SCPI_ResultCharacters(context, name, strlen(name));
+    return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_ConfigureControlModeEnable(scpi_t *context)
+{
+    int32_t param;
+    uint8_t old_enable;
+    const char *name;
+
+    if (!SCPI_ParamChoice(context, mode_enable_source, &param, TRUE))
+        return SCPI_RES_ERR;
+
+    if (param == 0 && ControlMode_Get() == CONTROL_MODE_REMOTE) {
+        PUSH_ERR(context, -224, "Remote mode recovery");
+    }
+
+    old_enable = Flash_GetModeEnable();
+    if ((uint8_t)param != old_enable) {
+        if (Flash_SetModeEnable((uint8_t)param) != FLASH_OK)
+            PUSH_ERR(context, -320, "Flash write");
+        if (Flash_Save() != FLASH_OK) {
+            /* Keep the runtime cache consistent when persistence fails. */
+            (void)Flash_SetModeEnable(old_enable);
+            PUSH_ERR(context, -320, "Flash save");
+        }
+    }
+
+    SCPI_ChoiceToName(mode_enable_source, param, &name);
+    SCPI_ResultCharacters(context, name, strlen(name));
+    return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_ReadControlModeEnableQ(scpi_t *context)
+{
+    const char *name;
+
+    SCPI_ChoiceToName(mode_enable_source, Flash_GetModeEnable() ? 1 : 0, &name);
+    SCPI_ResultCharacters(context, name, strlen(name));
     return SCPI_RES_OK;
 }
 
@@ -1143,6 +1237,22 @@ const scpi_command_t scpi_commands[] = {
     {
         .pattern = "CONFigure:BAUDrate",
         .callback = SCPI_Configurebaudrate,
+    },
+    {
+        .pattern = "CONFigure:MODE:ENABle",
+        .callback = SCPI_ConfigureControlModeEnable,
+    },
+    {
+        .pattern = "READ:MODE:ENABle?",
+        .callback = SCPI_ReadControlModeEnableQ,
+    },
+    {
+        .pattern = "CONFigure:MODE",
+        .callback = SCPI_ConfigureControlMode,
+    },
+    {
+        .pattern = "READ:MODE?",
+        .callback = SCPI_ReadControlModeQ,
     },
     {
         .pattern = "CONFigure:CYLInder#",

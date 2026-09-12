@@ -1,8 +1,8 @@
 # PinProbe A1 SCPI 指令表（内部开发用）
 
-> **来源**: [`Hardware/libscpi/port/scpi-def.c`](../Hardware/libscpi/port/scpi-def.c:567) — `scpi_commands[]` 命令表  
+> **来源**: [`Hardware/libscpi/port/scpi-def.c`](../Hardware/libscpi/port/scpi-def.c:1154) — `scpi_commands[]` 命令表  
 > **参考文档**: [`Doc/PinProbe A1 箱体控制 SCPI 指令说明.md`](PinProbe%20A1%20箱体控制%20SCPI%20指令说明.md)  
-> **状态**: 已实现指令基于源代码整理；控制模式相关指令为新增设计项，当前标记为“待实现”
+> **状态**: 已实现指令基于源代码整理；控制模式相关指令已完成固件实现，实机联调待验
 
 ---
 
@@ -169,6 +169,8 @@ CONFigure:BAUDrate 9600      → ERROR: Only 115200 baudrate is supported
 | `CYL ERR` | 执行错误 |
 
 > USB 按连接状态定义：`CYLInder2 CLOSE` 表示 USB 插入/连接，`CYLInder2 OPEN` 表示 USB 拔出/回退；`CLOSING/CLOSED` 对应插入中/插入到位，`OPENING/OPENED` 对应回退中/回退到位。
+
+> `LOCAL` 模式下通过 SCPI 执行普通门/USB动作时，参数本身即使合法，也会返回标准 SCPI 错误 `-201,"Invalid while in local"`；只有真正的非法参数值才返回 `-224,"Illegal parameter value"`。
 
 > 实现代码: [`scpi-def.c:433-469`](../Hardware/libscpi/port/scpi-def.c:433)
 
@@ -388,10 +390,10 @@ CONFigure:MODE REMOTE        → 拒绝（当前为 OFF）
 | 24 | `CONFigure:LED` | 写 | LED 控制 | `SCPI_ConfigureLED` | [`671`](../Hardware/libscpi/port/scpi-def.c:671) |
 | 25 | `READ:LED:STATe?` | 查询 | LED 控制 | `SCPI_ReadLEDState` | [`675`](../Hardware/libscpi/port/scpi-def.c:675) |
 | 26 | `READ:SYSTem:STATe?` | 查询 | 系统状态 | `SCPI_ReadSystemState` | [`679`](../Hardware/libscpi/port/scpi-def.c:679) |
-| 27 | `CONFigure:MODE` | 写 | 控制模式 | `SCPI_ConfigureControlMode` | 待实现 |
-| 28 | `READ:MODE?` | 查询 | 控制模式 | `SCPI_ReadControlModeQ` | 待实现 |
-| 29 | `CONFigure:MODE:ENABle` | 写 | 控制模式 | `SCPI_ConfigureControlModeEnable` | 待实现 |
-| 30 | `READ:MODE:ENABle?` | 查询 | 控制模式 | `SCPI_ReadControlModeEnableQ` | 待实现 |
+| 27 | `CONFigure:MODE` | 写 | 控制模式 | `SCPI_ConfigureControlMode` | [`529`](../Hardware/libscpi/port/scpi-def.c:529) |
+| 28 | `READ:MODE?` | 查询 | 控制模式 | `SCPI_ReadControlModeQ` | [`557`](../Hardware/libscpi/port/scpi-def.c:557) |
+| 29 | `CONFigure:MODE:ENABle` | 写 | 控制模式 | `SCPI_ConfigureControlModeEnable` | [`566`](../Hardware/libscpi/port/scpi-def.c:566) |
+| 30 | `READ:MODE:ENABle?` | 查询 | 控制模式 | `SCPI_ReadControlModeEnableQ` | [`595`](../Hardware/libscpi/port/scpi-def.c:595) |
 | ~~17~~ | ~~`CONFigure:SWITch#`~~ | ~~写~~ | ~~射频开关（废弃）~~ | ~~`SCPI_ConfigureSwitch`~~ | [`635`](../Hardware/libscpi/port/scpi-def.c:635) |
 | ~~18~~ | ~~`READ:SWITch#:STATe?`~~ | ~~查询~~ | ~~射频开关（废弃）~~ | ~~`SCPI_ReadSwitchState`~~ | [`643`](../Hardware/libscpi/port/scpi-def.c:643) |
 | ~~31~~ | ~~`CONFigure:LINK`~~ | ~~写~~ | ~~链路切换（废弃）~~ | ~~`SCPI_ConfigureLink`~~ | [`647`](../Hardware/libscpi/port/scpi-def.c:647) |

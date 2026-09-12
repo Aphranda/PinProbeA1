@@ -107,6 +107,16 @@ void RamVector_ClearCmd(void)
     taskEXIT_CRITICAL();
 }
 
+void RamVector_ClearNonSafetyCylinderCmd(void)
+{
+    taskENTER_CRITICAL();
+    if (ram_vector.cmd_cylinder.priority < CMD_PRIO_SAFETY) {
+        ram_vector.cmd_cylinder.cmd = VCMD_NONE;
+        ram_vector.cmd_cylinder.priority = 0;
+    }
+    taskEXIT_CRITICAL();
+}
+
 bool RamVector_TakeCmds(Vector_CmdSnapshot_t *out)
 {
     bool has_cmd = false;

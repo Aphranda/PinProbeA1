@@ -51,7 +51,7 @@ extern "C" {
 /**
  * @brief 配置结构版本号
  */
-#define FLASH_CONFIG_VERSION       0x00020004UL  /* v2.0.4 - added DUT auto enable */
+#define FLASH_CONFIG_VERSION       0x00020005UL  /* v2.0.5 - added control mode enable */
 
 /**
  * @brief 设备名称最大长度
@@ -111,7 +111,8 @@ typedef struct {
     uint8_t  led_yellow_io;     /**< LED yellow output IO number (default 7)                 */
     uint8_t  usb_auto_enable;   /**< USB自动拔插流程: 0=OFF, 1=ON                       */
     uint8_t  dut_auto_enable;   /**< DUT参与自动流程: 0=OFF, 1=ON                       */
-    uint8_t  reserved[8];       /**< 保留字节                                          */
+    uint8_t  mode_enable;       /**< 控制模式切换使能: 0=OFF, 1=ON                     */
+    uint8_t  reserved[7];       /**< 保留字节                                          */
 
     /* ===== CRC校验 (必须在结构体末尾) ===== */
     uint32_t crc;               /**< CRC32校验 (从 magic 到 reserved 末尾)              */
@@ -313,6 +314,9 @@ uint8_t Flash_GetUsbAutoEnable(void);
 
 Flash_Status_t Flash_SetLedMap(uint8_t green_io, uint8_t red_io, uint8_t yellow_io);
 void Flash_GetLedMap(uint8_t *green_io, uint8_t *red_io, uint8_t *yellow_io);
+
+Flash_Status_t Flash_SetModeEnable(uint8_t enable);
+uint8_t Flash_GetModeEnable(void);
 
 #ifdef __cplusplus
 }

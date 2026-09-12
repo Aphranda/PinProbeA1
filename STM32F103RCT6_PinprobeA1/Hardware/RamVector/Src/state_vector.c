@@ -50,6 +50,8 @@
 #include "tim.h"
 #include "flash.h"
 #include "app_log.h"
+#include "FreeRTOS.h"
+#include "task.h"
 #include <string.h>
 
 /* ── 运行时调试开关 (由 SCPI CONFigure:DEBUg:xxx 控制) ── */
@@ -157,18 +159,91 @@ VectorDebugFlags_t vector_debug_flags = {
     else { (cnt) = 0; (db) = 0; } \
 } while(0)
 
+static volatile ControlMode_t control_mode = CONTROL_MODE_MIXED;
+static volatile uint8_t control_mode_transition_pending;
 static volatile uint8_t door_close_request_pending;
+
+ControlMode_t ControlMode_Get(void)
+{
+    ControlMode_t mode;
+
+    taskENTER_CRITICAL();
+    mode = control_mode;
+    taskEXIT_CRITICAL();
+
+    return mode;
+}
+
+bool ControlMode_Set(ControlMode_t mode)
+{
+    bool changed = false;
+
+    if (mode > CONTROL_MODE_REMOTE) {
+        return false;
+    }
+
+    /*
+     * The mode flag and the pending request are changed together. Flash is
+     * deliberately not touched here; the SCPI handler performs persistence
+     * outside this short critical section.
+     */
+    taskENTER_CRITICAL();
+    if (control_mode != mode) {
+        control_mode = mode;
+        control_mode_transition_pending = 1U;
+        door_close_request_pending = 0U;
+        changed = true;
+    }
+    taskEXIT_CRITICAL();
+
+    if (changed) {
+        /* Keep safety cylinder commands; discard stale ordinary commands. */
+        RamVector_ClearNonSafetyCylinderCmd();
+    }
+
+    return true;
+}
+
+bool ControlMode_AllowsScpiAction(void)
+{
+    return ControlMode_Get() != CONTROL_MODE_LOCAL;
+}
+
+bool ControlMode_AllowsPhysicalAction(void)
+{
+    return ControlMode_Get() != CONTROL_MODE_REMOTE;
+}
+
+static uint8_t ControlMode_TakeTransition(void)
+{
+    uint8_t pending;
+
+    taskENTER_CRITICAL();
+    pending = control_mode_transition_pending;
+    control_mode_transition_pending = 0U;
+    taskEXIT_CRITICAL();
+
+    return pending;
+}
 
 void StateVector_RequestDoorClose(void)
 {
-    door_close_request_pending = 1U;
+    taskENTER_CRITICAL();
+    if (control_mode != CONTROL_MODE_LOCAL) {
+        door_close_request_pending = 1U;
+    }
+    taskEXIT_CRITICAL();
 }
 
 static uint8_t StateVector_TakeDoorCloseRequest(void)
 {
-    uint8_t pending = door_close_request_pending;
+    uint8_t pending;
 
+    taskENTER_CRITICAL();
+    pending = door_close_request_pending;
     door_close_request_pending = 0U;
+    taskEXIT_CRITICAL();
+
     return pending ? 1U : 0U;
 }
 
@@ -262,6 +337,30 @@ void StateVector_Input(void)
 
     uint8_t io_link_state = vio.rs485_ok;
     bool io_ok = (io_link_state == VECTOR_IO_LINK_OK);
+
+    uint32_t now = GetTim1Ms();     /* 当前时间 (TIM1 ms 计数器) */
+    uint8_t mode_transition = ControlMode_TakeTransition();
+    bool physical_action_allowed = ControlMode_AllowsPhysicalAction();
+
+    if (mode_transition) {
+        /*
+         * A mode transition invalidates ordinary, not-yet-started input
+         * sequences. The release latch is armed unconditionally; if no door
+         * button is held it clears after RELEASE_DELAY_MS, otherwise it keeps
+         * extending until a complete release is observed.
+         */
+        door_ready_tick = 0U;
+        door_open_confirm_tick = 0U;
+        door_close_confirm_tick = 0U;
+        release_start_tick = now;
+        close_pending_after_usb = CLOSE_PENDING_NONE;
+        door_close_armed_after_usb = 0U;
+        door_close_armed_tick = 0U;
+        btn1_cnt = 0U;
+        btn2_cnt = 0U;
+        btn1_db = 0U;
+        btn2_db = 0U;
+    }
 
     /* ══════════════════════════════════════════
      *  步骤 1b: RS485 故障保护
@@ -359,7 +458,6 @@ void StateVector_Input(void)
     if (btn1_db)      in_hi |= IN_DOOR_BTN1; else in_hi &= ~IN_DOOR_BTN1;
     if (btn2_db)      in_hi |= IN_DOOR_BTN2; else in_hi &= ~IN_DOOR_BTN2;
 
-    uint32_t now = GetTim1Ms();     /* 当前时间 (TIM1 ms 计数器) */
     uint8_t usb_alert_red_request = 0U;
     uint8_t usb_alert_return_idle = 0U;
     /*
@@ -677,7 +775,7 @@ void StateVector_Input(void)
     if (usb_auto_enabled && !usb_fault && IS_UNLOCKED(out_lo) &&
         system_status != V_STATE_EMERGENCY && !estop_active) {
         if (RamVector_GetCylinderCmd() == VCMD_NONE) {
-            uint8_t ready_intent = (IS_ANY_BTN(in_hi) ||
+            uint8_t ready_intent = ((physical_action_allowed && IS_ANY_BTN(in_hi)) ||
                                     IS_LED_YELLOW_STATE(led_state) ||
                                     door_ready_tick ||
                                     close_pending_after_usb ||
@@ -914,7 +1012,8 @@ void StateVector_Input(void)
          *   - 门在下限位 → 输出关门信号压紧
          *   - 门在中间 → 不自动操作, 等人按按钮 (安全, 防止意外夹伤)
          */
-        if (system_status == V_STATE_IDLE && !poweron_position_ok &&
+        if (physical_action_allowed &&
+            system_status == V_STATE_IDLE && !poweron_position_ok &&
             RamVector_GetCylinderCmd() == VCMD_NONE) {
             if (IS_DOOR_UP(in_lo)) {
                 RamVector_PostCylinder(VCMD_CYLINDER_OPEN,  CMD_PRIO_USER); poweron_position_ok = 1;
@@ -937,7 +1036,8 @@ void StateVector_Input(void)
             door_close_confirm_tick = 0U;
         }
 
-        if (close_pending_after_usb == CLOSE_PENDING_SCPI) {
+        if (close_pending_after_usb == CLOSE_PENDING_SCPI &&
+            ControlMode_AllowsScpiAction()) {
             uint8_t usb_inserted = (!usb_auto_enabled || USB_IO_INSERT_OK(in_lo, out_lo)) ? 1U : 0U;
             uint8_t dut_ready = (!dut_auto_enabled || IS_DUT_INPLACE(in_hi)) ? 1U : 0U;
 
@@ -968,7 +1068,7 @@ void StateVector_Input(void)
          * 操作: 任意一个门按钮按下 + 不在关门动作中 → 200ms 后亮黄灯。
          * 黄灯表示"准备关门", 下一步需要双按确认才会真正关门。
          */
-        if (system_status == V_STATE_IDLE) {
+        if (physical_action_allowed && system_status == V_STATE_IDLE) {
             if (IS_ANY_BTN(in_hi) && !IS_DOOR_CLOSING(out_lo)) {
                 if (!door_ready_tick) door_ready_tick = now;
             } else {
@@ -991,7 +1091,7 @@ void StateVector_Input(void)
          * 持续 500ms 确认后才真正执行关门。
          * 关门从上限位开始 → 记录为 "全行程关门" (用于学习关门时间)。
          */
-        if (system_status == V_STATE_READY) {
+        if (physical_action_allowed && system_status == V_STATE_READY) {
             uint8_t usb_inserted = (!usb_auto_enabled || USB_IO_INSERT_OK(in_lo, out_lo)) ? 1U : 0U;
             uint8_t dut_ready = (!dut_auto_enabled || IS_DUT_INPLACE(in_hi)) ? 1U : 0U;
 
@@ -1045,7 +1145,7 @@ void StateVector_Input(void)
          * 门已关闭, 单按钮确认 200ms 即可开门。
          * USB 自动流程等开门到位后再拔出, 避免门内空间碰撞。
          */
-        if (system_status == V_STATE_COMPLETE) {
+        if (physical_action_allowed && system_status == V_STATE_COMPLETE) {
             /* 确认阶段: 按下 + 不在开门中 + 门已关 → 计时 */
             if (IS_ANY_BTN(in_hi) && !IS_DOOR_OPENING(out_lo) && IS_DOOR_DOWN(in_lo)) {
                 if (!door_open_confirm_tick) door_open_confirm_tick = now;

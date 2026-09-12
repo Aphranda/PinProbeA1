@@ -654,7 +654,7 @@ READ:BOOT:DIAG?</code></pre>
 <tr><td><code>OFF</code></td><td>锁定当前模式，禁止普通模式切换；<code>CONFigure:MODE LOCAL</code> 和 <code>CONFigure:MODE:ENABle ON</code> 始终保留为恢复路径</td></tr>
 </tbody>
 </table>
-<div class="note-box"><code>CONFigure:MODE:ENABle</code> 为掉电保存配置项，设置后固化到 Flash。<code>CONFigure:MODE</code> 仅用于切换当前控制模式，不保存到 Flash。上电后当前模式默认是 <code>MIXED</code>；为避免设备进入无法恢复的状态，不允许形成 <code>REMOTE + OFF</code> 组合，因此在 <code>REMOTE</code> 模式下设置 <code>CONFigure:MODE:ENABle OFF</code> 必须拒绝。上述控制模式指令为新增设计项，当前固件尚未实现，待后续版本启用。</div>
+<div class="note-box"><code>CONFigure:MODE:ENABle</code> 为掉电保存配置项，设置后固化到 Flash。<code>CONFigure:MODE</code> 仅用于切换当前控制模式，不保存到 Flash。上电后当前模式默认是 <code>MIXED</code>；为避免设备进入无法恢复的状态，不允许形成 <code>REMOTE + OFF</code> 组合，因此在 <code>REMOTE</code> 模式下设置 <code>CONFigure:MODE:ENABle OFF</code> 必须拒绝。上述控制模式指令已完成固件实现，实机联调待验。</div>
 <h4>示例</h4>
 <pre data-lang="scpi"><code>CONFigure:MODE:ENABle ON
 CONFigure:MODE REMOTE
@@ -741,6 +741,7 @@ SYSTem:ERRor:NEXT?
 <tbody>
 <tr><td>未知指令</td><td>串口可能主动输出 <code>**ERROR: -113, &quot;Undefined header&quot;</code>；错误队列可读到 <code>-113,&quot;Undefined header&quot;</code></td><td>停止发送该指令，检查命令拼写和层级</td></tr>
 <tr><td>缺少参数</td><td><code>-109,&quot;Missing parameter&quot;</code></td><td>补齐必填参数</td></tr>
+<tr><td>LOCAL 模式禁止远程普通动作</td><td><code>-201,&quot;Invalid while in local&quot;</code></td><td>当前为 <code>LOCAL</code> 模式；切换到 <code>REMOTE</code> 或 <code>MIXED</code> 后再通过 SCPI 执行普通门/USB动作</td></tr>
 <tr><td>参数值非法</td><td><code>-224,&quot;Illegal parameter value&quot;</code> 或 <code>-222,&quot;Data out of range&quot;</code></td><td>检查枚举值、LED 映射是否重复、数值范围是否越界</td></tr>
 <tr><td>Flash 保存失败</td><td><code>-320,&quot;Storage fault&quot;</code></td><td>配置可能未持久化；建议重试并读取对应查询指令确认</td></tr>
 <tr><td>UART/RS485 硬件或通信失败</td><td><code>-240,&quot;Hardware error&quot;</code> 或 <code>-360,&quot;Communication error&quot;</code></td><td>查询 <code>READ:LOG:STATus?</code>、<code>READ:IO:ALL?</code>，并检查 IO 扩展板链路</td></tr>
@@ -995,8 +996,8 @@ CONFigure:LOG:CLEar</code></pre>
 <table class="compact">
 <thead><tr><th>日期</th><th>新增指令</th><th>修订内容</th></tr></thead>
 <tbody>
-<tr><td><code>2026-09-12</code></td><td>控制模式指令说明</td><td>更新文档日期；保留 <code>2026-09-11</code> 版本作为历史档案，并同步三种控制模式、权限分级、查询与安全逻辑例外、Flash配置和恢复路径说明。</td></tr>
-<tr><td><code>2026-09-11</code></td><td><code>CONFigure:MODE</code>、<code>READ:MODE?</code>、<code>CONFigure:MODE:ENABle</code>、<code>READ:MODE:ENABle?</code></td><td>增加 LOCAL/REMOTE/MIXED 三种控制模式、普通动作权限分级、查询和安全逻辑例外，以及模式切换使能配置；使能配置掉电保存到 Flash，并保留控制权恢复路径。当前固件尚未实现，待后续版本启用。</td></tr>
+<tr><td><code>2026-09-12</code></td><td>控制模式指令说明</td><td>更新文档日期；保留 <code>2026-09-11</code> 版本作为历史档案，并同步三种控制模式、权限分级、查询与安全逻辑例外、Flash配置和恢复路径说明；LOCAL 模式下合法的 SCPI 普通门/USB动作改用标准错误 <code>-201,&quot;Invalid while in local&quot;</code>，参数非法仍使用 <code>-224</code>。</td></tr>
+<tr><td><code>2026-09-11</code></td><td><code>CONFigure:MODE</code>、<code>READ:MODE?</code>、<code>CONFigure:MODE:ENABle</code>、<code>READ:MODE:ENABle?</code></td><td>增加 LOCAL/REMOTE/MIXED 三种控制模式、普通动作权限分级、查询和安全逻辑例外，以及模式切换使能配置；使能配置掉电保存到 Flash，并保留控制权恢复路径。</td></tr>
 <tr><td><code>2026-08-11</code></td><td><code>CONFigure:DUT:AUTO</code>、<code>READ:DUT:AUTO?</code>、<code>READ:DUT:STATe?</code></td><td>增加 DUT 到位检测自动流程参与开关，并明确 <code>USB:AUTO OFF</code> 时 USB 自动拔插和 DUT 检测全部旁路；<code>USB:AUTO ON</code> 时可独立开关 DUT 检测；DUT 状态查询始终读取实际传感器，不受旁路影响。</td></tr>
 <tr><td><code>2026-07-28</code></td><td><code>CONFigure:CYLInder2</code>、<code>READ:CYLInder2:STATe?</code></td><td>修订 USB 手动控制和状态返回语义：<code>CLOSE/CLOSED</code> 表示 USB 插入/连接，<code>OPEN/OPENED</code> 表示 USB 拔出/回退；硬件输出动作不变。</td></tr>
 <tr><td><code>2026-07-27</code></td><td><code>CONFigure:USB:AUTO</code>、<code>READ:USB:AUTO?</code></td><td>增加 USB 自动拔插流程相关指令；出厂时已按设备硬件配置完成，<span class="danger-text">禁止修改</span>；带 USB 气缸设备为 <code>ON</code>，不带 USB 气缸设备为 <code>OFF</code>；客户侧使用 <code>READ:USB:AUTO?</code> 确认是否开启。</td></tr>

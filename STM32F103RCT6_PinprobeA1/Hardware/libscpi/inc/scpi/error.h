@@ -103,7 +103,7 @@ extern "C" {
     XE(SCPI_ERROR_INVAL_INSIDE_MACRO_DEF,       -183, "Invalid inside macro definition")              \
     XE(SCPI_ERROR_MACRO_PARAMETER_ERROR,        -184, "Macro parameter error")                        \
     X(SCPI_ERROR_EXECUTION_ERROR,               -200, "Execution error")                              \
-    XE(SCPI_ERROR_INVAL_WHILE_IN_LOCAL,         -201, "Invalid while in local")                       \
+    X(SCPI_ERROR_INVAL_WHILE_IN_LOCAL,          -201, "Invalid while in local")                       \
     XE(SCPI_ERROR_SETTINGS_LOST_DUE_TO_RTL,     -202, "Settings lost due to rtl")                     \
     XE(SCPI_ERROR_COMMAND_PROTECTED,            -203, "Command protected")                      \
     XE(SCPI_ERROR_TRIGGER_ERROR,                -210, "Trigger error")                                \
@@ -205,4 +205,3 @@ extern "C" {
 #endif
 
 #endif /* SCPI_ERROR_H */
-

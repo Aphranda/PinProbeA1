@@ -217,6 +217,7 @@ Vector_Cmd_t RamVector_GetLockCmd(void);
 Vector_Cmd_t RamVector_GetCylinderCmd(void);
 Vector_Cmd_t RamVector_GetLEDCmd(void);
 void RamVector_ClearCmd(void);
+void RamVector_ClearNonSafetyCylinderCmd(void);
 bool RamVector_TakeCmds(Vector_CmdSnapshot_t *out);
 
 /* IO 状态更新 (执行层/IO读取后调用) */
