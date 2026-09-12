@@ -398,3 +398,4 @@ FodyWeavers.xsd
 .pack/Keil/STM32F1xx_DFP.2.3.0/*
 build/*
 .clang-format
+STM32F103RCT6_PinprobeA1/Tools/build_mode_20260912
