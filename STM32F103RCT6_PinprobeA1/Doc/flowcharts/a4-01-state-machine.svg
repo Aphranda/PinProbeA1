@@ -1,0 +1,78 @@
+<svg class="flow" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 704 450" role="img" aria-labelledby="f1-title"><title id="f1-title">主状态机：正常循环与安全分支</title><style>
+.flow {display:block;width:100%;height:auto;margin:7px 0 8px;overflow:visible}
+.flow text {font-family:"Microsoft YaHei","SimSun","DengXian",Arial,sans-serif;letter-spacing:0;fill:#1f2328}
+.flow .f-title {font-size:13px;font-weight:700;fill:#1f3864}
+.flow .f-body {font-size:11.4px}.flow .f-label {font-size:10.8px;fill:#5b6573;paint-order:stroke;stroke:#fff;stroke-width:4px;stroke-linejoin:round}
+.flow .f-node {stroke-width:1.2}.flow .f-state {fill:#f5f8fc;stroke:#1f3864}
+.flow .f-action {fill:#f7fbf5;stroke:#2e7d32;stroke-dasharray:4 2}
+.flow .f-check {fill:#fffaf0;stroke:#b18a39}.flow .f-fault {fill:#fff5f5;stroke:#c1121f}
+.flow .f-edge {fill:none;stroke:#687381;stroke-width:1.3}
+</style><defs><marker id="f1-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#687381"/></marker></defs>
+<g data-node="INIT · 6"><rect x="0" y="12" width="190" height="88" rx="3" class="f-node f-state"/>
+<text x="10" y="32" class="f-title">INIT · 6</text>
+<text x="10" y="51" class="f-body">上电初始状态</text>
+<text x="10" y="67" class="f-body">首次有效 IO 处理轮次</text>
+<text x="10" y="83" class="f-body">立即进入 LOCK</text>
+</g>
+<g data-node="LOCK · 0"><rect x="240" y="12" width="190" height="88" rx="3" class="f-node f-state"/>
+<text x="250" y="32" class="f-title">LOCK · 0</text>
+<text x="250" y="51" class="f-body">锁定；观察电源输出</text>
+<text x="250" y="67" class="f-body">电源按钮按住 300 ms</text>
+<text x="250" y="83" class="f-body">可投递锁定 / 解锁动作</text>
+</g>
+<g data-node="IDLE · 1"><rect x="480" y="12" width="190" height="88" rx="3" class="f-node f-state"/>
+<text x="490" y="32" class="f-title">IDLE · 1</text>
+<text x="490" y="51" class="f-body">空闲；观察门位置</text>
+<text x="490" y="67" class="f-body">任意门按钮满 200 ms</text>
+<text x="490" y="83" class="f-body">投递黄灯，等待回读</text>
+</g>
+<path d="M190 56L240 56" class="f-edge" marker-end="url(#f1-arrow)"/>
+<text x="199" y="45" class="f-label">初始</text>
+<path d="M430 56L480 56" class="f-edge" marker-end="url(#f1-arrow)"/>
+<text x="435" y="45" class="f-label">已解锁</text>
+<path d="M575 100L575 174" class="f-edge" marker-end="url(#f1-arrow)"/>
+<text x="438" y="139" class="f-label">黄灯 + 门上位 / 位置确认</text>
+<g data-node="READY · 2"><rect x="480" y="174" width="190" height="104" rx="3" class="f-node f-state"/>
+<text x="490" y="194" class="f-title">READY · 2</text>
+<text x="490" y="213" class="f-body">门按钮确认条件满足</text>
+<text x="490" y="229" class="f-body">检查 DUT；AUTO 开启时</text>
+<text x="490" y="245" class="f-body">USB 插入到位后投递关门</text>
+<text x="490" y="261" class="f-body">黄灯清除 → 返回 IDLE</text>
+</g>
+<g data-node="RUNNING · 3"><rect x="240" y="174" width="190" height="104" rx="3" class="f-node f-state"/>
+<text x="250" y="194" class="f-title">RUNNING · 3</text>
+<text x="250" y="213" class="f-body">关门输出有效，门未到底</text>
+<text x="250" y="229" class="f-body">记录关门起点；观察限位</text>
+<text x="250" y="245" class="f-body">正常下限位 / 风险条件</text>
+<text x="250" y="261" class="f-body">满足即进入 COMPLETE</text>
+</g>
+<g data-node="COMPLETE · 5"><rect x="0" y="174" width="190" height="104" rx="3" class="f-node f-state"/>
+<text x="10" y="194" class="f-title">COMPLETE · 5</text>
+<text x="10" y="213" class="f-body">关门完成，正常亮绿灯</text>
+<text x="10" y="229" class="f-body">单按钮满 200 ms 投递开门</text>
+<text x="10" y="245" class="f-body">开门期间仍保持此主状态</text>
+<text x="10" y="261" class="f-body">门开到位后返回 IDLE</text>
+</g>
+<path d="M480 226L430 226" class="f-edge" marker-end="url(#f1-arrow)"/>
+<text x="439" y="215" class="f-label">关门</text>
+<path d="M240 226L190 226" class="f-edge" marker-end="url(#f1-arrow)"/>
+<text x="199" y="215" class="f-label">完成</text>
+<path d="M95 278L95 320L694 320L694 56L670 56" class="f-edge" marker-end="url(#f1-arrow)"/>
+<text x="106" y="310" class="f-label">开门输出 + 上限位 → IDLE；投递关灯，随后检查自动 USB 拔出</text>
+<g data-node="全局安全触发"><rect x="0" y="355" width="190" height="80" rx="3" class="f-node f-fault"/>
+<text x="10" y="375" class="f-title">全局安全触发</text>
+<text x="10" y="394" class="f-body">急停有效沿，或关门中</text>
+<text x="10" y="410" class="f-body">进入激光窗口后检测触发</text>
+</g>
+<g data-node="EMERGENCY · 4"><rect x="240" y="355" width="190" height="80" rx="3" class="f-node f-fault"/>
+<text x="250" y="375" class="f-title">EMERGENCY · 4</text>
+<text x="250" y="394" class="f-body">投递红灯 + 锁定 + 开门</text>
+<text x="250" y="410" class="f-body">急停时已开到位则不发开门</text>
+</g>
+<g data-node="恢复 → LOCK"><rect x="480" y="355" width="190" height="80" rx="3" class="f-node f-state"/>
+<text x="490" y="375" class="f-title">恢复 → LOCK</text>
+<text x="490" y="394" class="f-body">急停无效且激光宏为 0</text>
+<text x="490" y="410" class="f-body">随后仍按实际 IO 纠偏</text>
+</g>
+<path d="M190 395L240 395" class="f-edge" marker-end="url(#f1-arrow)"/>
+<path d="M430 395L480 395" class="f-edge" marker-end="url(#f1-arrow)"/></svg>

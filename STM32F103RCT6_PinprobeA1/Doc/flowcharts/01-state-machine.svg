@@ -1,0 +1,169 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1680" height="2060" viewBox="0 0 1680 2060" role="img" aria-labelledby="title desc">
+<title id="title">01  PinProbe A1 主状态机</title><desc id="desc">蓝色：主状态　绿色虚线：动作投递　黄色：条件 / 时序　红色：异常；箭头表示条件满足后的流转。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#52616b"/></marker></defs>
+<style>
+text {font-family:'Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#202b33;letter-spacing:0}
+.title {font-size:34px;font-weight:700}.sub {font-size:18px;fill:#52616b}
+.heading {font-size:23px;font-weight:700}.body {font-size:19px}.small {font-size:17px;fill:#52616b}
+.edge {fill:none;stroke:#52616b;stroke-width:2;marker-end:url(#arrow)}
+.label {font-size:17px;paint-order:stroke;stroke:#fff;stroke-width:7;stroke-linejoin:round}
+.box {stroke-width:1.7;rx:6}.state {fill:#edf6fd;stroke:#327bb0}
+.action {fill:#f1f8f4;stroke:#43856a;stroke-dasharray:7 4}
+.check {fill:#fff9df;stroke:#a88a21}.fault {fill:#fff0f1;stroke:#bf5365}
+.neutral {fill:#f5f7f8;stroke:#89969e}.info {fill:#fff;stroke:#bac5cb}
+</style><rect width="1680" height="2060" fill="#fff"/>
+<text x="44" y="58" class="title" text-anchor="start">01  PinProbe A1 主状态机</text>
+<text x="44" y="94" class="sub" text-anchor="start">蓝色：主状态　绿色虚线：动作投递　黄色：条件 / 时序　红色：异常；箭头表示条件满足后的流转。</text>
+<path d="M44 118H1636" stroke="#cdd5da"/>
+<g data-box="INIT  ·  6"><rect class="box state" x="560" y="160" width="500" height="90"/>
+<text x="580" y="194" class="heading" text-anchor="start">INIT  ·  6</text>
+<text x="580" y="226" class="body" text-anchor="start">首次进入有效 IO 处理轮次</text>
+</g>
+<path class="edge" d="M810 250L810 300"/>
+<text x="824" y="280" class="label" text-anchor="start">直接转入</text>
+<g data-box="LOCK  ·  0"><rect class="box state" x="560" y="300" width="500" height="110"/>
+<text x="580" y="334" class="heading" text-anchor="start">LOCK  ·  0</text>
+<text x="580" y="366" class="body" text-anchor="start">电源锁输出关闭：OUT_POWER = 0</text>
+<text x="580" y="392" class="body" text-anchor="start">电源按钮按住 300 ms 可投递解锁</text>
+</g>
+<path class="edge" d="M810 410L810 490"/>
+<text x="824" y="455" class="label" text-anchor="start">IO 回读：OUT_POWER = 1</text>
+<g data-box="IDLE  ·  1"><rect class="box state" x="560" y="490" width="500" height="140"/>
+<text x="580" y="524" class="heading" text-anchor="start">IDLE  ·  1</text>
+<text x="580" y="556" class="body" text-anchor="start">空闲 / 观察门位置</text>
+<text x="580" y="582" class="body" text-anchor="start">门开到位时可自动纠偏 USB 为拔出</text>
+<text x="580" y="608" class="body" text-anchor="start">任意门按钮满 200 ms → 投递黄灯</text>
+</g>
+<path class="edge" d="M810 630L810 710"/>
+<text x="824" y="675" class="label" text-anchor="start">黄灯已亮 +（门上限位或位置确认）</text>
+<g data-box="READY  ·  2"><rect class="box state" x="560" y="710" width="500" height="140"/>
+<text x="580" y="744" class="heading" text-anchor="start">READY  ·  2</text>
+<text x="580" y="776" class="body" text-anchor="start">准备关门；确认条件满足后检查 DUT</text>
+<text x="580" y="802" class="body" text-anchor="start">USB:AUTO ON：插入到位后投递关门</text>
+<text x="580" y="828" class="body" text-anchor="start">USB:AUTO OFF：直接投递关门</text>
+</g>
+<path class="edge" d="M810 850L810 940"/>
+<text x="824" y="900" class="label" text-anchor="start">关门输出有效 + 门尚未关到底</text>
+<g data-box="RUNNING  ·  3"><rect class="box state" x="560" y="940" width="500" height="140"/>
+<text x="580" y="974" class="heading" text-anchor="start">RUNNING  ·  3</text>
+<text x="580" y="1006" class="body" text-anchor="start">关门进行中；由输出沿记录起始时间</text>
+<text x="580" y="1032" class="body" text-anchor="start">观察门下限位 / 风险模式完成条件</text>
+<text x="580" y="1058" class="body" text-anchor="start">超过预计行程 2/3 后启用激光触发窗口</text>
+</g>
+<path class="edge" d="M810 1080L810 1170"/>
+<text x="824" y="1130" class="label" text-anchor="start">关门输出 +（下限位或风险模式条件）</text>
+<g data-box="COMPLETE  ·  5"><rect class="box state" x="560" y="1170" width="500" height="168"/>
+<text x="580" y="1204" class="heading" text-anchor="start">COMPLETE  ·  5</text>
+<text x="580" y="1236" class="body" text-anchor="start">关门完成；正常投递绿灯</text>
+<text x="580" y="1262" class="body" text-anchor="start">记录耗时，符合条件则学习全行程时间</text>
+<text x="580" y="1288" class="body" text-anchor="start">单门按钮满 200 ms → 投递开门</text>
+<text x="580" y="1314" class="body" text-anchor="start">开门过程中仍保持 COMPLETE</text>
+</g>
+<path class="edge" d="M560 1270L520 1270L520 558L560 558"/>
+<g data-box="COMPLETE → IDLE"><rect class="box action" x="44" y="1165" width="435" height="170"/>
+<text x="64" y="1199" class="heading" text-anchor="start">COMPLETE → IDLE</text>
+<text x="64" y="1231" class="body" text-anchor="start">开门输出有效 + 门上限位确认</text>
+<text x="64" y="1257" class="body" text-anchor="start">投递关灯、记录 OPEN_DONE</text>
+<text x="64" y="1283" class="body" text-anchor="start">清理本周期位置与关门完成计时</text>
+<text x="64" y="1309" class="body" text-anchor="start">随后满足条件才自动拔出 USB</text>
+</g>
+<g data-box="IO 自动纠偏"><rect class="box info" x="44" y="490" width="435" height="170"/>
+<text x="64" y="524" class="heading" text-anchor="start">IO 自动纠偏</text>
+<text x="64" y="556" class="body" text-anchor="start">非 EMERGENCY：电源锁输出为 0</text>
+<text x="64" y="582" class="body" text-anchor="start">→ 转入 LOCK</text>
+<text x="64" y="608" class="body" text-anchor="start">IDLE 位置分支读到门下限位</text>
+<text x="64" y="634" class="body" text-anchor="start">→ 可直接转入 COMPLETE</text>
+</g>
+<g data-box="READY 返回条件"><rect class="box info" x="44" y="690" width="435" height="170"/>
+<text x="64" y="724" class="heading" text-anchor="start">READY 返回条件</text>
+<text x="64" y="756" class="body" text-anchor="start">黄灯回读不再为黄色 → IDLE</text>
+<text x="64" y="782" class="body" text-anchor="start">本轮仍可能继续检测关门输出</text>
+<text x="64" y="808" class="body" text-anchor="start">SCPI 关门输出上升沿也可使</text>
+<text x="64" y="834" class="body" text-anchor="start">IDLE / READY / COMPLETE → RUNNING</text>
+</g>
+<g data-box="关门完成条件"><rect class="box check" x="44" y="885" width="435" height="224"/>
+<text x="64" y="919" class="heading" text-anchor="start">关门完成条件</text>
+<text x="64" y="951" class="body" text-anchor="start">正常：关门输出有效且下限位有效</text>
+<text x="64" y="977" class="body" text-anchor="start">风险：RISK 开启 + 关门输出有效</text>
+<text x="64" y="1003" class="body" text-anchor="start">+ IN_LASER1 = 1 + 有关门起始时间</text>
+<text x="64" y="1029" class="body" text-anchor="start">+ 耗时 &gt; 预计关门时间</text>
+<text x="64" y="1055" class="body" text-anchor="start">预计时间初值 2500 ms；符合条件学习</text>
+<text x="64" y="1081" class="body" text-anchor="start">当前没有通用“关门超时即故障”分支</text>
+</g>
+<g data-box="安全触发入口（IO 可信时）"><rect class="box fault" x="1150" y="160" width="486" height="196"/>
+<text x="1170" y="194" class="heading" text-anchor="start">安全触发入口（IO 可信时）</text>
+<text x="1170" y="226" class="body" text-anchor="start">急停：按配置解析 NC / NO 有效态</text>
+<text x="1170" y="252" class="body" text-anchor="start">检测到急停有效沿 → EMERGENCY</text>
+<text x="1170" y="278" class="body" text-anchor="start">激光：关门计时中、门未到底，</text>
+<text x="1170" y="304" class="body" text-anchor="start">且耗时 &gt; 预计关门时间 × 2/3</text>
+<text x="1170" y="330" class="body" text-anchor="start">并且 IS_ANY_LASER 非零 → EMERGENCY</text>
+</g>
+<path class="edge" d="M1393 356L1393 405"/>
+<g data-box="EMERGENCY  ·  4"><rect class="box fault" x="1150" y="405" width="486" height="196"/>
+<text x="1170" y="439" class="heading" text-anchor="start">EMERGENCY  ·  4</text>
+<text x="1170" y="471" class="body" text-anchor="start">安全优先级投递：红灯 + 锁定</text>
+<text x="1170" y="497" class="body" text-anchor="start">急停时门不在上限位 → 投递开门</text>
+<text x="1170" y="523" class="body" text-anchor="start">激光触发 → 投递开门、清关门计时</text>
+<text x="1170" y="549" class="body" text-anchor="start">恢复：急停无效且 IS_ANY_LASER = 0</text>
+<text x="1170" y="575" class="body" text-anchor="start">→ LOCK；随后按实际电源输出纠偏</text>
+</g>
+<path class="edge" d="M1150 440L1105 440L1105 355L1060 355"/>
+<text x="1109" y="389" class="label" text-anchor="start">恢复</text>
+<g data-box="USB 底层异常"><rect class="box fault" x="1150" y="660" width="486" height="224"/>
+<text x="1170" y="694" class="heading" text-anchor="start">USB 底层异常</text>
+<text x="1170" y="726" class="body" text-anchor="start">AUTO 开启时：超时 / 传感器冲突</text>
+<text x="1170" y="752" class="body" text-anchor="start">/ 插拔双输出冲突 → 对应失败日志</text>
+<text x="1170" y="778" class="body" text-anchor="start">无急停 / 激光紧急时退回 IDLE</text>
+<text x="1170" y="804" class="body" text-anchor="start">清关门待执行意图，等待按钮释放</text>
+<text x="1170" y="830" class="body" text-anchor="start">红灯 3 次快闪（每 125 ms 翻转）</text>
+<text x="1170" y="856" class="body" text-anchor="start">插入失败且门开到位：投递 USB 回退</text>
+</g>
+<g data-box="IO 不可信 / 恢复中"><rect class="box fault" x="1150" y="940" width="486" height="168"/>
+<text x="1170" y="974" class="heading" text-anchor="start">IO 不可信 / 恢复中</text>
+<text x="1170" y="1006" class="body" text-anchor="start">本轮提前返回，两个气缸镜像置 ERR</text>
+<text x="1170" y="1032" class="body" text-anchor="start">清 USB 计时与待执行关门意图</text>
+<text x="1170" y="1058" class="body" text-anchor="start">FAULT 连续 10 个状态轮次 → 黄灯</text>
+<text x="1170" y="1084" class="body" text-anchor="start">主状态未在该提前返回分支重新发布</text>
+</g>
+<g data-box="关门完成时 USB 未到位"><rect class="box check" x="1150" y="1165" width="486" height="170"/>
+<text x="1170" y="1199" class="heading" text-anchor="start">关门完成时 USB 未到位</text>
+<text x="1170" y="1231" class="body" text-anchor="start">完成分支可产生黄色闪烁诊断</text>
+<text x="1170" y="1257" class="body" text-anchor="start">USB 恢复到位时恢复绿灯</text>
+<text x="1170" y="1283" class="body" text-anchor="start">这不屏蔽后续轮次的底层超时判断</text>
+<text x="1170" y="1309" class="body" text-anchor="start">底层异常仍可能使主状态退回 IDLE</text>
+</g>
+<text x="44" y="1430" class="heading" text-anchor="start">主状态与气缸状态是两套独立镜像</text>
+<g data-box="气缸 1：门"><rect class="box info" x="44" y="1460" width="766" height="168"/>
+<text x="64" y="1494" class="heading" text-anchor="start">气缸 1：门</text>
+<text x="64" y="1526" class="body" text-anchor="start">OPENING / OPENED：开门输出，结合门上限位</text>
+<text x="64" y="1552" class="body" text-anchor="start">CLOSING / CLOSED：关门输出，结合门下限位</text>
+<text x="64" y="1578" class="body" text-anchor="start">上下限位同时有效或双向输出同时有效 → ERR</text>
+<text x="64" y="1604" class="body" text-anchor="start">例：主状态 COMPLETE，门气缸仍可显示 OPENING</text>
+</g>
+<g data-box="气缸 2：USB"><rect class="box info" x="850" y="1460" width="786" height="168"/>
+<text x="870" y="1494" class="heading" text-anchor="start">气缸 2：USB</text>
+<text x="870" y="1526" class="body" text-anchor="start">CLOSE / CLOSED 对外表示插入；OPEN / OPENED 表示拔出</text>
+<text x="870" y="1552" class="body" text-anchor="start">插入到位：USB 上位 = 1 且下位 = 0；拔出到位反之</text>
+<text x="870" y="1578" class="body" text-anchor="start">流程到位检查还要求无双输出、无反向输出</text>
+<text x="870" y="1604" class="body" text-anchor="start">超时与冲突会影响 USB 气缸状态及流程告警</text>
+</g>
+<text x="44" y="1700" class="heading" text-anchor="start">入口与周期条件</text>
+<g data-box="控制模式"><rect class="box info" x="44" y="1730" width="766" height="194"/>
+<text x="64" y="1764" class="heading" text-anchor="start">控制模式</text>
+<text x="64" y="1796" class="body" text-anchor="start">MIXED：物理门按钮与 SCPI 气缸动作均可用</text>
+<text x="64" y="1822" class="body" text-anchor="start">LOCAL：拒绝 SCPI 气缸动作；REMOTE：禁用物理门动作</text>
+<text x="64" y="1848" class="body" text-anchor="start">电源按钮、急停，以及 SCPI 锁 / LED 有各自处理路径</text>
+<text x="64" y="1874" class="body" text-anchor="start">模式切换清普通气缸待执行命令与关门确认流程</text>
+<text x="64" y="1900" class="body" text-anchor="start">已生效的硬件输出不会因清命令槽而自动撤销</text>
+</g>
+<g data-box="时间基准与实现细节"><rect class="box check" x="850" y="1730" width="786" height="194"/>
+<text x="870" y="1764" class="heading" text-anchor="start">时间基准与实现细节</text>
+<text x="870" y="1796" class="body" text-anchor="start">StateVector：25 ms 节拍；ModBus：每 2 个节拍，名义 50 ms</text>
+<text x="870" y="1822" class="body" text-anchor="start">门限位 / 门按钮：高电平连续 3 轮确认，低电平立即清零</text>
+<text x="870" y="1848" class="body" text-anchor="start">READY 的 500 ms 从任意门按钮按下起算，到期检查双按</text>
+<text x="870" y="1874" class="body" text-anchor="start">门按钮全部松开满 200 ms 后释放下一次操作限制</text>
+<text x="870" y="1900" class="body" text-anchor="start">激光宏包含 IN_LASER1（气压位）；按源码记录，需结合接线解读</text>
+</g>
+<text x="44" y="2010" class="small" text-anchor="start">源码：Hardware/RamVector/Src/state_vector.c · App/Src/app_tasks.c · Hardware/RamVector/Inc/ram_vector.h</text>
+<text x="44" y="2038" class="small" text-anchor="start">依据工作区源码绘制 · 2026-09-15 · 条件以实际代码为准；时间为软件阈值，包含轮询与调度误差。</text>
+</svg>

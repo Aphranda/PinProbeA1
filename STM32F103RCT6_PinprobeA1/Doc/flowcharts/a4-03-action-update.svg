@@ -1,0 +1,79 @@
+<svg class="flow" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 704 536" role="img" aria-labelledby="f3-title"><title id="f3-title">状态决策与 ModBus IO 更新闭环</title><style>
+.flow {display:block;width:100%;height:auto;margin:7px 0 8px;overflow:visible}
+.flow text {font-family:"Microsoft YaHei","SimSun","DengXian",Arial,sans-serif;letter-spacing:0;fill:#1f2328}
+.flow .f-title {font-size:13px;font-weight:700;fill:#1f3864}
+.flow .f-body {font-size:11.4px}.flow .f-label {font-size:10.8px;fill:#5b6573;paint-order:stroke;stroke:#fff;stroke-width:4px;stroke-linejoin:round}
+.flow .f-node {stroke-width:1.2}.flow .f-state {fill:#f5f8fc;stroke:#1f3864}
+.flow .f-action {fill:#f7fbf5;stroke:#2e7d32;stroke-dasharray:4 2}
+.flow .f-check {fill:#fffaf0;stroke:#b18a39}.flow .f-fault {fill:#fff5f5;stroke:#c1121f}
+.flow .f-edge {fill:none;stroke:#687381;stroke-width:1.3}
+</style><defs><marker id="f3-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#687381"/></marker></defs>
+<text x="0" y="15" class="f-title">StateVectorTask · 名义 25 ms</text>
+<text x="370" y="15" class="f-title">ModBusTask · 名义 50 ms</text>
+<g data-node="1  读取 RamVector IO 快照"><rect x="0" y="32" width="326" height="64" rx="3" class="f-node f-check"/>
+<text x="10" y="52" class="f-title">1  读取 RamVector IO 快照</text>
+<text x="10" y="71" class="f-body">读取输入 / 输出、LED、链路与毫秒时钟</text>
+<text x="10" y="87" class="f-body">FAULT / RECOVERING → 本轮提前返回</text>
+</g>
+<g data-node="1  先读输入，再读输出"><rect x="370" y="32" width="326" height="64" rx="3" class="f-node f-check"/>
+<text x="380" y="52" class="f-title">1  先读输入，再读输出</text>
+<text x="380" y="71" class="f-body">IO_Read(5, 2) → IO_Read(5, 1)</text>
+<text x="380" y="87" class="f-body">失败 → FAULT；全零 / 未稳定 → RECOVERING</text>
+</g>
+<path d="M163 96L163 112" class="f-edge" marker-end="url(#f3-arrow)"/>
+<path d="M533 96L533 112" class="f-edge" marker-end="url(#f3-arrow)"/>
+<g data-node="2  消抖 / 状态纠偏 / 气缸观测"><rect x="0" y="112" width="326" height="64" rx="3" class="f-node f-state"/>
+<text x="10" y="132" class="f-title">2  消抖 / 状态纠偏 / 气缸观测</text>
+<text x="10" y="151" class="f-body">门限位和门按钮高电平连续 3 轮确认</text>
+<text x="10" y="167" class="f-body">根据电源、限位、LED、输出沿更新状态</text>
+</g>
+<g data-node="2  发布 IO 镜像"><rect x="370" y="112" width="326" height="64" rx="3" class="f-node f-state"/>
+<text x="380" y="132" class="f-title">2  发布 IO 镜像</text>
+<text x="380" y="151" class="f-body">UpdateLocalIO 更新原始 IO 和解码结果</text>
+<text x="380" y="167" class="f-body">保留状态机维护的两个气缸状态字段</text>
+</g>
+<path d="M163 176L163 192" class="f-edge" marker-end="url(#f3-arrow)"/>
+<path d="M533 176L533 192" class="f-edge" marker-end="url(#f3-arrow)"/>
+<g data-node="3  USB 监测 / 自动动作 / 完成判定"><rect x="0" y="192" width="326" height="64" rx="3" class="f-node f-state"/>
+<text x="10" y="212" class="f-title">3  USB 监测 / 自动动作 / 完成判定</text>
+<text x="10" y="231" class="f-body">检查 USB 超时与冲突，编排自动拔出</text>
+<text x="10" y="247" class="f-body">关门完成、开门到位、紧急恢复判断</text>
+</g>
+<g data-node="3  原子取出并清空命令槽"><rect x="370" y="192" width="326" height="64" rx="3" class="f-node f-action"/>
+<text x="380" y="212" class="f-title">3  原子取出并清空命令槽</text>
+<text x="380" y="231" class="f-body">TakeCmds 取快照 → 再检查链路</text>
+<text x="380" y="247" class="f-body">非 OK：丢弃；OK：Lock → Cylinder → LED</text>
+</g>
+<path d="M163 256L163 272" class="f-edge" marker-end="url(#f3-arrow)"/>
+<path d="M533 256L533 272" class="f-edge" marker-end="url(#f3-arrow)"/>
+<g data-node="4  安全事件 → 普通事件"><rect x="0" y="272" width="326" height="64" rx="3" class="f-node f-action"/>
+<text x="10" y="292" class="f-title">4  安全事件 → 普通事件</text>
+<text x="10" y="311" class="f-body">先处理急停有效沿与激光；条件允许时</text>
+<text x="10" y="327" class="f-body">处理电源、SCPI 关门意图、门按钮 / DUT</text>
+</g>
+<g data-node="4  将命令转换成 RS485 写操作"><rect x="370" y="272" width="326" height="64" rx="3" class="f-node f-action"/>
+<text x="380" y="292" class="f-title">4  将命令转换成 RS485 写操作</text>
+<text x="380" y="311" class="f-body">CmdExec → BsmRelay → WriteIO</text>
+<text x="380" y="327" class="f-body">气缸先关反向再开目标；失败记日志</text>
+</g>
+<path d="M163 336L163 352" class="f-edge" marker-end="url(#f3-arrow)"/>
+<path d="M533 336L533 352" class="f-edge" marker-end="url(#f3-arrow)"/>
+<g data-node="5  释放计时 / 灯效 / 状态发布"><rect x="0" y="352" width="326" height="64" rx="3" class="f-node f-state"/>
+<text x="10" y="372" class="f-title">5  释放计时 / 灯效 / 状态发布</text>
+<text x="10" y="391" class="f-body">USB 故障退 IDLE、推进红 / 黄闪烁</text>
+<text x="10" y="407" class="f-body">记录日志 → SetState 发布主状态</text>
+</g>
+<g data-node="5  机械动作 / 等下一轮回读"><rect x="370" y="352" width="326" height="64" rx="3" class="f-node f-action"/>
+<text x="380" y="372" class="f-title">5  机械动作 / 等下一轮回读</text>
+<text x="380" y="391" class="f-body">继电器、电磁阀 → 门 / USB 移动 → 限位变化</text>
+<text x="380" y="407" class="f-body">写输出不立即刷新 RAM；下轮读回再确认</text>
+</g>
+<path d="M370 144L348 144L348 64L326 64" class="f-edge" marker-end="url(#f3-arrow)"/>
+<text x="329" y="105" class="f-label">IO</text>
+<g data-node="命令来源 → 三个独立单槽 → 执行器"><rect x="0" y="462" width="696" height="64" rx="3" class="f-node f-check"/>
+<text x="10" y="482" class="f-title">命令来源 → 三个独立单槽 → 执行器</text>
+<text x="10" y="501" class="f-body">状态机按钮 / 自动 / 安全动作；SCPI 命令 → Lock、Cylinder、LED 槽；门与 USB 共用 Cylinder 槽。</text>
+<text x="10" y="517" class="f-body">安全 2 &gt; 用户 1 &gt; 观测 0；新命令优先级 ≥ 槽内时覆盖，同优先级后写覆盖先写，不是 FIFO 队列。</text>
+</g>
+<path d="M163 416L163 462" class="f-edge" marker-end="url(#f3-arrow)"/>
+<path d="M696 490L703 490L703 224L696 224" class="f-edge" marker-end="url(#f3-arrow)"/></svg>

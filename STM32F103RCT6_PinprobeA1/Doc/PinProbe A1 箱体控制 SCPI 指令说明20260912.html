@@ -654,7 +654,7 @@ READ:BOOT:DIAG?</code></pre>
 <tr><td><code>OFF</code></td><td>锁定当前模式，禁止普通模式切换；<code>CONFigure:MODE LOCAL</code> 和 <code>CONFigure:MODE:ENABle ON</code> 始终保留为恢复路径</td></tr>
 </tbody>
 </table>
-<div class="note-box"><code>CONFigure:MODE:ENABle</code> 为掉电保存配置项，设置后固化到 Flash。<code>CONFigure:MODE</code> 仅用于切换当前控制模式，不保存到 Flash。上电后当前模式默认是 <code>MIXED</code>；为避免设备进入无法恢复的状态，不允许形成 <code>REMOTE + OFF</code> 组合，因此在 <code>REMOTE</code> 模式下设置 <code>CONFigure:MODE:ENABle OFF</code> 必须拒绝。上述控制模式指令已完成固件实现，实机联调待验。</div>
+<div class="note-box"><code>CONFigure:MODE:ENABle</code> 为掉电保存配置项，设置后固化到 Flash。<code>CONFigure:MODE</code> 仅用于切换当前控制模式，不保存到 Flash。上电后当前模式默认是 <code>MIXED</code>；为避免设备进入无法恢复的状态，不允许形成 <code>REMOTE + OFF</code> 组合，因此在 <code>REMOTE</code> 模式下设置 <code>CONFigure:MODE:ENABle OFF</code> 必须拒绝。上述控制模式指令已完成固件实现并通过实机联调。</div>
 <h4>示例</h4>
 <pre data-lang="scpi"><code>CONFigure:MODE:ENABle ON
 CONFigure:MODE REMOTE

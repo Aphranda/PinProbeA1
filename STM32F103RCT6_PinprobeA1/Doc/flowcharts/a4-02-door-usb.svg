@@ -1,0 +1,94 @@
+<svg class="flow" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 704 596" role="img" aria-labelledby="f2-title"><title id="f2-title">关门与开门的 USB 自动动作时序</title><style>
+.flow {display:block;width:100%;height:auto;margin:7px 0 8px;overflow:visible}
+.flow text {font-family:"Microsoft YaHei","SimSun","DengXian",Arial,sans-serif;letter-spacing:0;fill:#1f2328}
+.flow .f-title {font-size:13px;font-weight:700;fill:#1f3864}
+.flow .f-body {font-size:11.4px}.flow .f-label {font-size:10.8px;fill:#5b6573;paint-order:stroke;stroke:#fff;stroke-width:4px;stroke-linejoin:round}
+.flow .f-node {stroke-width:1.2}.flow .f-state {fill:#f5f8fc;stroke:#1f3864}
+.flow .f-action {fill:#f7fbf5;stroke:#2e7d32;stroke-dasharray:4 2}
+.flow .f-check {fill:#fffaf0;stroke:#b18a39}.flow .f-fault {fill:#fff5f5;stroke:#c1121f}
+.flow .f-edge {fill:none;stroke:#687381;stroke-width:1.3}
+</style><defs><marker id="f2-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#687381"/></marker></defs>
+<text x="2" y="15" class="f-title">A  关门流程</text>
+<text x="370" y="15" class="f-title">B  开门与 USB 拔出</text>
+<g data-node="关门请求"><rect x="0" y="32" width="326" height="64" rx="3" class="f-node f-action"/>
+<text x="10" y="52" class="f-title">关门请求</text>
+<text x="10" y="71" class="f-body">物理：单按 200 ms 进入 READY，再确认关门</text>
+<text x="10" y="87" class="f-body">或 SCPI 门 CLOSE 意图，交状态机编排</text>
+</g>
+<g data-node="开门请求 → 投递门开门"><rect x="370" y="32" width="326" height="64" rx="3" class="f-node f-action"/>
+<text x="380" y="52" class="f-title">开门请求 → 投递门开门</text>
+<text x="380" y="71" class="f-body">COMPLETE 且门关到位：单按钮确认 200 ms</text>
+<text x="380" y="87" class="f-body">或 SCPI 门 OPEN → CYLINDER_OPEN</text>
+</g>
+<path d="M163 96L163 112" class="f-edge" marker-end="url(#f2-arrow)"/>
+<path d="M533 96L533 112" class="f-edge" marker-end="url(#f2-arrow)"/>
+<g data-node="DUT / USB 自动开关检查"><rect x="0" y="112" width="326" height="64" rx="3" class="f-node f-check"/>
+<text x="10" y="132" class="f-title">DUT / USB 自动开关检查</text>
+<text x="10" y="151" class="f-body">USB:AUTO 与 DUT:AUTO 均开启才检查 DUT</text>
+<text x="10" y="167" class="f-body">DUT 未到位取消本次；AUTO OFF 直达 A5</text>
+</g>
+<g data-node="B2  回读开门输出沿"><rect x="370" y="112" width="326" height="64" rx="3" class="f-node f-state"/>
+<text x="380" y="132" class="f-title">B2  回读开门输出沿</text>
+<text x="380" y="151" class="f-body">记录 door_open_start_tick；门上升</text>
+<text x="380" y="167" class="f-body">主状态仍为 COMPLETE，此时不自动拔出 USB</text>
+</g>
+<path d="M163 176L163 192" class="f-edge" marker-end="url(#f2-arrow)"/>
+<path d="M533 176L533 192" class="f-edge" marker-end="url(#f2-arrow)"/>
+<g data-node="A3  投递 USB 插入"><rect x="0" y="192" width="326" height="64" rx="3" class="f-node f-action"/>
+<text x="10" y="212" class="f-title">A3  投递 USB 插入</text>
+<text x="10" y="231" class="f-body">USB 已插到位可直达 A5；否则等气缸槽空闲</text>
+<text x="10" y="247" class="f-body">投递 CYLINDER2_CLOSE，经执行器写输出</text>
+</g>
+<g data-node="B3  门开到位 → IDLE"><rect x="370" y="192" width="326" height="64" rx="3" class="f-node f-state"/>
+<text x="380" y="212" class="f-title">B3  门开到位 → IDLE</text>
+<text x="380" y="231" class="f-body">开门输出有效 + 消抖后的门上限位有效</text>
+<text x="380" y="247" class="f-body">投递关灯、记录 OPEN_DONE、清周期计时</text>
+</g>
+<path d="M163 256L163 272" class="f-edge" marker-end="url(#f2-arrow)"/>
+<path d="M533 256L533 272" class="f-edge" marker-end="url(#f2-arrow)"/>
+<g data-node="A4  回读插入输出 → 开始 2 秒计时"><rect x="0" y="272" width="326" height="64" rx="3" class="f-node f-check"/>
+<text x="10" y="292" class="f-title">A4  回读插入输出 → 开始 2 秒计时</text>
+<text x="10" y="311" class="f-body">超 2 秒未到位 → 故障（RUNNING 豁免）</text>
+<text x="10" y="327" class="f-body">USB 上位 = 1 且下位 = 0，到位即继续</text>
+</g>
+<g data-node="B4  自动拔出条件满足"><rect x="370" y="272" width="326" height="64" rx="3" class="f-node f-check"/>
+<text x="380" y="292" class="f-title">B4  自动拔出条件满足</text>
+<text x="380" y="311" class="f-body">已解锁、AUTO 开启、无 USB 故障 / 急停</text>
+<text x="380" y="327" class="f-body">IDLE、门开到位、无关门准备意图、命令槽空闲</text>
+</g>
+<path d="M163 336L163 352" class="f-edge" marker-end="url(#f2-arrow)"/>
+<path d="M533 336L533 352" class="f-edge" marker-end="url(#f2-arrow)"/>
+<g data-node="A5  条件通过 → 投递门关门"><rect x="0" y="352" width="326" height="64" rx="3" class="f-node f-action"/>
+<text x="10" y="372" class="f-title">A5  条件通过 → 投递门关门</text>
+<text x="10" y="391" class="f-body">再次检查 DUT；流程到位检查还排除反向输出</text>
+<text x="10" y="407" class="f-body">USB 自动关闭时，可直接投递门关门</text>
+</g>
+<g data-node="B5  投递 USB 拔出"><rect x="370" y="352" width="326" height="64" rx="3" class="f-node f-action"/>
+<text x="380" y="372" class="f-title">B5  投递 USB 拔出</text>
+<text x="380" y="391" class="f-body">USB 未拔到位且未在拔出；满足条件直接投递</text>
+<text x="380" y="407" class="f-body">CYLINDER2_OPEN → IO3=0 / IO4=1</text>
+</g>
+<path d="M163 416L163 432" class="f-edge" marker-end="url(#f2-arrow)"/>
+<path d="M533 416L533 432" class="f-edge" marker-end="url(#f2-arrow)"/>
+<g data-node="A6  关门输出沿 → RUNNING"><rect x="0" y="432" width="326" height="64" rx="3" class="f-node f-state"/>
+<text x="10" y="452" class="f-title">A6  关门输出沿 → RUNNING</text>
+<text x="10" y="471" class="f-body">门未关到底时记录关门起始时间</text>
+<text x="10" y="487" class="f-body">等待下限位或风险模式完成条件</text>
+</g>
+<g data-node="B6  回读拔出输出 → 此处开始 2 秒"><rect x="370" y="432" width="326" height="64" rx="3" class="f-node f-check"/>
+<text x="380" y="452" class="f-title">B6  回读拔出输出 → 此处开始 2 秒</text>
+<text x="380" y="471" class="f-body">usb_move_start_tick = now</text>
+<text x="380" y="487" class="f-body">超过 2000 ms 仍未到位 → USB 拔出故障</text>
+</g>
+<path d="M163 496L163 512" class="f-edge" marker-end="url(#f2-arrow)"/>
+<path d="M533 496L533 512" class="f-edge" marker-end="url(#f2-arrow)"/>
+<g data-node="A7  COMPLETE"><rect x="0" y="512" width="326" height="64" rx="3" class="f-node f-state"/>
+<text x="10" y="532" class="f-title">A7  COMPLETE</text>
+<text x="10" y="551" class="f-body">正常投递绿灯，记录 CLOSE_DONE / 行程学习</text>
+<text x="10" y="567" class="f-body">完成时 USB 未到位可产生黄色闪烁诊断</text>
+</g>
+<g data-node="B7  USB 拔出到位"><rect x="370" y="512" width="326" height="64" rx="3" class="f-node f-state"/>
+<text x="380" y="532" class="f-title">B7  USB 拔出到位</text>
+<text x="380" y="551" class="f-body">USB 下位 = 1 且上位 = 0 → 气缸 OPENED</text>
+<text x="380" y="567" class="f-body">清计时 / 故障；主状态 IDLE，无须等满 2 秒</text>
+</g></svg>

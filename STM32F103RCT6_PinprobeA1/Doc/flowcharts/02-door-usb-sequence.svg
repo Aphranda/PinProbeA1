@@ -1,0 +1,158 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1680" height="2110" viewBox="0 0 1680 2110" role="img" aria-labelledby="title desc">
+<title id="title">02  门与 USB 自动动作时序</title><desc id="desc">正常自动周期；USB:AUTO 开启。动作框表示投递或输出观测，不能把“命令已发出”视为“机械到位”。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#52616b"/></marker></defs>
+<style>
+text {font-family:'Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#202b33;letter-spacing:0}
+.title {font-size:34px;font-weight:700}.sub {font-size:18px;fill:#52616b}
+.heading {font-size:23px;font-weight:700}.body {font-size:19px}.small {font-size:17px;fill:#52616b}
+.edge {fill:none;stroke:#52616b;stroke-width:2;marker-end:url(#arrow)}
+.label {font-size:17px;paint-order:stroke;stroke:#fff;stroke-width:7;stroke-linejoin:round}
+.box {stroke-width:1.7;rx:6}.state {fill:#edf6fd;stroke:#327bb0}
+.action {fill:#f1f8f4;stroke:#43856a;stroke-dasharray:7 4}
+.check {fill:#fff9df;stroke:#a88a21}.fault {fill:#fff0f1;stroke:#bf5365}
+.neutral {fill:#f5f7f8;stroke:#89969e}.info {fill:#fff;stroke:#bac5cb}
+</style><rect width="1680" height="2110" fill="#fff"/>
+<text x="44" y="58" class="title" text-anchor="start">02  门与 USB 自动动作时序</text>
+<text x="44" y="94" class="sub" text-anchor="start">正常自动周期；USB:AUTO 开启。动作框表示投递或输出观测，不能把“命令已发出”视为“机械到位”。</text>
+<path d="M44 118H1636" stroke="#cdd5da"/>
+<text x="60" y="164" class="heading" text-anchor="start">A  关门：确认 → DUT → 插入 USB → 关门</text>
+<text x="880" y="164" class="heading" text-anchor="start">B  开门：开门到位 → 拔出 USB</text>
+<g data-box="关门请求"><rect class="box action" x="70" y="200" width="610" height="114"/>
+<text x="90" y="234" class="heading" text-anchor="start">关门请求</text>
+<text x="90" y="266" class="body" text-anchor="start">物理：IDLE 单按 200 ms → 黄灯回读进入 READY</text>
+<text x="90" y="292" class="body" text-anchor="start">READY 任意按钮计时满 500 ms，触发时须双按</text>
+</g>
+<path class="edge" d="M375 314L375 362"/>
+<text x="389" y="343" class="label" text-anchor="start">或：SCPI 门 CLOSE 意图，经执行器转入流程</text>
+<g data-box="检查 DUT / 自动流程开关"><rect class="box check" x="70" y="362" width="610" height="110"/>
+<text x="90" y="396" class="heading" text-anchor="start">检查 DUT / 自动流程开关</text>
+<text x="90" y="428" class="body" text-anchor="start">USB:AUTO 与 DUT:AUTO 均开启才检查 DUT</text>
+<text x="90" y="454" class="body" text-anchor="start">DUT 未到位：记录事件、取消本次关门准备</text>
+</g>
+<path class="edge" d="M375 472L375 522"/>
+<text x="389" y="502" class="label" text-anchor="start">DUT 条件通过</text>
+<g data-box="USB 是否需要插入？"><rect class="box check" x="70" y="522" width="610" height="112"/>
+<text x="90" y="556" class="heading" text-anchor="start">USB 是否需要插入？</text>
+<text x="90" y="588" class="body" text-anchor="start">AUTO OFF 或 USB 已插到位 → 直接进入 A5</text>
+<text x="90" y="614" class="body" text-anchor="start">否则：无 USB 故障、无插入输出且气缸槽空闲</text>
+</g>
+<path class="edge" d="M375 634L375 684"/>
+<text x="389" y="664" class="label" text-anchor="start">需要插入</text>
+<g data-box="A3  投递插入；等待输出回读"><rect class="box action" x="70" y="684" width="610" height="110"/>
+<text x="90" y="718" class="heading" text-anchor="start">A3  投递插入；等待输出回读</text>
+<text x="90" y="750" class="body" text-anchor="start">VCMD_CYLINDER2_CLOSE → 执行 IO3=1 / IO4=0</text>
+<text x="90" y="776" class="body" text-anchor="start">观测插入输出有效 → usb_move_start_tick = now</text>
+</g>
+<path class="edge" d="M375 794L375 844"/>
+<text x="389" y="824" class="label" text-anchor="start">从输出观测开始计时</text>
+<g data-box="A4  等待 USB 插入到位"><rect class="box check" x="70" y="844" width="610" height="112"/>
+<text x="90" y="878" class="heading" text-anchor="start">A4  等待 USB 插入到位</text>
+<text x="90" y="910" class="body" text-anchor="start">USB 上位=1、下位=0；流程还检查反向输出</text>
+<text x="90" y="936" class="body" text-anchor="start">未到位且 AUTO 开启：超过 2000 ms → F1</text>
+</g>
+<path class="edge" d="M375 956L375 1006"/>
+<text x="389" y="986" class="label" text-anchor="start">到位即继续；待关门时再次检查 DUT</text>
+<g data-box="A5  投递门关门"><rect class="box action" x="70" y="1006" width="610" height="110"/>
+<text x="90" y="1040" class="heading" text-anchor="start">A5  投递门关门</text>
+<text x="90" y="1072" class="body" text-anchor="start">VCMD_CYLINDER_CLOSE；设关门待生效保护标志</text>
+<text x="90" y="1098" class="body" text-anchor="start">该标志最多保持 1000 ms，防止 Idle 自动拔出干扰</text>
+</g>
+<path class="edge" d="M375 1116L375 1166"/>
+<text x="389" y="1146" class="label" text-anchor="start">门关门输出上升沿回读</text>
+<g data-box="A6  RUNNING：门下降"><rect class="box state" x="70" y="1166" width="610" height="112"/>
+<text x="90" y="1200" class="heading" text-anchor="start">A6  RUNNING：门下降</text>
+<text x="90" y="1232" class="body" text-anchor="start">记录关门起始时间；等待下限位 / 风险条件</text>
+<text x="90" y="1258" class="body" text-anchor="start">RUNNING 期间跳过 USB 插入的 2 秒超时分支</text>
+</g>
+<path class="edge" d="M375 1278L375 1328"/>
+<text x="389" y="1308" class="label" text-anchor="start">满足关门完成条件</text>
+<g data-box="A7  COMPLETE"><rect class="box state" x="70" y="1328" width="610" height="138"/>
+<text x="90" y="1362" class="heading" text-anchor="start">A7  COMPLETE</text>
+<text x="90" y="1394" class="body" text-anchor="start">正常：绿灯；记录 CLOSE_DONE、学习合格行程</text>
+<text x="90" y="1420" class="body" text-anchor="start">完成瞬间 USB 未插到位：可置黄色闪烁诊断</text>
+<text x="90" y="1446" class="body" text-anchor="start">后续仍受 USB 底层故障判断影响（参见 F1）</text>
+</g>
+<g data-box="开门请求"><rect class="box action" x="890" y="200" width="610" height="114"/>
+<text x="910" y="234" class="heading" text-anchor="start">开门请求</text>
+<text x="910" y="266" class="body" text-anchor="start">物理：COMPLETE 且门在下限位</text>
+<text x="910" y="292" class="body" text-anchor="start">任意门按钮确认 200 ms；或接收 SCPI 门 OPEN</text>
+</g>
+<path class="edge" d="M1195 314L1195 362"/>
+<g data-box="B2  投递门开门"><rect class="box action" x="890" y="362" width="610" height="110"/>
+<text x="910" y="396" class="heading" text-anchor="start">B2  投递门开门</text>
+<text x="910" y="428" class="body" text-anchor="start">VCMD_CYLINDER_OPEN</text>
+<text x="910" y="454" class="body" text-anchor="start">此时尚未启动自动 USB 拔出</text>
+</g>
+<path class="edge" d="M1195 472L1195 522"/>
+<text x="1209" y="502" class="label" text-anchor="start">ModBus 执行后，下一次 IO 回读</text>
+<g data-box="B3  门开门输出有效"><rect class="box action" x="890" y="522" width="610" height="112"/>
+<text x="910" y="556" class="heading" text-anchor="start">B3  门开门输出有效</text>
+<text x="910" y="588" class="body" text-anchor="start">观测输出上升沿，记录 door_open_start_tick</text>
+<text x="910" y="614" class="body" text-anchor="start">门上升中，主状态仍为 COMPLETE</text>
+</g>
+<path class="edge" d="M1195 634L1195 684"/>
+<text x="1209" y="664" class="label" text-anchor="start">持续观察门上限位</text>
+<g data-box="B4  开门到位 → IDLE"><rect class="box state" x="890" y="684" width="610" height="110"/>
+<text x="910" y="718" class="heading" text-anchor="start">B4  开门到位 → IDLE</text>
+<text x="910" y="750" class="body" text-anchor="start">开门输出有效 + 消抖后的门上限位有效</text>
+<text x="910" y="776" class="body" text-anchor="start">记录 OPEN_DONE，投递关灯，清周期计时</text>
+</g>
+<path class="edge" d="M1195 794L1195 844"/>
+<text x="1209" y="824" class="label" text-anchor="start">后续状态轮次进入自动 USB 纠偏</text>
+<g data-box="B5  检查自动拔出条件"><rect class="box check" x="890" y="844" width="610" height="140"/>
+<text x="910" y="878" class="heading" text-anchor="start">B5  检查自动拔出条件</text>
+<text x="910" y="910" class="body" text-anchor="start">AUTO 开启、已解锁、无 USB 故障 / 急停</text>
+<text x="910" y="936" class="body" text-anchor="start">IDLE、门上限位有效、无关门准备意图</text>
+<text x="910" y="962" class="body" text-anchor="start">USB 未拔到位、未在拔出、气缸命令槽空闲</text>
+</g>
+<path class="edge" d="M1195 984L1195 1034"/>
+<text x="1209" y="1014" class="label" text-anchor="start">条件满足，直接投递；没有额外 2 秒等待</text>
+<g data-box="B6  投递 USB 拔出"><rect class="box action" x="890" y="1034" width="610" height="110"/>
+<text x="910" y="1068" class="heading" text-anchor="start">B6  投递 USB 拔出</text>
+<text x="910" y="1100" class="body" text-anchor="start">VCMD_CYLINDER2_OPEN → 执行 IO3=0 / IO4=1</text>
+<text x="910" y="1126" class="body" text-anchor="start">投递与实际写 IO、回读反馈分属不同步骤</text>
+</g>
+<path class="edge" d="M1195 1144L1195 1194"/>
+<text x="1209" y="1174" class="label" text-anchor="start">回读 USB 拔出输出有效</text>
+<g data-box="B7  此处开始 2 秒超时计时"><rect class="box check" x="890" y="1194" width="610" height="112"/>
+<text x="910" y="1228" class="heading" text-anchor="start">B7  此处开始 2 秒超时计时</text>
+<text x="910" y="1260" class="body" text-anchor="start">usb_move_start_tick = now（输出沿 / 计时补启）</text>
+<text x="910" y="1286" class="body" text-anchor="start">未拔到位且 elapsed &gt; 2000 ms → F2</text>
+</g>
+<path class="edge" d="M1195 1306L1195 1356"/>
+<text x="1209" y="1336" class="label" text-anchor="start">USB 下位=1 且上位=0</text>
+<g data-box="B8  拔出到位"><rect class="box state" x="890" y="1356" width="610" height="110"/>
+<text x="910" y="1390" class="heading" text-anchor="start">B8  拔出到位</text>
+<text x="910" y="1422" class="body" text-anchor="start">气缸 2 = OPENED；清动作计时与故障标志</text>
+<text x="910" y="1448" class="body" text-anchor="start">主状态保持 IDLE；无需等满 2 秒</text>
+</g>
+<path class="edge" d="M680 900L795 900L795 1508L400 1508L400 1550"/>
+<text x="700" y="889" class="label" text-anchor="start">异常</text>
+<path class="edge" d="M1500 1250L1600 1250L1600 1508L1210 1508L1210 1550"/>
+<text x="1518" y="1239" class="label" text-anchor="start">异常</text>
+<g data-box="F1  USB 插入异常"><rect class="box fault" x="44" y="1550" width="766" height="194"/>
+<text x="64" y="1584" class="heading" text-anchor="start">F1  USB 插入异常</text>
+<text x="64" y="1616" class="body" text-anchor="start">AUTO 开启时：超过 2 秒且非 RUNNING，或传感 / 输出冲突</text>
+<text x="64" y="1642" class="body" text-anchor="start">记录 USB_INSERT_FAIL；USB 气缸置 ERR</text>
+<text x="64" y="1668" class="body" text-anchor="start">门在上限位时投递安全优先级 USB 回退</text>
+<text x="64" y="1694" class="body" text-anchor="start">非急停 / 激光紧急时：退 IDLE、清关门意图、红灯快闪 3 次</text>
+<text x="64" y="1720" class="body" text-anchor="start">注意：COMPLETE 不在插入超时的豁免范围内</text>
+</g>
+<g data-box="F2  USB 拔出异常"><rect class="box fault" x="850" y="1550" width="786" height="194"/>
+<text x="870" y="1584" class="heading" text-anchor="start">F2  USB 拔出异常</text>
+<text x="870" y="1616" class="body" text-anchor="start">AUTO 开启时：超过 2 秒，或传感 / 输出冲突</text>
+<text x="870" y="1642" class="body" text-anchor="start">记录 USB_RETRACT_FAIL；USB 气缸置 ERR</text>
+<text x="870" y="1668" class="body" text-anchor="start">非急停 / 激光紧急时：退 IDLE、清关门意图、红灯快闪 3 次</text>
+<text x="870" y="1694" class="body" text-anchor="start">此失败分支没有自动反向重试或关闭拔出输出的命令</text>
+<text x="870" y="1720" class="body" text-anchor="start">到位观测可清故障；通信不可信则走独立恢复流程</text>
+</g>
+<text x="44" y="1810" class="heading" text-anchor="start">2 秒的准确位置</text>
+<g data-box="门开到位 → 条件检查 → 投递 USB 拔出 → 写 IO → 回读拔出输出 → 最多约 2 秒等待到位"><rect class="box check" x="44" y="1840" width="1592" height="148"/>
+<text x="64" y="1874" class="heading" text-anchor="start">门开到位 → 条件检查 → 投递 USB 拔出 → 写 IO → 回读拔出输出 → 最多约 2 秒等待到位</text>
+<text x="64" y="1906" class="body" text-anchor="start">USB_MOVE_TIMEOUT_MS = 2000；实际比较为 &gt;，由 25 ms 状态轮次执行，反馈来自名义 50 ms IO 轮询。</text>
+<text x="64" y="1932" class="body" text-anchor="start">USB 输出首次有效 / 换向时启动计时；有输出但计时为 0 时也会补启。它不是“开门后先延迟 2 秒再拔出”。</text>
+<text x="64" y="1958" class="body" text-anchor="start">SCPI 直接控制气缸 2 走独立命令入口，不经过这里的自动开门到位条件编排。</text>
+</g>
+<text x="44" y="2060" class="small" text-anchor="start">源码：state_vector.c:627 / 691 / 720 / 775 / 876 / 1032 / 1093 / 1148 · cmd_exec.c:43 · BsmRelay.c:88</text>
+<text x="44" y="2088" class="small" text-anchor="start">依据工作区源码绘制 · 2026-09-15 · 条件以实际代码为准；时间为软件阈值，包含轮询与调度误差。</text>
+</svg>

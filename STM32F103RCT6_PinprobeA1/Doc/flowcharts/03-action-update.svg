@@ -1,0 +1,164 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1680" height="2130" viewBox="0 0 1680 2130" role="img" aria-labelledby="title desc">
+<title id="title">03  动作投递、执行与 IO 更新</title><desc id="desc">控制闭环：输入观测 → 状态决策 → 命令仲裁 → RS485 写输出 → 机械运动 → IO 回读 → 状态确认。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#52616b"/></marker></defs>
+<style>
+text {font-family:'Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#202b33;letter-spacing:0}
+.title {font-size:34px;font-weight:700}.sub {font-size:18px;fill:#52616b}
+.heading {font-size:23px;font-weight:700}.body {font-size:19px}.small {font-size:17px;fill:#52616b}
+.edge {fill:none;stroke:#52616b;stroke-width:2;marker-end:url(#arrow)}
+.label {font-size:17px;paint-order:stroke;stroke:#fff;stroke-width:7;stroke-linejoin:round}
+.box {stroke-width:1.7;rx:6}.state {fill:#edf6fd;stroke:#327bb0}
+.action {fill:#f1f8f4;stroke:#43856a;stroke-dasharray:7 4}
+.check {fill:#fff9df;stroke:#a88a21}.fault {fill:#fff0f1;stroke:#bf5365}
+.neutral {fill:#f5f7f8;stroke:#89969e}.info {fill:#fff;stroke:#bac5cb}
+</style><rect width="1680" height="2130" fill="#fff"/>
+<text x="44" y="58" class="title" text-anchor="start">03  动作投递、执行与 IO 更新</text>
+<text x="44" y="94" class="sub" text-anchor="start">控制闭环：输入观测 → 状态决策 → 命令仲裁 → RS485 写输出 → 机械运动 → IO 回读 → 状态确认。</text>
+<path d="M44 118H1636" stroke="#cdd5da"/>
+<g data-box="SysTimerCallback · 25 ms 节拍"><rect class="box neutral" x="44" y="160" width="480" height="140"/>
+<text x="64" y="194" class="heading" text-anchor="start">SysTimerCallback · 25 ms 节拍</text>
+<text x="64" y="226" class="body" text-anchor="start">每次置 StateVector 线程标志</text>
+<text x="64" y="252" class="body" text-anchor="start">每 2 次置 ModBus 线程标志</text>
+<text x="64" y="278" class="body" text-anchor="start">线程标志不是逐拍累积的任务队列</text>
+</g>
+<g data-box="StateVectorTask"><rect class="box state" x="594" y="160" width="480" height="140"/>
+<text x="614" y="194" class="heading" text-anchor="start">StateVectorTask</text>
+<text x="614" y="226" class="body" text-anchor="start">启动先 RamVector_Init(0)，等待 700 ms</text>
+<text x="614" y="252" class="body" text-anchor="start">等待线程标志 → StateVector_Input()</text>
+<text x="614" y="278" class="body" text-anchor="start">读取 IO 缓存；状态逻辑不直接访问 RS485</text>
+</g>
+<g data-box="ModBusTask"><rect class="box action" x="1144" y="160" width="492" height="140"/>
+<text x="1164" y="194" class="heading" text-anchor="start">ModBusTask</text>
+<text x="1164" y="226" class="body" text-anchor="start">启动等待 500 ms，再等待线程标志</text>
+<text x="1164" y="252" class="body" text-anchor="start">名义 50 ms 一轮；通信耗时可能延长周期</text>
+<text x="1164" y="278" class="body" text-anchor="start">先读输入 / 输出，再取命令执行</text>
+</g>
+<path class="edge" d="M524 218L594 218"/>
+<path class="edge" d="M280 300L280 332L1390 332L1390 300"/>
+<text x="44" y="395" class="heading" text-anchor="start">A  StateVector_Input() 每轮顺序</text>
+<text x="900" y="395" class="heading" text-anchor="start">B  ModBusTask 每轮顺序</text>
+<g data-box="1  读 RAM IO 快照 / 处理控制模式切换"><rect class="box check" x="44" y="430" width="660" height="130"/>
+<text x="64" y="464" class="heading" text-anchor="start">1  读 RAM IO 快照 / 处理控制模式切换</text>
+<text x="64" y="496" class="body" text-anchor="start">读取原始输入、输出、LED、链路状态与 TIM1 毫秒时钟</text>
+<text x="64" y="522" class="body" text-anchor="start">FAULT / RECOVERING：置气缸 ERR、清 USB 意图并提前返回</text>
+<text x="64" y="548" class="body" text-anchor="start">FAULT 连续 10 个状态轮次触发黄灯告警</text>
+</g>
+<g data-box="2  输入消抖 / IO 自动纠偏"><rect class="box state" x="44" y="610" width="660" height="130"/>
+<text x="64" y="644" class="heading" text-anchor="start">2  输入消抖 / IO 自动纠偏</text>
+<text x="64" y="676" class="body" text-anchor="start">门上下限位、两个门按钮：连续 3 次高电平确认</text>
+<text x="64" y="702" class="body" text-anchor="start">根据电源、门限位、LED 更新主状态；观测门输出沿计时</text>
+<text x="64" y="728" class="body" text-anchor="start">依据输出与限位推导两个气缸状态</text>
+</g>
+<g data-box="3  USB 监测 / 自动流程 / 完成判定"><rect class="box state" x="44" y="790" width="660" height="130"/>
+<text x="64" y="824" class="heading" text-anchor="start">3  USB 监测 / 自动流程 / 完成判定</text>
+<text x="64" y="856" class="body" text-anchor="start">处理 USB 超时与冲突，满足条件时自动纠偏拔出</text>
+<text x="64" y="882" class="body" text-anchor="start">处理 RUNNING 完成、COMPLETE 开门到位、紧急恢复</text>
+<text x="64" y="908" class="body" text-anchor="start">这里只投递命令，执行发生在 ModBusTask</text>
+</g>
+<g data-box="4  安全事件 → 普通事件"><rect class="box action" x="44" y="970" width="660" height="130"/>
+<text x="64" y="1004" class="heading" text-anchor="start">4  安全事件 → 普通事件</text>
+<text x="64" y="1036" class="body" text-anchor="start">急停有效沿、激光窗口触发：投递安全优先级动作</text>
+<text x="64" y="1062" class="body" text-anchor="start">本轮无急停 / 激光紧急时处理电源按钮、SCPI 关门意图</text>
+<text x="64" y="1088" class="body" text-anchor="start">再处理物理门按钮、DUT / USB 编排与气压诊断</text>
+</g>
+<g data-box="5  按钮释放 / 灯效 / 状态发布"><rect class="box state" x="44" y="1150" width="660" height="130"/>
+<text x="64" y="1184" class="heading" text-anchor="start">5  按钮释放 / 灯效 / 状态发布</text>
+<text x="64" y="1216" class="body" text-anchor="start">推进按钮释放计时、黄色 / 红色闪烁、USB 失败退 IDLE</text>
+<text x="64" y="1242" class="body" text-anchor="start">记录状态日志；RamVector_SetState() 发布主状态</text>
+<text x="64" y="1268" class="body" text-anchor="start">更新心跳（当前 node_id=0，单机模式不递增）</text>
+</g>
+<path class="edge" d="M374 560L374 610"/>
+<path class="edge" d="M374 740L374 790"/>
+<path class="edge" d="M374 920L374 970"/>
+<path class="edge" d="M374 1100L374 1150"/>
+<g data-box="1  RS485 读取输入，再读取输出"><rect class="box check" x="900" y="430" width="660" height="130"/>
+<text x="920" y="464" class="heading" text-anchor="start">1  RS485 读取输入，再读取输出</text>
+<text x="920" y="496" class="body" text-anchor="start">IO_Read(5, 2, in_buf)；IO_Read(5, 1, out_buf)</text>
+<text x="920" y="522" class="body" text-anchor="start">读失败 → FAULT；全零帧 → RECOVERING</text>
+<text x="920" y="548" class="body" text-anchor="start">首次启动 / 故障后需连续 10 组完全相同非零读数</text>
+</g>
+<path class="edge" d="M1230 560L1230 610"/>
+<text x="1244" y="590" class="label" text-anchor="start">稳定恢复后才置 OK</text>
+<g data-box="2  更新本机 IO 镜像"><rect class="box state" x="900" y="610" width="660" height="130"/>
+<text x="920" y="644" class="heading" text-anchor="start">2  更新本机 IO 镜像</text>
+<text x="920" y="676" class="body" text-anchor="start">原始 IN / OUT + 门、锁、LED 等解码 + rs485_ok</text>
+<text x="920" y="702" class="body" text-anchor="start">RamVector_UpdateLocalIO() 在临界区更新快照</text>
+<text x="920" y="728" class="body" text-anchor="start">保留 StateVector 写入的两个气缸状态字段</text>
+</g>
+<path class="edge" d="M1230 740L1230 790"/>
+<g data-box="3  CmdExec_ExecuteAll() 取命令"><rect class="box action" x="900" y="790" width="660" height="130"/>
+<text x="920" y="824" class="heading" text-anchor="start">3  CmdExec_ExecuteAll() 取命令</text>
+<text x="920" y="856" class="body" text-anchor="start">RamVector_TakeCmds() 原子快照并清空三个命令槽</text>
+<text x="920" y="882" class="body" text-anchor="start">再检查链路：非 OK → 本批命令丢弃、直接返回</text>
+<text x="920" y="908" class="body" text-anchor="start">OK → 依次执行 Lock → Cylinder → LED</text>
+</g>
+<path class="edge" d="M1230 920L1230 970"/>
+<g data-box="4  将命令转换为实际 IO 写操作"><rect class="box action" x="900" y="970" width="660" height="130"/>
+<text x="920" y="1004" class="heading" text-anchor="start">4  将命令转换为实际 IO 写操作</text>
+<text x="920" y="1036" class="body" text-anchor="start">CmdExec → Lock_Write / Cylinder_Write / LED_Write</text>
+<text x="920" y="1062" class="body" text-anchor="start">气缸换向：先关闭反向输出，再开启目标方向输出</text>
+<text x="920" y="1088" class="body" text-anchor="start">写失败记录 IO_WRITE_FAIL；此层不自动重新入槽</text>
+</g>
+<path class="edge" d="M1230 1100L1230 1150"/>
+<g data-box="5  硬件动作；下一轮重新回读"><rect class="box neutral" x="900" y="1150" width="660" height="130"/>
+<text x="920" y="1184" class="heading" text-anchor="start">5  硬件动作；下一轮重新回读</text>
+<text x="920" y="1216" class="body" text-anchor="start">继电器 / 电磁阀 → 门或 USB 机械运动 → 限位变化</text>
+<text x="920" y="1242" class="body" text-anchor="start">本轮写操作不会立即刷新 RamVector 的输出镜像</text>
+<text x="920" y="1268" class="body" text-anchor="start">下一次读回输出和传感器后，状态机才观察到变化</text>
+</g>
+<path class="edge" d="M1560 1215L1615 1215L1615 495L1560 495"/>
+<path class="edge" d="M900 675L772 675L772 495L704 495"/>
+<text x="783" y="653" class="label" text-anchor="start">IO 快照</text>
+<text x="44" y="1360" class="heading" text-anchor="start">C  命令入口与仲裁</text>
+<g data-box="命令来源"><rect class="box action" x="44" y="1395" width="470" height="196"/>
+<text x="64" y="1429" class="heading" text-anchor="start">命令来源</text>
+<text x="64" y="1461" class="body" text-anchor="start">状态机：按钮 / 自动流程 / 安全事件</text>
+<text x="64" y="1487" class="body" text-anchor="start">SCPI：门、USB、锁、LED</text>
+<text x="64" y="1513" class="body" text-anchor="start">门 CLOSE → VCMD_DOOR_CLOSE_REQ</text>
+<text x="64" y="1539" class="body" text-anchor="start">执行器将该意图交回 StateVector</text>
+<text x="64" y="1565" class="body" text-anchor="start">SCPI 门 OPEN / USB 动作直接入气缸槽</text>
+</g>
+<g data-box="RamVector：三个独立单槽"><rect class="box check" x="574" y="1395" width="520" height="196"/>
+<text x="594" y="1429" class="heading" text-anchor="start">RamVector：三个独立单槽</text>
+<text x="594" y="1461" class="body" text-anchor="start">Lock  ·  Cylinder  ·  LED</text>
+<text x="594" y="1487" class="body" text-anchor="start">安全 2 &gt; 用户 1 &gt; 观测 0</text>
+<text x="594" y="1513" class="body" text-anchor="start">新命令优先级 ≥ 槽内优先级时覆盖</text>
+<text x="594" y="1539" class="body" text-anchor="start">同优先级后写覆盖先写；它不是 FIFO</text>
+<text x="594" y="1565" class="body" text-anchor="start">门与 USB 共用同一个 Cylinder 槽</text>
+</g>
+<g data-box="执行结果如何确认"><rect class="box state" x="1154" y="1395" width="482" height="196"/>
+<text x="1174" y="1429" class="heading" text-anchor="start">执行结果如何确认</text>
+<text x="1174" y="1461" class="body" text-anchor="start">命令已接收 ≠ 已写入 IO ≠ 已到位</text>
+<text x="1174" y="1487" class="body" text-anchor="start">写 IO 结果用于失败日志</text>
+<text x="1174" y="1513" class="body" text-anchor="start">回读输出沿用于动作计时 / 状态观测</text>
+<text x="1174" y="1539" class="body" text-anchor="start">回读到位传感器用于确认机械完成</text>
+<text x="1174" y="1565" class="body" text-anchor="start">SCPI 查询读取 RAM 镜像</text>
+</g>
+<path class="edge" d="M514 1493L574 1493"/>
+<path class="edge" d="M1094 1493L1154 1493"/>
+<path class="edge" d="M834 1395L834 855L900 855"/>
+<text x="845" y="1020" class="label" text-anchor="start">取槽</text>
+<text x="44" y="1670" class="heading" text-anchor="start">D  非正常轮次与时间含义</text>
+<g data-box="链路故障 / 恢复"><rect class="box fault" x="44" y="1705" width="766" height="252"/>
+<text x="64" y="1739" class="heading" text-anchor="start">链路故障 / 恢复</text>
+<text x="64" y="1771" class="body" text-anchor="start">FAULT：读失败，立即停止本轮状态逻辑；气缸镜像置 ERR</text>
+<text x="64" y="1797" class="body" text-anchor="start">故障告警计数按 25 ms 状态轮次增加，非 10 次独立 RS485 请求</text>
+<text x="64" y="1823" class="body" text-anchor="start">RECOVERING：全零帧或尚未取得 10 组稳定非零 IO</text>
+<text x="64" y="1849" class="body" text-anchor="start">恢复阶段约需 0.5 秒量级；IO 一旦变化，稳定计数重新开始</text>
+<text x="64" y="1875" class="body" text-anchor="start">执行器在 FAULT / RECOVERING 中取走并丢弃命令</text>
+<text x="64" y="1901" class="body" text-anchor="start">恢复 OK 后继续依据 IO 纠偏；不会重放已丢弃命令</text>
+<text x="64" y="1927" class="body" text-anchor="start">这是命令软件处理规则，不能据此推断硬件输出已自动清零</text>
+</g>
+<g data-box="关键时间与观测边界"><rect class="box check" x="850" y="1705" width="786" height="252"/>
+<text x="870" y="1739" class="heading" text-anchor="start">关键时间与观测边界</text>
+<text x="870" y="1771" class="body" text-anchor="start">25 ms：逻辑节拍；50 ms：名义 IO 轮询周期</text>
+<text x="870" y="1797" class="body" text-anchor="start">200 / 500 ms：门按钮确认阈值；300 ms：电源按钮阈值</text>
+<text x="870" y="1823" class="body" text-anchor="start">1000 ms：电源切换冷却；关门待生效保护也使用 1000 ms</text>
+<text x="870" y="1849" class="body" text-anchor="start">2000 ms：USB 行程超时，从输出回读观测开始计算</text>
+<text x="870" y="1875" class="body" text-anchor="start">关门完成后 3000 ms 起，每 1500 ms 检测低气压，仅记录诊断</text>
+<text x="870" y="1901" class="body" text-anchor="start">3 次逻辑消抖采样可能读到同一帧 IO，不等同于 3 次独立回读</text>
+<text x="870" y="1927" class="body" text-anchor="start">实际响应还包含线程调度、读写通信与传感器消抖耗时</text>
+</g>
+<text x="44" y="2080" class="small" text-anchor="start">源码：App/Src/app_tasks.c:59 / 162 / 175 · ram_vector.c:41 / 120 / 155 · cmd_exec.c:117 · state_vector.c:250</text>
+<text x="44" y="2108" class="small" text-anchor="start">依据工作区源码绘制 · 2026-09-15 · 条件以实际代码为准；时间为软件阈值，包含轮询与调度误差。</text>
+</svg>
