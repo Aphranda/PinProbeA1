@@ -271,6 +271,7 @@ void StateVector_Input(void)
      *   door_close_timing        是否正在计关门时间
      *   door_close_from_full     本次关门是否从上限位开始 (用于决定是否学习)
      *   door_close_time_learned  是否已完成至少一次关门学习
+     *   risk_door_down_latched   Risk Mode 下已触发过关门传感器
      *   air_last_check_tick      上次气压检测时刻
      *   m_23 / m_100 / m_300     关门时间里程碑已打印标志 (调试用, 各印一次)
      *
@@ -296,6 +297,7 @@ void StateVector_Input(void)
     static uint32_t door_close_start_tick, door_close_done_tick, door_open_start_tick;
     static uint32_t door_close_default_ms = 2500, air_last_check_tick;
     static uint8_t  door_close_timing, door_close_from_full, door_close_time_learned;
+    static uint8_t  risk_door_down_latched;
     static uint8_t  poweron_position_ok;
     static uint8_t  door_up_cnt, door_down_cnt, door_up_db, door_down_db;
     static uint8_t  btn1_cnt, btn2_cnt, btn1_db, btn2_db;
@@ -457,6 +459,19 @@ void StateVector_Input(void)
     if (door_down_db) in_lo |= IN_DOOR_DOWN; else in_lo &= ~IN_DOOR_DOWN;
     if (btn1_db)      in_hi |= IN_DOOR_BTN1; else in_hi &= ~IN_DOOR_BTN1;
     if (btn2_db)      in_hi |= IN_DOOR_BTN2; else in_hi &= ~IN_DOOR_BTN2;
+
+    /*
+     * Risk Mode 下锁存关门传感器输入点:
+     *   关门时一旦 IN_DOOR_DOWN 触发, 即使门继续压紧导致传感器释放,
+     *   也保持该输入为 1。开门输出出现时释放, 开始下一次关门判定。
+     */
+    if (!Flash_GetRiskMode() || IS_DOOR_OPENING(out_lo)) {
+        risk_door_down_latched = 0U;
+    } else if (door_close_timing && IS_DOOR_DOWN(in_lo)) {
+        risk_door_down_latched = 1U;
+    }
+    if (Flash_GetRiskMode() && risk_door_down_latched)
+        in_lo |= IN_DOOR_DOWN;
 
     uint8_t usb_alert_red_request = 0U;
     uint8_t usb_alert_return_idle = 0U;
@@ -822,6 +837,7 @@ void StateVector_Input(void)
          * 关门完成判定 — 两条路径满足其一即可:
          *
          *   [正常路径] limit_ok: 下限位传感器触发 (门已关到底)
+         *     Risk Mode 下该输入点一旦触发会保持锁存, 直到开门。
          *
          *   [风险模式] risk_ok: 气压传感器确认 + 超过学习时间
          *     当限位开关故障时, Flash_GetRiskMode()=true 启用此路径。
