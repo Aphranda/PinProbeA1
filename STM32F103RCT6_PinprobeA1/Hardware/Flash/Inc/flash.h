@@ -51,7 +51,29 @@ extern "C" {
 /**
  * @brief 配置结构版本号
  */
-#define FLASH_CONFIG_VERSION       0x00020005UL  /* v2.0.5 - added control mode enable */
+#define FLASH_CONFIG_VERSION       0x00020007UL  /* v2.0.7 - added output trigger types */
+
+#define FLASH_INPUT_COUNT          16U
+#define FLASH_OUTPUT_COUNT         16U
+#define FLASH_INPUT_TYPE_LEVEL     0U
+#define FLASH_INPUT_TYPE_PULSE     1U
+
+/* Applications may override this at compile time. All inputs default to LEVEL. */
+#ifndef FLASH_DEFAULT_INPUT_PULSE_MASK
+#define FLASH_DEFAULT_INPUT_PULSE_MASK  0x0000U
+#endif
+
+/* All outputs default to LEVEL; applications may override the defaults. */
+#ifndef FLASH_DEFAULT_OUTPUT_PULSE_MASK
+#define FLASH_DEFAULT_OUTPUT_PULSE_MASK 0x0000U
+#endif
+
+#ifndef FLASH_DEFAULT_OUTPUT_PULSE_WIDTH_MS
+#define FLASH_DEFAULT_OUTPUT_PULSE_WIDTH_MS 100U
+#endif
+
+#define FLASH_OUTPUT_PULSE_WIDTH_MIN_MS 1U
+#define FLASH_OUTPUT_PULSE_WIDTH_MAX_MS 60000U
 
 /**
  * @brief 设备名称最大长度
@@ -112,12 +134,20 @@ typedef struct {
     uint8_t  usb_auto_enable;   /**< USB自动拔插流程: 0=OFF, 1=ON                       */
     uint8_t  dut_auto_enable;   /**< DUT参与自动流程: 0=OFF, 1=ON                       */
     uint8_t  mode_enable;       /**< 控制模式切换使能: 0=OFF, 1=ON                     */
-    uint8_t  reserved[7];       /**< 保留字节                                          */
+    uint16_t input_pulse_mask;  /**< 输入触发类型: bit=0 LEVEL, bit=1 PULSE            */
+    uint16_t output_pulse_mask; /**< 输出触发类型: bit=0 LEVEL, bit=1 PULSE            */
+    uint16_t output_pulse_width_ms; /**< 输出脉冲宽度 (ms), 所有 PULSE 输出共用          */
 
     /* ===== CRC校验 (必须在结构体末尾) ===== */
-    uint32_t crc;               /**< CRC32校验 (从 magic 到 reserved 末尾)              */
+    uint32_t crc;               /**< CRC32校验 (从 magic 到输出脉冲配置末尾)             */
 
 } Flash_Config_t;
+
+/* Keep the persisted layout and Bootloader CRC coverage backward compatible. */
+typedef char Flash_Config_Size_Must_Remain_124_Bytes[
+    (sizeof(Flash_Config_t) == 124U) ? 1 : -1];
+typedef char Flash_Config_Crc_Offset_Must_Remain_120[
+    (offsetof(Flash_Config_t, crc) == 120U) ? 1 : -1];
 
 /**
  * @brief Flash操作结果枚举
@@ -302,6 +332,16 @@ uint8_t Flash_GetEstopType(void);
 
 Flash_Status_t Flash_SetRiskMode(uint8_t mode);
 uint8_t Flash_GetRiskMode(void);
+
+Flash_Status_t Flash_SetInputType(uint8_t input_index, uint8_t type);
+uint8_t Flash_GetInputType(uint8_t input_index);
+uint16_t Flash_GetInputPulseMask(void);
+
+Flash_Status_t Flash_SetOutputType(uint8_t output_index, uint8_t type);
+uint8_t Flash_GetOutputType(uint8_t output_index);
+uint16_t Flash_GetOutputPulseMask(void);
+Flash_Status_t Flash_SetOutputPulseWidth(uint16_t width_ms);
+uint16_t Flash_GetOutputPulseWidth(void);
 
 Flash_Status_t Flash_SetBootDiagUart(uint8_t enable);
 uint8_t Flash_GetBootDiagUart(void);

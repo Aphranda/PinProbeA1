@@ -1,6 +1,7 @@
 #include "BsmRelay.h"
 #include "ram_vector.h"
 #include "flash.h"
+#include "output_state.h"
 #include <math.h>
 
 
@@ -82,20 +83,20 @@ uint8_t Cylinder_Write(uint32_t cylinder_id, scpi_choice_def_t cylinder_value)
     {
     case 1:
         if (cylinder_value.tag != 0) {
-            ok &= WriteIO(2, 0) ? 1U : 0U;
-            ok &= WriteIO(1, 1) ? 1U : 0U;
+            ok &= OutputState_Write(2, 0) ? 1U : 0U;
+            ok &= OutputState_Write(1, 1) ? 1U : 0U;
         } else {
-            ok &= WriteIO(1, 0) ? 1U : 0U;
-            ok &= WriteIO(2, 1) ? 1U : 0U;
+            ok &= OutputState_Write(1, 0) ? 1U : 0U;
+            ok &= OutputState_Write(2, 1) ? 1U : 0U;
         }
         break;
     case 2:
         if (cylinder_value.tag != 0) {
-            ok &= WriteIO(4, 0) ? 1U : 0U;
-            ok &= WriteIO(3, 1) ? 1U : 0U;
+            ok &= OutputState_Write(4, 0) ? 1U : 0U;
+            ok &= OutputState_Write(3, 1) ? 1U : 0U;
         } else {
-            ok &= WriteIO(3, 0) ? 1U : 0U;
-            ok &= WriteIO(4, 1) ? 1U : 0U;
+            ok &= OutputState_Write(3, 0) ? 1U : 0U;
+            ok &= OutputState_Write(4, 1) ? 1U : 0U;
         }
         break;
     default:
@@ -139,12 +140,12 @@ uint8_t Lock_Write(scpi_choice_def_t lock_value)
     switch (lock_value.tag)
     {
     case 0:
-        ok &= WriteIO(8, 1) ? 1U : 0U;
-        ok &= WriteIO(9, 1) ? 1U : 0U;
+        ok &= OutputState_Write(8, 1) ? 1U : 0U;
+        ok &= OutputState_Write(9, 1) ? 1U : 0U;
         break;
     case 1:
-        ok &= WriteIO(8, 0) ? 1U : 0U;
-        ok &= WriteIO(9, 0) ? 1U : 0U;
+        ok &= OutputState_Write(8, 0) ? 1U : 0U;
+        ok &= OutputState_Write(9, 0) ? 1U : 0U;
         break;
     default:
         ok = 0U;
@@ -177,24 +178,24 @@ uint8_t LED_Write(scpi_choice_def_t led_value)
     switch (led_value.tag)
     {
     case 0: // led OFF
-        ok &= WriteIO(green_io, 0) ? 1U : 0U;
-        ok &= WriteIO(red_io, 0) ? 1U : 0U;
-        ok &= WriteIO(yellow_io, 0) ? 1U : 0U;
+        ok &= OutputState_Write(green_io, 0) ? 1U : 0U;
+        ok &= OutputState_Write(red_io, 0) ? 1U : 0U;
+        ok &= OutputState_Write(yellow_io, 0) ? 1U : 0U;
         break;
     case 1: // led G
-        ok &= WriteIO(green_io, 1) ? 1U : 0U;
-        ok &= WriteIO(red_io, 0) ? 1U : 0U;
-        ok &= WriteIO(yellow_io, 0) ? 1U : 0U;
+        ok &= OutputState_Write(green_io, 1) ? 1U : 0U;
+        ok &= OutputState_Write(red_io, 0) ? 1U : 0U;
+        ok &= OutputState_Write(yellow_io, 0) ? 1U : 0U;
         break;
     case 2: // led R
-        ok &= WriteIO(green_io, 0) ? 1U : 0U;
-        ok &= WriteIO(red_io, 1) ? 1U : 0U;
-        ok &= WriteIO(yellow_io, 0) ? 1U : 0U;
+        ok &= OutputState_Write(green_io, 0) ? 1U : 0U;
+        ok &= OutputState_Write(red_io, 1) ? 1U : 0U;
+        ok &= OutputState_Write(yellow_io, 0) ? 1U : 0U;
         break;
     case 3: // led Y
-        ok &= WriteIO(green_io, 0) ? 1U : 0U;
-        ok &= WriteIO(red_io, 0) ? 1U : 0U;
-        ok &= WriteIO(yellow_io, 1) ? 1U : 0U;
+        ok &= OutputState_Write(green_io, 0) ? 1U : 0U;
+        ok &= OutputState_Write(red_io, 0) ? 1U : 0U;
+        ok &= OutputState_Write(yellow_io, 1) ? 1U : 0U;
         break;
     default:
         ok = 0U;

@@ -30,6 +30,8 @@
 #define FLASH_VERSION_USB_AUTO      0x00020003UL
 #define FLASH_VERSION_DUT_AUTO      0x00020004UL
 #define FLASH_VERSION_MODE_ENABLE  0x00020005UL
+#define FLASH_VERSION_INPUT_TYPES  0x00020006UL
+#define FLASH_VERSION_OUTPUT_TYPES 0x00020007UL
 
 /**
  * @brief CRC32多项式 (标准IEEE 802.3)
@@ -115,7 +117,7 @@ static Flash_Status_t Flash_VerifyConfig(const Flash_Config_t *cfg)
         return FLASH_ERR_MAGIC;
 
     /* CRC校验: 对整个结构体除crc字段外的数据进行校验 */
-    /* CRC范围: 从 magic 到 reserved 末尾 (跳过 crc 字段) */
+    /* CRC范围: 从 magic 到输出脉冲配置末尾 (跳过 crc 字段) */
     size_t crc_cover_size = offsetof(Flash_Config_t, crc);
     size_t crc_cover_words = crc_cover_size / sizeof(uint32_t);
 
@@ -135,6 +137,11 @@ static Flash_Status_t Flash_VerifyConfig(const Flash_Config_t *cfg)
         return FLASH_ERR_PARAM;
 
     if (cfg->version >= FLASH_VERSION_MODE_ENABLE && cfg->mode_enable > 1U)
+        return FLASH_ERR_PARAM;
+
+    if (cfg->version >= FLASH_VERSION_OUTPUT_TYPES &&
+        (cfg->output_pulse_width_ms < FLASH_OUTPUT_PULSE_WIDTH_MIN_MS ||
+         cfg->output_pulse_width_ms > FLASH_OUTPUT_PULSE_WIDTH_MAX_MS))
         return FLASH_ERR_PARAM;
 
     return FLASH_OK;
@@ -292,6 +299,9 @@ void Flash_LoadDefaults(void)
     config_cache.usb_auto_enable = 0U;
     config_cache.dut_auto_enable = 0U;
     config_cache.mode_enable = 1U;
+    config_cache.input_pulse_mask = FLASH_DEFAULT_INPUT_PULSE_MASK;
+    config_cache.output_pulse_mask = FLASH_DEFAULT_OUTPUT_PULSE_MASK;
+    config_cache.output_pulse_width_ms = FLASH_DEFAULT_OUTPUT_PULSE_WIDTH_MS;
 
     /* 保留字段已初始化为0 (memset) */
 
@@ -340,6 +350,15 @@ Flash_Status_t Flash_Init(void)
         }
         if (config_cache.version < FLASH_VERSION_MODE_ENABLE) {
             config_cache.mode_enable = 1U;
+            upgrade = 1U;
+        }
+        if (config_cache.version < FLASH_VERSION_INPUT_TYPES) {
+            config_cache.input_pulse_mask = FLASH_DEFAULT_INPUT_PULSE_MASK;
+            upgrade = 1U;
+        }
+        if (config_cache.version < FLASH_VERSION_OUTPUT_TYPES) {
+            config_cache.output_pulse_mask = FLASH_DEFAULT_OUTPUT_PULSE_MASK;
+            config_cache.output_pulse_width_ms = FLASH_DEFAULT_OUTPUT_PULSE_WIDTH_MS;
             upgrade = 1U;
         }
         if (upgrade) {
@@ -619,6 +638,87 @@ Flash_Status_t Flash_SetRiskMode(uint8_t mode)
 uint8_t Flash_GetRiskMode(void)
 {
     return config_cache.risk_mode;
+}
+
+Flash_Status_t Flash_SetInputType(uint8_t input_index, uint8_t type)
+{
+    uint16_t mask;
+
+    if (input_index >= FLASH_INPUT_COUNT || type > FLASH_INPUT_TYPE_PULSE)
+        return FLASH_ERR_PARAM;
+
+    mask = (uint16_t)(1U << input_index);
+    if (type == FLASH_INPUT_TYPE_PULSE)
+        config_cache.input_pulse_mask |= mask;
+    else
+        config_cache.input_pulse_mask &= (uint16_t)~mask;
+
+    return FLASH_OK;
+}
+
+uint8_t Flash_GetInputType(uint8_t input_index)
+{
+    if (input_index >= FLASH_INPUT_COUNT)
+        return FLASH_INPUT_TYPE_LEVEL;
+
+    return (config_cache.input_pulse_mask & (uint16_t)(1U << input_index)) ?
+           FLASH_INPUT_TYPE_PULSE : FLASH_INPUT_TYPE_LEVEL;
+}
+
+uint16_t Flash_GetInputPulseMask(void)
+{
+    return config_cache.input_pulse_mask;
+}
+
+Flash_Status_t Flash_SetOutputType(uint8_t output_index, uint8_t type)
+{
+    uint16_t mask;
+
+    if (output_index >= FLASH_OUTPUT_COUNT || type > FLASH_INPUT_TYPE_PULSE)
+        return FLASH_ERR_PARAM;
+
+    mask = (uint16_t)(1U << output_index);
+    if (type == FLASH_INPUT_TYPE_PULSE)
+        config_cache.output_pulse_mask |= mask;
+    else
+        config_cache.output_pulse_mask &= (uint16_t)~mask;
+
+    return FLASH_OK;
+}
+
+uint8_t Flash_GetOutputType(uint8_t output_index)
+{
+    if (output_index >= FLASH_OUTPUT_COUNT)
+        return FLASH_INPUT_TYPE_LEVEL;
+
+    return (config_cache.output_pulse_mask & (uint16_t)(1U << output_index)) ?
+           FLASH_INPUT_TYPE_PULSE : FLASH_INPUT_TYPE_LEVEL;
+}
+
+uint16_t Flash_GetOutputPulseMask(void)
+{
+    return config_cache.output_pulse_mask;
+}
+
+Flash_Status_t Flash_SetOutputPulseWidth(uint16_t width_ms)
+{
+    if (width_ms < FLASH_OUTPUT_PULSE_WIDTH_MIN_MS ||
+        width_ms > FLASH_OUTPUT_PULSE_WIDTH_MAX_MS)
+        return FLASH_ERR_PARAM;
+
+    config_cache.output_pulse_width_ms = width_ms;
+    return FLASH_OK;
+}
+
+uint16_t Flash_GetOutputPulseWidth(void)
+{
+    uint16_t width_ms = config_cache.output_pulse_width_ms;
+
+    if (width_ms < FLASH_OUTPUT_PULSE_WIDTH_MIN_MS ||
+        width_ms > FLASH_OUTPUT_PULSE_WIDTH_MAX_MS)
+        return FLASH_DEFAULT_OUTPUT_PULSE_WIDTH_MS;
+
+    return width_ms;
 }
 
 /* ===== Bootloader诊断输出访问函数 ===== */

@@ -43,6 +43,9 @@ virtualFolder:
                 - path: Hardware/RamVector/Src/ram_vector.c
                 - path: Hardware/RamVector/Src/cmd_exec.c
                 - path: Hardware/RamVector/Src/state_vector.c
+                - path: Hardware/RamVector/Src/input_state.c
+                - path: Hardware/RamVector/Src/output_state.c
+                - path: Hardware/RamVector/Src/io_probe.c
               folders: []
             - name: AppLog
               files:

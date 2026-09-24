@@ -48,6 +48,9 @@
 #include "app_log.h"
 #include "ota_manager.h"
 #include "w25q128.h"
+#include "io_probe.h"
+#include "input_state.h"
+#include "output_state.h"
 
 /* 辅助: 推送 SCPI 错误并返回 ERR (附带描述信息) */
 #define PUSH_ERR(ctx, code, info) do { \
@@ -685,6 +688,121 @@ static scpi_result_t SCPI_ReadRiskModeQ(scpi_t *context)
     return SCPI_RES_OK;
 }
 
+/* ===== 输入点触发类型 (LEVEL / PULSE) ===== */
+
+static scpi_choice_def_t input_type_source[] = {
+    {"LEVEL", FLASH_INPUT_TYPE_LEVEL},
+    {"PULSE", FLASH_INPUT_TYPE_PULSE},
+    SCPI_CHOICE_LIST_END
+};
+
+static scpi_result_t SCPI_ConfigureInputType(scpi_t *context)
+{
+    int32_t number[1] = {1};
+    int32_t param;
+    uint8_t input_index;
+    const char *name;
+
+    SCPI_CommandNumbers(context, number, 1, 1);
+    if (number[0] < 1 || number[0] > (int32_t)FLASH_INPUT_COUNT)
+        PUSH_ERR(context, -222 /*Data out of range*/, "Input number");
+    if (!SCPI_ParamChoice(context, input_type_source, &param, TRUE))
+        return SCPI_RES_ERR;
+
+    input_index = (uint8_t)(number[0] - 1);
+    if (Flash_SetInputType(input_index, (uint8_t)param) != FLASH_OK)
+        PUSH_ERR(context, -320 /*Storage fault*/, "Flash write");
+    if (Flash_Save() != FLASH_OK)
+        PUSH_ERR(context, -320 /*Storage fault*/, "Flash save");
+
+    SCPI_ChoiceToName(input_type_source, param, &name);
+    SCPI_ResultCharacters(context, name, strlen(name));
+    return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_ReadInputTypeQ(scpi_t *context)
+{
+    int32_t number[1] = {1};
+    uint8_t type;
+    const char *name;
+
+    SCPI_CommandNumbers(context, number, 1, 1);
+    if (number[0] < 1 || number[0] > (int32_t)FLASH_INPUT_COUNT)
+        PUSH_ERR(context, -222 /*Data out of range*/, "Input number");
+
+    type = Flash_GetInputType((uint8_t)(number[0] - 1));
+    SCPI_ChoiceToName(input_type_source, type, &name);
+    SCPI_ResultCharacters(context, name, strlen(name));
+    return SCPI_RES_OK;
+}
+
+/* ===== 输出点触发类型和脉冲宽度 (LEVEL / PULSE) ===== */
+
+static scpi_result_t SCPI_ConfigureOutputType(scpi_t *context)
+{
+    int32_t number[1] = {1};
+    int32_t param;
+    uint8_t output_index;
+    const char *name;
+
+    SCPI_CommandNumbers(context, number, 1, 1);
+    if (number[0] < 1 || number[0] > (int32_t)FLASH_OUTPUT_COUNT)
+        PUSH_ERR(context, -222 /*Data out of range*/, "Output number");
+    if (!SCPI_ParamChoice(context, input_type_source, &param, TRUE))
+        return SCPI_RES_ERR;
+
+    output_index = (uint8_t)(number[0] - 1);
+    if (Flash_SetOutputType(output_index, (uint8_t)param) != FLASH_OK)
+        PUSH_ERR(context, -320 /*Storage fault*/, "Flash write");
+    if (Flash_Save() != FLASH_OK)
+        PUSH_ERR(context, -320 /*Storage fault*/, "Flash save");
+
+    SCPI_ChoiceToName(input_type_source, param, &name);
+    SCPI_ResultCharacters(context, name, strlen(name));
+    return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_ReadOutputTypeQ(scpi_t *context)
+{
+    int32_t number[1] = {1};
+    uint8_t type;
+    const char *name;
+
+    SCPI_CommandNumbers(context, number, 1, 1);
+    if (number[0] < 1 || number[0] > (int32_t)FLASH_OUTPUT_COUNT)
+        PUSH_ERR(context, -222 /*Data out of range*/, "Output number");
+
+    type = Flash_GetOutputType((uint8_t)(number[0] - 1));
+    SCPI_ChoiceToName(input_type_source, type, &name);
+    SCPI_ResultCharacters(context, name, strlen(name));
+    return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_ConfigureOutputPulseWidth(scpi_t *context)
+{
+    uint32_t width_ms;
+
+    if (!SCPI_ParamUInt32(context, &width_ms, TRUE))
+        return SCPI_RES_ERR;
+    if (width_ms < FLASH_OUTPUT_PULSE_WIDTH_MIN_MS ||
+        width_ms > FLASH_OUTPUT_PULSE_WIDTH_MAX_MS)
+        PUSH_ERR(context, -222 /*Data out of range*/, "Pulse width");
+
+    if (Flash_SetOutputPulseWidth((uint16_t)width_ms) != FLASH_OK)
+        PUSH_ERR(context, -320 /*Storage fault*/, "Flash write");
+    if (Flash_Save() != FLASH_OK)
+        PUSH_ERR(context, -320 /*Storage fault*/, "Flash save");
+
+    SCPI_ResultUInt32(context, width_ms);
+    return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_ReadOutputPulseWidthQ(scpi_t *context)
+{
+    SCPI_ResultUInt32(context, Flash_GetOutputPulseWidth());
+    return SCPI_RES_OK;
+}
+
 static scpi_result_t SCPI_ConfigureBootDiag(scpi_t *context)
 {
     int32_t param;
@@ -756,16 +874,58 @@ static scpi_result_t SCPI_ReadDutAutoQ(scpi_t *context)
 
 /// @brief 查询所有IO状态（输入+输出）
 /// @note 命令: READ:IO:ALL?
-///       返回: IN:0xHH,0xHH OUT:0xHH,0xHH（16进制原始值）
+///       返回: IN:0xHH,0xHH OUT:0xHH,0xHH（实际或转发值）
 static scpi_result_t SCPI_ReadIOAll(scpi_t *context)
 {
     /* 从向量表读缓存, 不走 RS485 (避免和 ModBusTask 冲突) */
     Vector_IOState_t io;
     (void)RamVector_ReadLocalIO(&io);
+    uint16_t input_bits = (uint16_t)io.raw_in_lo |
+                          ((uint16_t)io.raw_in_hi << 8U);
+    uint16_t output_bits = (uint16_t)io.raw_out_lo |
+                           ((uint16_t)io.raw_out_hi << 8U);
+
+    if (IOProbe_GetMode() == IO_PROBE_FORWARD) {
+        input_bits = InputState_GetForwarded();
+        output_bits = OutputState_Forward(output_bits);
+    }
+
     char buf[64];
     snprintf(buf, sizeof(buf), "IN:0x%02X,0x%02X OUT:0x%02X,0x%02X",
-             io.raw_in_lo, io.raw_in_hi, io.raw_out_lo, io.raw_out_hi);
+             (unsigned)(input_bits & 0xFFU), (unsigned)(input_bits >> 8U),
+             (unsigned)(output_bits & 0xFFU), (unsigned)(output_bits >> 8U));
     SCPI_ResultCharacters(context, buf, strlen(buf));
+    return SCPI_RES_OK;
+}
+
+static scpi_choice_def_t io_probe_mode_source[] = {
+    {"RAW", IO_PROBE_RAW},
+    {"FORWARD", IO_PROBE_FORWARD},
+    SCPI_CHOICE_LIST_END
+};
+
+static scpi_result_t SCPI_ConfigureIOProbe(scpi_t *context)
+{
+    int32_t param;
+    const char *name;
+
+    if (!SCPI_ParamChoice(context, io_probe_mode_source, &param, TRUE))
+        return SCPI_RES_ERR;
+    if (!IOProbe_SetMode((IOProbeMode_t)param))
+        PUSH_ERR(context, -222 /*Data out of range*/, "IO probe mode");
+
+    SCPI_ChoiceToName(io_probe_mode_source, param, &name);
+    SCPI_ResultCharacters(context, name, strlen(name));
+    return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_ReadIOProbeQ(scpi_t *context)
+{
+    const char *name;
+    IOProbeMode_t mode = IOProbe_GetMode();
+
+    SCPI_ChoiceToName(io_probe_mode_source, mode, &name);
+    SCPI_ResultCharacters(context, name, strlen(name));
     return SCPI_RES_OK;
 }
 
@@ -1331,6 +1491,14 @@ const scpi_command_t scpi_commands[] = {
         .callback = SCPI_ReadIOAll,
     },
     {
+        .pattern = "CONFigure:IO:PROBe",
+        .callback = SCPI_ConfigureIOProbe,
+    },
+    {
+        .pattern = "READ:IO:PROBe?",
+        .callback = SCPI_ReadIOProbeQ,
+    },
+    {
         .pattern = "READ:DUT:STATe?",
         .callback = SCPI_ReadDutStateQ,
     },
@@ -1349,6 +1517,30 @@ const scpi_command_t scpi_commands[] = {
     {
         .pattern = "READ:RISK:MODE?",
         .callback = SCPI_ReadRiskModeQ,
+    },
+    {
+        .pattern = "CONFigure:INPut#:TYPE",
+        .callback = SCPI_ConfigureInputType,
+    },
+    {
+        .pattern = "READ:INPut#:TYPE?",
+        .callback = SCPI_ReadInputTypeQ,
+    },
+    {
+        .pattern = "CONFigure:OUTPut#:TYPE",
+        .callback = SCPI_ConfigureOutputType,
+    },
+    {
+        .pattern = "READ:OUTPut#:TYPE?",
+        .callback = SCPI_ReadOutputTypeQ,
+    },
+    {
+        .pattern = "CONFigure:OUTPut:PULSe:WIDTh",
+        .callback = SCPI_ConfigureOutputPulseWidth,
+    },
+    {
+        .pattern = "READ:OUTPut:PULSe:WIDTh?",
+        .callback = SCPI_ReadOutputPulseWidthQ,
     },
     {
         .pattern = "CONFigure:BOOT:DIAG",

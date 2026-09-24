@@ -38,6 +38,8 @@
 #include "app_log.h"
 #include "ota_manager.h"
 #include "ota_manifest.h"
+#include "output_state.h"
+#include "io_probe.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -232,6 +234,8 @@ int main(void)
 
   /* 初始化 Flash 配置 (从 Flash 加载或使用默认值) */
   Flash_Init();
+  OutputState_Reset();
+  IOProbe_Reset();
 
   /* 初始化 SCPI 上下文，使用运行时 IDN 缓冲区 (而非宏常量) */
   SCPI_Init(&scpi_context,

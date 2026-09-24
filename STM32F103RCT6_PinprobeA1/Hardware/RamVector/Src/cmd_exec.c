@@ -6,6 +6,7 @@
 #include "BsmRelay.h"
 #include "app_log.h"
 #include "state_vector.h"
+#include "output_state.h"
 
 /* 外部 SCPI choice 表 */
 extern scpi_choice_def_t cylinder_source[];
@@ -119,12 +120,15 @@ void CmdExec_ExecuteAll(void)
     Vector_CmdSnapshot_t cmds;
     Vector_IOState_t io;
 
-    if (!RamVector_TakeCmds(&cmds)) {
+    (void)RamVector_ReadLocalIO(&io);
+    if (io.rs485_ok != VECTOR_IO_LINK_OK) {
         return;
     }
 
-    (void)RamVector_ReadLocalIO(&io);
-    if (io.rs485_ok != VECTOR_IO_LINK_OK) {
+    /* Pulse outputs expire independently of new logical commands. */
+    OutputState_Process();
+
+    if (!RamVector_TakeCmds(&cmds)) {
         return;
     }
 

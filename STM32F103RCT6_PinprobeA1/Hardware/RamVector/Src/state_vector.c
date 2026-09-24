@@ -50,6 +50,8 @@
 #include "tim.h"
 #include "flash.h"
 #include "app_log.h"
+#include "input_state.h"
+#include "output_state.h"
 #include "FreeRTOS.h"
 #include "task.h"
 #include <string.h>
@@ -271,7 +273,6 @@ void StateVector_Input(void)
      *   door_close_timing        是否正在计关门时间
      *   door_close_from_full     本次关门是否从上限位开始 (用于决定是否学习)
      *   door_close_time_learned  是否已完成至少一次关门学习
-     *   risk_door_down_latched   Risk Mode 下已触发过关门传感器
      *   air_last_check_tick      上次气压检测时刻
      *   m_23 / m_100 / m_300     关门时间里程碑已打印标志 (调试用, 各印一次)
      *
@@ -297,7 +298,6 @@ void StateVector_Input(void)
     static uint32_t door_close_start_tick, door_close_done_tick, door_open_start_tick;
     static uint32_t door_close_default_ms = 2500, air_last_check_tick;
     static uint8_t  door_close_timing, door_close_from_full, door_close_time_learned;
-    static uint8_t  risk_door_down_latched;
     static uint8_t  poweron_position_ok;
     static uint8_t  door_up_cnt, door_down_cnt, door_up_db, door_down_db;
     static uint8_t  btn1_cnt, btn2_cnt, btn1_db, btn2_db;
@@ -331,8 +331,10 @@ void StateVector_Input(void)
     (void)RamVector_ReadLocalIO(&vio);
     uint8_t in_lo  = vio.raw_in_lo;    /* IN[0]: 传感器 (限位/激光/气压) */
     uint8_t in_hi  = vio.raw_in_hi;    /* IN[1]: 按钮 (门/急停/电源) */
-    uint8_t out_lo = vio.raw_out_lo;   /* OUT[0]: 执行器 (门/LED/电源) */
-    uint8_t out_hi = vio.raw_out_hi;   /* OUT[1]: 预留, 当前未使用 */
+    uint16_t effective_outputs = OutputState_Forward(
+        (uint16_t)vio.raw_out_lo | ((uint16_t)vio.raw_out_hi << 8U));
+    uint8_t out_lo = (uint8_t)(effective_outputs & 0xFFU);
+    uint8_t out_hi = (uint8_t)(effective_outputs >> 8U);
     uint8_t led_state = vio.led_state; /* 根据当前 LED MAP 解码后的灯状态 */
     (void)out_hi;
     (void)door_close_time_learned;      /* 调试/风险模式引用, 消除警告 */
@@ -460,18 +462,48 @@ void StateVector_Input(void)
     if (btn1_db)      in_hi |= IN_DOOR_BTN1; else in_hi &= ~IN_DOOR_BTN1;
     if (btn2_db)      in_hi |= IN_DOOR_BTN2; else in_hi &= ~IN_DOOR_BTN2;
 
+    /* Risk Mode always observes the physical pressure input, independently
+     * of any configurable input forwarding policy. */
+    uint8_t pressure_sensor_level = (uint8_t)(in_lo & IN_LASER1);
+
     /*
-     * Risk Mode 下锁存关门传感器输入点:
-     *   关门时一旦 IN_DOOR_DOWN 触发, 即使门继续压紧导致传感器释放,
-     *   也保持该输入为 1。开门输出出现时释放, 开始下一次关门判定。
+     * 输入状态管理层:
+     *   LEVEL 点直接转发; PULSE 点仅在应用允许的运动路径上响应上升沿。
+     *   首次允许路径触发置位, 反向允许路径再次触发清零。
      */
-    if (!Flash_GetRiskMode() || IS_DOOR_OPENING(out_lo)) {
-        risk_door_down_latched = 0U;
-    } else if (door_close_timing && IS_DOOR_DOWN(in_lo)) {
-        risk_door_down_latched = 1U;
+    {
+        uint16_t raw_inputs = (uint16_t)in_lo | ((uint16_t)in_hi << 8U);
+        uint16_t set_mask = 0U;
+        uint16_t clear_mask = 0U;
+        uint16_t effective_inputs;
+
+        /* Door/USB position sensors have direction-scoped set/release paths:
+         * closing captures the lower/retracted sensor, opening releases it;
+         * opening captures the upper/extended sensor, closing releases it. */
+        if (IS_DOOR_CLOSING(out_lo) && !IS_DOOR_OPENING(out_lo)) {
+            set_mask |= IN_DOOR_DOWN;
+            clear_mask |= IN_DOOR_UP;
+        }
+        if (IS_DOOR_OPENING(out_lo) && !IS_DOOR_CLOSING(out_lo)) {
+            set_mask |= IN_DOOR_UP;
+            clear_mask |= IN_DOOR_DOWN;
+        }
+        if (IS_USB_INSERTING(out_lo) && !IS_USB_RETRACTING(out_lo)) {
+            set_mask |= IN_USB_DOWN;
+            clear_mask |= IN_USB_UP;
+        }
+        if (IS_USB_RETRACTING(out_lo) && !IS_USB_INSERTING(out_lo)) {
+            set_mask |= IN_USB_UP;
+            clear_mask |= IN_USB_DOWN;
+        }
+
+        effective_inputs = InputState_Forward(raw_inputs,
+                                               Flash_GetInputPulseMask(),
+                                               set_mask,
+                                               clear_mask);
+        in_lo = (uint8_t)(effective_inputs & 0xFFU);
+        in_hi = (uint8_t)(effective_inputs >> 8U);
     }
-    if (Flash_GetRiskMode() && risk_door_down_latched)
-        in_lo |= IN_DOOR_DOWN;
 
     uint8_t usb_alert_red_request = 0U;
     uint8_t usb_alert_return_idle = 0U;
@@ -837,7 +869,8 @@ void StateVector_Input(void)
          * 关门完成判定 — 两条路径满足其一即可:
          *
          *   [正常路径] limit_ok: 下限位传感器触发 (门已关到底)
-         *     Risk Mode 下该输入点一旦触发会保持锁存, 直到开门。
+         *     下限位是否锁存由该输入点的 LEVEL/PULSE 常规配置决定,
+         *     与 Risk Mode 无关。
          *
          *   [风险模式] risk_ok: 气压传感器确认 + 超过学习时间
          *     当限位开关故障时, Flash_GetRiskMode()=true 启用此路径。
@@ -853,7 +886,7 @@ void StateVector_Input(void)
         bool limit_ok  = IS_DOOR_CLOSING(out_lo) && IS_DOOR_DOWN(in_lo);
         bool risk_ok   = Flash_GetRiskMode()
                       && IS_DOOR_CLOSING(out_lo)
-                      && (in_lo & IN_LASER1)    /* 气压传感器正常 (未低压报警) */
+                      && pressure_sensor_level /* 气压传感器正常 (未低压报警) */
                       && door_close_start_tick
                       && ((now - door_close_start_tick) > door_close_default_ms);
         if (limit_ok || risk_ok) {

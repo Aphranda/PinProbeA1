@@ -266,7 +266,9 @@ CONFigure:MODE LOCAL
 
 |Command|Parameter|Description|
 |--|--|--|
-|`READ:IO:ALL?`||Query all raw input and output states|
+|`CONFigure:IO:PROBe`|`RAW` / `FORWARD`|Select whether IO queries use physical or forwarded states (runtime)|
+|`READ:IO:PROBe?`||Query the current IO probe mode|
+|`READ:IO:ALL?`||Query all IO states using the selected probe mode|
 
 ### Return Format
 
@@ -277,6 +279,25 @@ IN:0xHH,0xHH OUT:0xHH,0xHH
 ### Example
 
 ```scpi
+READ:IO:ALL?
+```
+
+`RAW` reports the values sampled directly from the IO expansion board.
+`FORWARD` reports input values after the input state layer (including active
+configured pulse latches) and output values after the output state layer
+(including logical state retained for pulse outputs). Risk Mode does not
+enable or disable input latching; it only selects the pressure-sensor close
+confirmation path. The default mode after boot is
+`RAW`; the mode is runtime-only and does not alter the state machine.
+
+The desktop debug tool presents these controls as two IO tabs: `Probe` for
+display and source selection, and `Configure` for per-point trigger types and
+output pulse width.
+
+```scpi
+CONFigure:IO:PROBe RAW
+READ:IO:PROBe?
+CONFigure:IO:PROBe FORWARD
 READ:IO:ALL?
 ```
 
@@ -322,10 +343,72 @@ CONFigure:RISK:MODE ON
 CONFigure:RISK:MODE?
 ```
 
+## Input Trigger Type Commands
+
+Each of the 16 input points can be configured independently. The configuration
+is saved to Flash. All points default to `LEVEL`; applications can override the
+compile-time default pulse mask.
+
+|Command|Parameter|Description|
+|--|--|--|
+|`CONFigure:INPut#:TYPE`|`LEVEL` / `PULSE`|Configure input point `#` (`1` to `16`)|
+|`READ:INPut#:TYPE?`||Query input point `#` trigger type|
+
+|Type|Behavior|
+|--|--|
+|`LEVEL`|Forward the current input level directly|
+|`PULSE`|Latch a detected high pulse until the application releases that point|
+
+Pulse latching is controlled by the configured input point type and is
+independent of Risk Mode. The door and USB paired position sensors are
+captured only while their corresponding actuator is moving toward that
+position; the reverse actuator only enables the release path. Risk Mode remains
+limited to the pressure-sensor close confirmation path. The reusable layer
+accepts an application-defined capture and release policy for other input
+points; output points remain direct actuator commands and are not processed by
+the input state layer.
+
+For the built-in door and USB position paths, the first debounced rising edge
+on the allowed movement direction sets the latch. The reverse movement must
+then produce a new low-to-high edge on the same sensor to clear it; changing
+direction alone does not clear the latch, and a continuously high sensor does
+not retrigger it.
+
+```scpi
+CONFigure:INPut1:TYPE PULSE
+READ:INPut1:TYPE?
+```
+
+## Output Trigger Type Commands
+
+Each of the 16 output points can be configured independently. The setting and
+the common pulse width are saved to Flash. All output points default to
+`LEVEL`; the current application therefore keeps its existing output behavior.
+
+|Command|Parameter|Description|
+|--|--|--|
+|`CONFigure:OUTPut#:TYPE`|`LEVEL` / `PULSE`|Configure output point `#` (`1` to `16`)|
+|`READ:OUTPut#:TYPE?`||Query output point `#` trigger type|
+|`CONFigure:OUTPut:PULSe:WIDTh`|`1` to `60000`|Set common pulse width in milliseconds|
+|`READ:OUTPut:PULSe:WIDTh?`||Query common pulse width in milliseconds|
+
+`LEVEL` forwards the requested output state continuously. `PULSE` emits one
+high pulse on a rising logical request and automatically returns the physical
+point low after the configured width. The logical output remains asserted until
+the application requests it low, so repeated high requests do not retrigger it.
+
+```scpi
+CONFigure:OUTPut2:TYPE PULSE
+CONFigure:OUTPut:PULSe:WIDTh 100
+READ:OUTPut2:TYPE?
+READ:OUTPut:PULSe:WIDTh?
+```
+
 ## Revision History
 
 |Date|Revision|
 |--|--|
+|`2026-09-24`|Consolidated the day's IO update: added switchable `RAW` / `FORWARD` probing (`CONFigure:IO:PROBe`, `READ:IO:PROBe?`, and `READ:IO:ALL?`), persistent per-input and per-output `LEVEL` / `PULSE` configuration, common output pulse width, direction-scoped input latch/release paths, and the Tools Probe/Configure UI. Input latching is independent of Risk Mode; Risk Mode remains limited to pressure-sensor close confirmation, and existing applications remain `LEVEL` by default.|
 |`2026-09-12`|Added the implemented and real-device-verified `LOCAL` / `REMOTE` / `MIXED` control modes, mode-switch enable persistence, recovery paths, permission matrix, and the distinction between `-201,"Invalid while in local"` and `-224,"Illegal parameter value"`.|
 |`2026-08-11`|Added DUT presence participation control for the USB automatic sequence and clarified that the DUT state query always reads the actual sensor.|
 |`2026-07-28`|Revised USB manual-control and state-return semantics.|

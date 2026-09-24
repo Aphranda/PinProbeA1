@@ -71,6 +71,21 @@ UI_TEXT = {
         "col_updated": "Updated",
         "io_indicators": "IO Indicators",
         "refresh_io": "Refresh IO",
+        "io_probe_mode": "Probe mode:",
+        "io_probe_raw": "Actual IO (RAW)",
+        "io_probe_forward": "Forwarded IO",
+        "io_probe_tab": "Probe",
+        "io_config_tab": "Configure",
+        "io_config_point": "Point:",
+        "io_config_type": "Type:",
+        "io_config_apply": "Apply",
+        "io_config_read": "Read",
+        "io_config_width": "Pulse width (ms):",
+        "io_config_width_apply": "Set width",
+        "io_config_width_read": "Read width",
+        "io_config_refresh": "Refresh config",
+        "io_level": "LEVEL",
+        "io_pulse": "PULSE",
         "input": "Input",
         "output": "Output",
         "test_presets": "Test Presets",
@@ -231,6 +246,21 @@ UI_TEXT = {
         "col_updated": "更新时间",
         "io_indicators": "IO 指示灯",
         "refresh_io": "刷新IO",
+        "io_probe_mode": "探测模式:",
+        "io_probe_raw": "实际IO（RAW）",
+        "io_probe_forward": "转发IO",
+        "io_probe_tab": "探测",
+        "io_config_tab": "配置",
+        "io_config_point": "点位:",
+        "io_config_type": "类型:",
+        "io_config_apply": "应用",
+        "io_config_read": "读取",
+        "io_config_width": "脉冲宽度(ms):",
+        "io_config_width_apply": "设置宽度",
+        "io_config_width_read": "读取宽度",
+        "io_config_refresh": "刷新配置",
+        "io_level": "电平",
+        "io_pulse": "脉冲",
         "input": "输入",
         "output": "输出",
         "test_presets": "测试预设",
@@ -456,6 +486,9 @@ SCPI_COMMANDS = {
     "系统状态": [
         ("读系统状态", "READ:SYSTem:STATe?"),
         ("读全部IO", "READ:IO:ALL?"),
+        ("探测实际IO", "CONFigure:IO:PROBe RAW"),
+        ("探测转发IO", "CONFigure:IO:PROBe FORWARD"),
+        ("读IO探测模式", "READ:IO:PROBe?"),
         ("读DUT状态", "READ:DUT:STATe?"),
     ],
     "控制模式": [
@@ -1756,9 +1789,27 @@ class PinProbeApp:
         led_frame.pack(fill=tk.X, padx=5, pady=3)
         self._led_canvas_ids = {}
 
+        io_tabs = ttk.Notebook(led_frame)
+        io_tabs.pack(fill=tk.X, padx=3, pady=3)
+        probe_tab = ttk.Frame(io_tabs)
+        config_tab = ttk.Frame(io_tabs)
+        io_tabs.add(probe_tab, text=self._tr("io_probe_tab"))
+        io_tabs.add(config_tab, text=self._tr("io_config_tab"))
+
         # 标题行 + 刷新按钮
-        title_row = ttk.Frame(led_frame)
+        title_row = ttk.Frame(probe_tab)
         title_row.pack(fill=tk.X, padx=5, pady=(3, 0))
+        ttk.Label(title_row, text=self._tr("io_probe_mode")).pack(side=tk.LEFT)
+        self.io_probe_mode_map = {
+            self._tr("io_probe_raw"): "RAW",
+            self._tr("io_probe_forward"): "FORWARD",
+        }
+        self.io_probe_mode_var = tk.StringVar(value=self._tr("io_probe_raw"))
+        self.io_probe_mode_combo = ttk.Combobox(
+            title_row, textvariable=self.io_probe_mode_var,
+            values=list(self.io_probe_mode_map.keys()), state="readonly", width=15)
+        self.io_probe_mode_combo.bind("<<ComboboxSelected>>", self._on_io_probe_mode_changed)
+        self.io_probe_mode_combo.pack(side=tk.LEFT, padx=(5, 12))
         ttk.Button(title_row, text=self._tr("refresh_io"), width=10,
                    command=lambda: self._send_scpi("READ:IO:ALL?")).pack(side=tk.RIGHT)
 
@@ -1814,20 +1865,20 @@ class PinProbeApp:
         ROW_H = LED_R * 2 + LABEL_H + 8
 
         # 输入行
-        in_label = ttk.Label(led_frame, text=self._tr("input"), font=("", 9, "bold"))
+        in_label = ttk.Label(probe_tab, text=self._tr("input"), font=("", 9, "bold"))
         in_label.pack(anchor=tk.W, padx=5, pady=(3, 0))
         in_count = len(led_defs_input)
         in_width = in_count * CELL_W
-        self.canvas_in = tk.Canvas(led_frame, width=in_width, height=ROW_H,
+        self.canvas_in = tk.Canvas(probe_tab, width=in_width, height=ROW_H,
                                     bg="#ffffff", highlightthickness=0)
         self.canvas_in.pack(padx=5, pady=2)
 
         # 输出行
-        out_label = ttk.Label(led_frame, text=self._tr("output"), font=("", 9, "bold"))
+        out_label = ttk.Label(probe_tab, text=self._tr("output"), font=("", 9, "bold"))
         out_label.pack(anchor=tk.W, padx=5, pady=(5, 0))
         out_count = len(led_defs_output)
         out_width = out_count * CELL_W
-        self.canvas_out = tk.Canvas(led_frame, width=out_width, height=ROW_H,
+        self.canvas_out = tk.Canvas(probe_tab, width=out_width, height=ROW_H,
                                      bg="#ffffff", highlightthickness=0)
         self.canvas_out.pack(padx=5, pady=2)
 
@@ -1836,10 +1887,134 @@ class PinProbeApp:
         self._draw_leds(self.canvas_out, led_defs_output, LED_R, CELL_W, LABEL_H)
 
         # IO 原始值显示
-        self.io_raw_label = ttk.Label(led_frame, text="---",
+        self.io_raw_label = ttk.Label(probe_tab, text="---",
                                        font=("Cascadia Code", 10, "bold"),
                                        foreground="#2c3e50")
         self.io_raw_label.pack(pady=(6, 3))
+
+        self._build_io_config_tab(config_tab)
+
+    def _build_io_config_tab(self, parent: ttk.Frame):
+        """Build clickable per-point LEVEL/PULSE indicator lamps."""
+        toolbar = ttk.Frame(parent)
+        toolbar.pack(fill=tk.X, padx=8, pady=(6, 2))
+        ttk.Button(toolbar, text=self._tr("io_config_refresh"),
+                   command=self._refresh_io_config_modes).pack(side=tk.LEFT)
+        ttk.Label(toolbar, text=self._tr("io_level"), foreground="#2F80ED").pack(
+            side=tk.LEFT, padx=(14, 5))
+        ttk.Label(toolbar, text=self._tr("io_pulse"), foreground="#E67E22").pack(
+            side=tk.LEFT, padx=5)
+
+        self.io_config_modes = {
+            ("IN", index): "LEVEL" for index in range(1, 17)
+        }
+        self.io_config_modes.update({
+            ("OUT", index): "LEVEL" for index in range(1, 17)
+        })
+        self.io_config_lamps = {}
+
+        input_label = ttk.Label(parent, text=self._tr("input"), font=("", 9, "bold"))
+        input_label.pack(anchor=tk.W, padx=8, pady=(4, 0))
+        self._build_io_config_lamps(parent, "IN")
+        output_label = ttk.Label(parent, text=self._tr("output"), font=("", 9, "bold"))
+        output_label.pack(anchor=tk.W, padx=8, pady=(7, 0))
+        self._build_io_config_lamps(parent, "OUT")
+
+        width_row = ttk.Frame(parent)
+        width_row.pack(fill=tk.X, padx=8, pady=(2, 8))
+        ttk.Label(width_row, text=self._tr("io_config_width")).pack(side=tk.LEFT)
+        self.io_config_width_var = tk.IntVar(value=100)
+        ttk.Spinbox(width_row, from_=1, to=60000, increment=1, width=8,
+                    textvariable=self.io_config_width_var).pack(side=tk.LEFT, padx=(4, 8))
+        ttk.Button(width_row, text=self._tr("io_config_width_apply"),
+                   command=self._apply_io_width_config).pack(side=tk.LEFT, padx=2)
+        ttk.Button(width_row, text=self._tr("io_config_width_read"),
+                   command=lambda: self._send_scpi("READ:OUTPut:PULSe:WIDTh?")).pack(
+                       side=tk.LEFT, padx=2)
+
+    def _build_io_config_lamps(self, parent: ttk.Frame, kind: str):
+        canvas = tk.Canvas(parent, width=16 * 56, height=58,
+                           bg="#ffffff", highlightthickness=0)
+        canvas.pack(anchor=tk.W, padx=8, pady=1)
+        for index in range(1, 17):
+            x = (index - 1) * 56 + 28
+            circle = canvas.create_oval(x - 12, 7, x + 12, 31, width=2,
+                                        tags=(f"{kind}{index}",))
+            canvas.create_text(x, 45, text=f"{kind}{index}",
+                               font=("Microsoft YaHei UI", 7), fill="#666666")
+            canvas.tag_bind(circle, "<Button-1>",
+                            lambda event, k=kind, i=index:
+                            self._toggle_io_config_lamp(k, i))
+            self.io_config_lamps[(kind, index)] = (canvas, circle)
+            self._paint_io_config_lamp(kind, index)
+
+    def _paint_io_config_lamp(self, kind: str, index: int):
+        lamp = self.io_config_lamps.get((kind, index))
+        if lamp is None:
+            return
+        canvas, circle = lamp
+        is_pulse = self.io_config_modes.get((kind, index), "LEVEL") == "PULSE"
+        canvas.itemconfigure(circle,
+                             fill="#E67E22" if is_pulse else "#2F80ED",
+                             outline="#B45309" if is_pulse else "#1D4ED8")
+
+    def _io_connection_ready(self) -> bool:
+        """Return whether an IO action can be queued without blocking the UI."""
+        if self.serial_worker.is_connected:
+            return True
+        self._log(self._tr("not_connected_msg"), "WARN")
+        if self._widget_exists("status_label"):
+            self.status_label.configure(text=self._tr("not_connected_msg"))
+        return False
+
+    def _toggle_io_config_lamp(self, kind: str, index: int):
+        if not self._io_connection_ready():
+            return
+        key = (kind, index)
+        mode = "PULSE" if self.io_config_modes.get(key) == "LEVEL" else "LEVEL"
+        command_kind = "INPut" if kind == "IN" else "OUTPut"
+        self._send_scpi(f"CONFigure:{command_kind}{index}:TYPE {mode}")
+        self.io_config_modes[key] = mode
+        self._paint_io_config_lamp(kind, index)
+
+    def _refresh_io_config_modes(self):
+        # This action queues 32 queries; check once before entering the loop.
+        if not self._io_connection_ready():
+            return
+        for kind, command_kind in (("IN", "INPut"), ("OUT", "OUTPut")):
+            for index in range(1, 17):
+                self._send_scpi(f"READ:{command_kind}{index}:TYPE?")
+
+    def _apply_io_width_config(self):
+        if not self._io_connection_ready():
+            return
+        try:
+            width = int(self.io_config_width_var.get())
+        except (TypeError, ValueError, tk.TclError):
+            return
+        if 1 <= width <= 60000:
+            self._send_scpi(f"CONFigure:OUTPut:PULSe:WIDTh {width}")
+
+    def _on_io_probe_mode_changed(self, event=None):
+        """Select whether READ:IO:ALL? reports physical or forwarded IO."""
+        mode = self.io_probe_mode_map.get(self.io_probe_mode_var.get())
+        if mode is None:
+            return
+        # Mode changes enqueue two commands; fail fast before queueing either.
+        if not self._io_connection_ready():
+            return
+        self._send_scpi(f"CONFigure:IO:PROBe {mode}")
+        self._send_scpi("READ:IO:ALL?")
+
+    def _update_io_probe_mode(self, response: str):
+        """Synchronize the selector with the device's runtime probe mode."""
+        if not self._widget_exists("io_probe_mode_combo"):
+            return
+        mode = response.strip().upper()
+        for label, value in self.io_probe_mode_map.items():
+            if value == mode:
+                self.io_probe_mode_var.set(label)
+                return
 
     def _draw_leds(self, canvas: tk.Canvas, defs: list, r: int, cell_w: int, lh: int):
         """在 Canvas 上绘制 LED 灯（圆+标签），返回 circle ID 列表"""
@@ -2162,6 +2337,7 @@ class PinProbeApp:
             self._cancel_after_job("_query_device_job_id")
             self._query_device_job_id = self.root.after(
                 300, lambda: self._run_ui_safe(self._query_device_id))
+            self._send_scpi("READ:IO:PROBe?")
         except Exception as e:
             messagebox.showerror(self._tr("connect_failed"), str(e))
             self._log(f"{self._tr('connect_failed')}: {e}", "ERROR")
@@ -2720,6 +2896,30 @@ class PinProbeApp:
                         io_lines = format_io_status(resp, self._current_lang())
                         for line in io_lines:
                             self._log(line, "IO")
+                    if cmd.strip() == "READ:IO:PROBe?":
+                        self._update_io_probe_mode(resp)
+                    normalized_cmd = cmd.strip().upper()
+                    if (normalized_cmd.startswith("READ:INPUT") or
+                            normalized_cmd.startswith("READ:OUTPUT")) and \
+                            normalized_cmd.endswith(":TYPE?") and \
+                            resp.strip().upper() in ("LEVEL", "PULSE") and \
+                            hasattr(self, "io_config_modes"):
+                        prefix = "READ:INPUT" if normalized_cmd.startswith("READ:INPUT") else "READ:OUTPUT"
+                        kind = "IN" if prefix == "READ:INPUT" else "OUT"
+                        index_text = normalized_cmd[len(prefix):-len(":TYPE?")]
+                        try:
+                            index = int(index_text)
+                        except ValueError:
+                            index = 0
+                        if 1 <= index <= 16:
+                            self.io_config_modes[(kind, index)] = resp.strip().upper()
+                            self._paint_io_config_lamp(kind, index)
+                    if normalized_cmd == "READ:OUTPUT:PULSE:WIDTH?" and \
+                            self._widget_exists("io_config_width_var"):
+                        try:
+                            self.io_config_width_var.set(int(resp.strip(), 0))
+                        except ValueError:
+                            pass
 
                 elif msg_type == "debug":
                     _, _, decoded, _ = msg
