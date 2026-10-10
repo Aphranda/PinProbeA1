@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PinProbe A1 TPS7A2033 输入侧失效初步分析报告</title>
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  body {
+    font-family:"Microsoft YaHei","SimSun","DengXian",Arial,sans-serif;
+    background:#d7d9df;
+    color:#1f2328;
+    padding:18px;
+    line-height:1.42;
+  }
+  @page { size:A4 portrait; margin:0; }
+  .page {
+    width:210mm;
+    height:297mm;
+    margin:0 auto 18px;
+    background:#fff;
+    box-shadow:0 3px 14px rgba(0,0,0,.16);
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+    break-after:page;
+    page-break-after:always;
+  }
+  .page:last-child { margin-bottom:0; }
+  .page-header {
+    padding:10mm 16mm 5mm;
+    border-bottom:5px solid #d9e1ef;
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:18px;
+  }
+  .page-header .logo { height:28px; width:auto; display:block; overflow:visible; }
+  .svg-defs { position:absolute; width:0; height:0; overflow:hidden; }
+  .doc-meta { text-align:right; font-size:10.5px; color:#687381; white-space:nowrap; }
+  .doc-meta strong { display:block; color:#1f3864; font-size:13px; margin-bottom:3px; }
+  .main { flex:1; padding:6mm 16mm 6mm; overflow:hidden; }
+  .page-footer {
+    padding:3mm 16mm 4mm;
+    border-top:5px solid #d9e1ef;
+    color:#8b949e;
+    font-size:9px;
+    display:flex;
+    justify-content:space-between;
+  }
+  h1 { font-size:23px; color:#172033; letter-spacing:0; margin-bottom:3px; }
+  h3 { font-size:13px; color:#1f3864; margin:7px 0 5px; }
+  h4, h5 { font-size:12px; color:#374151; margin:6px 0 4px; }
+  p { font-size:10.7px; margin:4px 0 6px; }
+  .subtitle { color:#5b6573; font-size:12px; }
+  .section-title {
+    font-size:14px;
+    color:#1f3864;
+    font-weight:700;
+    padding-bottom:4px;
+    border-bottom:2px solid #1f3864;
+    margin-bottom:6px;
+  }
+  table { width:100%; border-collapse:collapse; font-size:10.3px; border:1.5px solid #2f3542; margin:6px 0 8px; }
+  th {
+    background:#1f3864;
+    color:#fff;
+    text-align:left;
+    padding:5px 7px;
+    border:1px solid #182b4c;
+    font-weight:700;
+  }
+  th code {
+    color:#fff;
+    background:rgba(255,255,255,.16);
+    border-color:rgba(255,255,255,.28);
+    font-weight:700;
+  }
+  td { padding:4px 7px; border:1px solid #c8d1dc; vertical-align:top; }
+  tbody tr:nth-child(even) td { background:#f5f8fc; }
+  code {
+    font-family:Consolas,"Courier New",monospace;
+    font-size:9.5px;
+    background:#f5f8fc;
+    border:1px solid #dce3ed;
+    border-radius:3px;
+    padding:0 3px;
+  }
+  pre {
+    white-space:pre-wrap;
+    word-break:break-word;
+    font-size:10px;
+    background:#f5f8fc;
+    border:1px solid #dce3ed;
+    padding:6px 7px;
+    margin:5px 0 7px;
+  }
+  pre code { border:0; background:transparent; padding:0; font-size:10px; }
+  .note-box {
+    padding:7px 10px;
+    font-size:10.8px;
+    background:#f7fbf5;
+    border-left:4px solid #2e7d32;
+    margin:5px 0 7px;
+  }
+  .danger-text { color:#c1121f; font-weight:800; }
+  .summary {
+    display:grid;
+    grid-template-columns:1.15fr .85fr;
+    gap:10px;
+    align-items:stretch;
+    margin:5px 0 7px;
+  }
+  .summary > div { margin:0; }
+  .todo-box {
+    padding:7px 10px;
+    font-size:10.8px;
+    background:#fff8ed;
+    border-left:4px solid #d97706;
+    margin:5px 0 7px;
+  }
+  .todo-box strong { color:#a14d00; }
+  .coord-box {
+    padding:7px 10px;
+    font-size:10.8px;
+    background:#f5f7ff;
+    border-left:4px solid #6a1b9a;
+    margin:5px 0 7px;
+  }
+  .coord-box strong { color:#4a148c; }
+  .tag {
+    display:inline-block;
+    color:#fff;
+    font-weight:700;
+    font-size:9.5px;
+    padding:1px 6px;
+    border-radius:3px;
+    white-space:nowrap;
+  }
+  .tag.green { background:#2e7d32; }
+  .tag.blue { background:#1f3864; }
+  .tag.orange { background:#d97706; }
+  .tag.purple { background:#6a1b9a; }
+  .tag.gray { background:#687381; }
+  .tag.red { background:#c1121f; }
+  .bar {
+    margin-top:8px;
+    padding:7px 10px;
+    background:#172033;
+    color:#fff;
+    font-size:11.5px;
+    text-align:center;
+  }
+  .bar strong { color:#ffd166; }
+  .doc-figure {
+    margin:7px 0 9px;
+    padding:5px;
+    border:1px solid #d6deea;
+    background:#f8fafc;
+  }
+  .doc-figure svg {
+    display:block;
+    margin:0 auto;
+    max-width:100%;
+    height:auto;
+  }
+  .doc-figure figcaption {
+    margin-top:4px;
+    color:#5b6573;
+    font-size:9.8px;
+    text-align:center;
+  }
+  .doc-image {
+    margin:7px 0 9px;
+    padding:5px;
+    border:1px solid #d6deea;
+    background:#f8fafc;
+  }
+  .doc-image img {
+    width:100%;
+    height:auto;
+    max-height:82mm;
+    object-fit:contain;
+    display:block;
+  }
+  .doc-image figcaption {
+    margin-top:4px;
+    color:#5b6573;
+    font-size:9.8px;
+    text-align:center;
+  }
+  .small-list { font-size:10.8px; color:#2f3542; padding-left:17px; margin:4px 0 7px; }
+  li { margin:1px 0; }
+  .chips { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin:0 0 9px; }
+  .chip { border:1px solid #d9e1ef; border-left:4px solid #1f3864; padding:6px 8px; min-height:44px; background:#f8fafc; }
+  .chip:nth-child(2) { border-left-color:#2e7d32; }
+  .chip:nth-child(3) { border-left-color:#d97706; }
+  .chip:nth-child(4) { border-left-color:#6a1b9a; }
+  .chip .k { display:block; color:#687381; font-size:9.5px; margin-bottom:1px; }
+  .chip .v { display:block; color:#111827; font-size:12px; font-weight:700; }
+  .cover-page .page-header { padding-top:11mm; padding-bottom:8mm; align-items:center; }
+  .cover-header-text { min-width:40mm; }
+  .cover-doc-label { font-size:14px; color:#172033; font-weight:800; }
+  .cover-doc-subtitle { margin-top:3px; color:#687381; font-size:10px; }
+  .cover-page .logo { height:30px; }
+  .cover-main { justify-content:center; padding-top:8mm; padding-bottom:7mm; }
+  .cover-layout { display:flex; flex-direction:column; gap:11mm; justify-content:center; height:100%; }
+  .cover-copy { text-align:left; }
+  .cover-kicker { font-size:18px; color:#1f3864; font-weight:800; margin-bottom:4px; }
+  .cover-title { font-size:31px; line-height:1.24; color:#172033; font-weight:800; margin-bottom:12px; max-width:142mm; }
+  .cover-divider { width:86px; height:4px; background:#1f3864; margin:0 0 14px; }
+  .cover-subtitle { font-size:14px; color:#1f3864; margin-bottom:13px; }
+  .cover-info-line { display:flex; flex-wrap:wrap; gap:8px 20px; color:#374151; font-size:11px; font-weight:700; margin-bottom:10px; }
+  .cover-info-line span { padding-left:9px; border-left:3px solid #d9e1ef; }
+  .cover-info-line span:first-child { border-left-color:#1f3864; }
+  .cover-note { margin-top:0; padding:8px 10px; border-left:4px solid #2e7d32; background:#f7fbf5; color:#2f3542; font-size:11px; line-height:1.6; }
+  .cover-image-wrap { height:122mm; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+  .cover-image-wrap img { max-width:100%; max-height:122mm; object-fit:contain; display:block; }
+  @media print {
+    html, body {
+      width:210mm;
+      min-width:210mm;
+      max-width:210mm;
+      background:#fff;
+      padding:0;
+      overflow:visible;
+      -webkit-print-color-adjust:exact;
+      print-color-adjust:exact;
+    }
+    .page {
+      width:210mm !important;
+      height:297mm !important;
+      min-height:297mm !important;
+      margin:0;
+      box-shadow:none;
+      break-after:page;
+      page-break-after:always;
+      transform:none !important;
+    }
+  }
+</style>
+</head>
+<body>
+<svg class="svg-defs" aria-hidden="true" focusable="false" width="0" height="0">
+  <defs>
+<g id="gts-logo">
+<path fill="#D60037" fill-rule="nonzero" d="M7173.87 7805.86c65.71,49.76 152.92,-3.45 161.5,-85.48 34.14,-326.93 59.89,-778.58 -188.29,-867.15 -134.13,-47.88 -383.2,75.16 -647.9,276.41 -56.62,43.08 -58.44,137.1 -0.49,178.37 114.42,81.53 286.45,206.09 359.03,259.42 67.74,49.78 207.26,155.97 316.15,238.43z"/>
+  <path fill="#D60037" fill-rule="nonzero" d="M7010.48 8220.07c50.61,-15.73 89.1,44.99 53.52,84.38 -476,526.88 -1651.9,1775.4 -2028.19,1645.49 -295.42,-101.97 -217.57,-697.86 -167.67,-999.8 6.59,-39.95 38.12,-86.94 76.85,-98.98 300.73,-93.45 1586.52,-482.25 2065.49,-631.09z"/>
+  <path fill="#D60037" fill-rule="nonzero" d="M6289.45 9505.32c-45.04,49.87 -39.24,134.17 19.91,165.98 487.05,261.95 883.78,383.1 1180.58,206.51 339.14,-201.84 91.52,-1044.36 -91.35,-1494.25 -37.92,-93.31 -128.44,-95.32 -184.99,-20.01 -249.69,332.51 -548.72,726.2 -924.15,1141.77z"/>
+  <path fill="#D60037" fill-rule="nonzero" d="M6973.93 8073.83c88.35,-19.74 108.24,-132.68 33.57,-183.98 -760.56,-522.38 -1894.09,-1273.18 -2308.85,-988.78 -347.98,238.59 -54.33,1130.87 115.77,1565.41 18.63,47.61 69.13,74.43 118.96,63.29l2040.55 -455.94z"/>
+  <path fill="#000" fill-rule="nonzero" d="M9171.91 9327.15c-256.06,0 -459.29,-82.56 -609.64,-247.68 -150.37,-165.1 -225.55,-388.47 -225.55,-670.04 0,-287.18 78.19,-515.1 234.52,-683.81 156.33,-168.7 367.72,-253.07 634.14,-253.07 213.77,0 389.85,53.47 528.29,160.35 138.37,106.9 219.12,251.26 242.27,433.12l-367.33 0c-9.58,-76.57 -52.72,-143.74 -129.37,-201.61 -76.67,-57.83 -161.31,-86.75 -253.93,-86.75 -159.73,0 -284.72,55.26 -374.96,165.72 -90.24,110.51 -135.35,263.83 -135.35,460.05 0,199.45 43.3,351.2 129.86,455.31 86.57,104.07 213.26,156.11 380.02,156.11l-1.19 0c142.02,0 252.93,-54.22 332.73,-162.7 43.87,-61.43 76.2,-133.59 96.96,-216.58l0 -3.6 -414.07 0 0 -302.7 736.66 0 0 948.82 -245.28 0 -35.89 -227.36 -21.54 28.74c-123.64,165.12 -291.16,247.68 -502.55,247.68l1.2 0z"/>
+  <path fill="#000" fill-rule="nonzero" d="M11057 8494.38c-7.98,-78.18 -28.71,-139.2 -62.23,-183.06 -43.88,-58.22 -112.08,-87.35 -204.58,-87.35 -88.55,0 -155.98,33.93 -202.24,101.71 -28.72,43.08 -49.45,99.29 -62.22,168.7l531.27 0zm-262.03 818.41c-197.84,0 -350.41,-61.02 -457.67,-183.06 -107.3,-122.03 -160.94,-295.93 -160.94,-521.68 0,-208.2 54.65,-371.1 163.93,-488.76 109.26,-117.66 260.84,-176.5 454.68,-176.5 198.6,0 351.57,60.03 458.85,180.08 107.28,120.06 160.91,290.93 160.91,512.7 1.61,25.55 -0.39,51.43 -5.96,77.76l-886.62 0c7.97,102.91 30.71,179.89 68.2,230.92 47.87,63.84 127.63,95.72 239.3,95.72 51.85,0 99.92,-14.74 144.17,-44.27 44.28,-29.49 70.79,-64.99 79.59,-106.47l349.38 0c-29.52,132.41 -97.93,236.11 -205.21,311.09 -107.3,74.98 -241.5,112.47 -402.61,112.47z"/>
+  <path fill="#000" fill-rule="nonzero" d="M11604.85 7977.48l162.71 0 163.92 0 0 192.65c13.57,-23.13 28.32,-45.07 44.27,-65.82 84.55,-107.67 207.38,-161.52 368.53,-161.52 137.18,0 244.69,40.69 322.46,122.03 77.78,81.37 116.66,194.25 116.66,338.6l0 875.87 -171.1 0 -172.29 0 0 -813.65c0,-80.53 -17.37,-140.15 -52.06,-178.83 -34.68,-38.72 -87.92,-58.07 -159.74,-58.07 -90.14,0 -159.32,27.14 -207.57,81.35 -48.27,54.29 -72.4,132.46 -72.4,234.53l0 734.67 -171.09 0 -172.3 0 0 -1301.81z"/>
+  <path fill="#000" fill-rule="nonzero" d="M13843.63 8494.38c-7.99,-78.18 -28.72,-139.2 -62.22,-183.06 -43.9,-58.22 -112.07,-87.35 -204.6,-87.35 -88.55,0 -155.96,33.93 -202.22,101.71 -28.72,43.08 -49.45,99.29 -62.21,168.7l531.25 0zm-262.04 818.41c-197.83,0 -350.39,-61.02 -457.67,-183.06 -107.29,-122.03 -160.91,-295.93 -160.91,-521.68 0,-208.2 54.62,-371.1 163.9,-488.76 109.28,-117.66 260.84,-176.5 454.68,-176.5 198.6,0 351.58,60.03 458.87,180.08 107.26,120.06 160.92,290.93 160.92,512.7 1.59,25.55 -0.42,51.43 -5.98,77.76l-886.61 0c7.97,102.91 30.69,179.89 68.18,230.92 47.87,63.84 127.64,95.72 239.3,95.72 51.85,0 99.92,-14.74 144.2,-44.27 44.25,-29.49 70.77,-64.99 79.56,-106.47l349.39 0c-29.53,132.41 -97.92,236.11 -205.22,311.09 -107.29,74.98 -241.5,112.47 -402.61,112.47z"/>
+  <path fill="#000" fill-rule="nonzero" d="M14390.55 7977.48l162.7 0 163.93 0 0 233.32c11.98,-25.53 25.53,-50.23 40.7,-74.19 80.57,-129.21 184.63,-193.82 312.29,-193.82l77.77 1.2 0 350.57c-30.33,-3.19 -64.61,-4.78 -102.91,-4.78 -104.5,0 -182.45,25.92 -233.9,77.75 -51.46,51.87 -77.19,130.45 -77.19,235.74l0 676.02 -171.08 0 -172.31 0 0 -1301.81z"/>
+  <path fill="#000" fill-rule="nonzero" d="M16032.68 8798.3l0 -149.57c-39.89,22.33 -92.54,40.27 -157.94,53.84l-126.83 23.94c-59.84,11.17 -105.3,31.71 -136.41,61.6 -31.1,29.92 -46.65,67.61 -46.65,113.08 0,51.87 13.94,92.57 41.87,122.05 27.91,29.51 67.01,44.28 117.27,44.28 110.05,0 197.79,-38.69 263.21,-116.07 12.75,-15.13 23.53,-37.49 32.32,-67.02 8.75,-29.5 13.16,-58.2 13.16,-86.13zm-412.8 514.49c-120.44,0 -217.37,-34.49 -290.75,-103.48 -73.4,-69.02 -110.08,-159.77 -110.08,-272.22 0,-118.82 33.09,-213.97 99.32,-285.37 66.2,-71.38 162.72,-116.26 289.53,-134.61l226.14 -31.1c59.03,-7.99 108.08,-21.56 147.18,-40.68 16.74,-7.98 29.73,-22.32 38.89,-43.09 9.17,-20.72 12.57,-41.88 10.17,-63.4 -4.78,-36.68 -23.52,-65.42 -56.24,-86.17 -39.1,-24.7 -95.31,-37.08 -168.72,-37.08 -65.4,0 -116.44,15.97 -153.14,47.88 -36.69,31.9 -56.22,76.97 -58.62,135.19l-329.05 0c7.2,-152.32 59.03,-266.43 155.55,-342.21 96.51,-75.75 238.12,-113.65 424.76,-113.65 161.94,0 289.75,34.13 383.47,102.4 93.73,68.27 140.6,161.48 140.6,279.64l0 728.12c0,58.3 4.78,99.21 14.36,122.76 9.58,23.58 28.72,42.13 57.43,55.7l0 1.18 0 46.68 -185.46 0 -185.44 0 0 -1.18c-15.19,-52.66 -25.14,-104.11 -29.92,-154.35l-1.2 -2.42c-107.69,127.65 -247.28,191.46 -418.78,191.46z"/>
+  <polygon fill="#000" fill-rule="nonzero" points="16634.66,7520.42 16805.76,7520.42 16978.05,7520.42 16978.05,9279.28 16806.96,9279.28 16634.66,9279.28 "/>
+  <polygon fill="#000" fill-rule="nonzero" points="18393.51,7832.71 17862.26,7832.71 17862.26,7677.19 17862.26,7520.42 19292.09,7520.42 19292.09,7675.94 19292.09,7832.71 18760.84,7832.71 18760.84,9279.28 18577.78,9279.28 18393.51,9279.28 "/>
+  <path fill="#000" fill-rule="nonzero" d="M20018.43 8494.38c-7.98,-78.18 -28.72,-139.2 -62.21,-183.06 -43.9,-58.22 -112.08,-87.35 -204.6,-87.35 -88.54,0 -155.96,33.93 -202.22,101.71 -28.72,43.08 -49.48,99.29 -62.22,168.7l531.25 0zm-262.03 818.41c-197.84,0 -350.4,-61.02 -457.67,-183.06 -107.3,-122.03 -160.92,-295.93 -160.92,-521.68 0,-208.2 54.62,-371.1 163.91,-488.76 109.28,-117.66 260.83,-176.5 454.68,-176.5 198.6,0 351.56,60.03 458.86,180.08 107.26,120.06 160.92,290.93 160.92,512.7 1.59,25.55 -0.41,51.43 -5.98,77.76l-886.6 0c7.94,102.91 30.68,179.89 68.17,230.92 47.88,63.84 127.64,95.72 239.3,95.72 51.87,0 99.92,-14.74 144.18,-44.27 44.27,-29.49 70.81,-64.99 79.58,-106.47l349.39 0c-29.52,132.41 -97.91,236.11 -205.21,311.09 -107.3,74.98 -241.5,112.47 -402.61,112.47z"/>
+  <path fill="#000" fill-rule="nonzero" d="M21307.05 8367.53c0,-50.23 -20.77,-90.52 -62.27,-120.85 -41.51,-30.29 -96.58,-45.43 -165.21,-45.43 -66.26,0 -117.96,11.34 -155.05,34.08 -37.14,22.74 -55.69,54.45 -55.69,95.13 0,28.69 21.13,53.46 63.42,74.19 41.48,19.95 115.3,41.87 221.4,65.79 210.64,47.07 351.47,98.52 422.5,154.35 71.18,55.86 106.78,143.61 106.78,263.25 0,127.62 -51.67,230.31 -154.97,308.09 -103.31,77.77 -239.54,116.67 -408.67,116.67 -200.28,0 -354.43,-38.31 -462.55,-114.87 -108.09,-76.6 -165.72,-188.25 -172.91,-335.02l349.38 0c2.4,59.83 28.94,106.67 79.58,140.58 50.68,33.92 119.5,50.84 206.46,50.84 68.6,0 122.28,-11.74 160.99,-35.29 38.69,-23.5 58.04,-56.41 58.04,-98.72 0,-29.48 -18.74,-54.62 -56.21,-75.37 -37.49,-19.9 -103.33,-40.27 -197.46,-61.01 -220.2,-49.45 -367.39,-101.72 -441.58,-156.75 -74.08,-54.25 -111.11,-138.38 -111.11,-252.46 0,-129.23 48.03,-233.51 144.14,-312.88 96.08,-79.35 222.71,-119.06 379.81,-119.06 177.05,0 319.8,38.89 428.28,116.66 108.48,77.77 162.71,180.5 162.71,308.08l-339.81 0z"/>
+  <path fill="#000" fill-rule="nonzero" d="M22489.62 9286.48c-57.44,4.78 -128.03,7.16 -211.8,7.16 -121.27,0 -208.38,-21.71 -261.43,-65.2 -53.05,-43.47 -79.57,-114.67 -79.57,-213.59l0 -796.85 -180.66 0 0 -240.52 180.66 0 0 -350.57 343.39 0 0 350.57 209.41 0 0 240.52 -209.41 0 0 739.43c0,30.31 9,50.25 26.93,59.82 17.96,9.58 55.21,14.35 111.88,14.35l70.6 0 0 254.88z"/>
+ </g>
+  </defs>
+</svg>
+<!-- P1 Cover -->
+<div class="page cover-page">
+  <div class="page-header cover-header">
+    <div class="cover-header-text">
+      <div class="cover-doc-label">内部技术报告</div>
+      <div class="cover-doc-subtitle">Failure Analysis</div>
+    </div>
+    <svg class="logo" viewBox="4400 6500 18750 3520" role="img" aria-label="GTS"><use href="#gts-logo"></use></svg>
+    <div class="doc-meta">
+      <strong>2026-10-10</strong>
+      失效分析报告（初步，未实测）<br>
+      PinProbe A1
+    </div>
+  </div>
+  <div class="main cover-main">
+    <div class="cover-layout">
+      <div class="cover-copy">
+        <div class="cover-kicker">PinProbe A1</div>
+        <div class="cover-title">TPS7A2033 输入侧失效初步分析报告</div>
+        <div class="cover-divider"></div>
+        <div class="cover-subtitle">TPS7A2033 · 输入级击穿推断（未接触实物）</div>
+        <div class="cover-info-line">
+          <span>现场失效分析</span>
+          <span>VCC5V / TPS7A2033 / CH318</span>
+          <span>2026-10-10</span>
+        </div>
+        <div class="cover-note">文档更新时间：2026-10-10 ｜ 版本 V1.0（初步推断，原因排序已按最新现场判断调整）｜ 依据：现场失效照片 + 供电支路网表（IO-PPA-CH318TUSBEXT-4F4-HASL V1.0）+ 现场反馈（失效机为主机、主/从机贴装正确、出厂前工作正常、损伤集中在 VIN 一侧）。<strong>尚未取得失效实物，未做任何电测、拆解与 FA</strong>；除机型、贴装与网表连接外，其余结论均为初步推断，须以第 4 章实测数据确认或推翻。</div>
+      </div>
+      <div class="cover-image-wrap"><img src="file:///E:/OneDrive/4.Code/STM32/PinProbeA1/STM32F103RCT6_PinprobeA1/Doc/%E5%A4%B1%E6%95%88%E7%85%A7%E7%89%87/PCB.png" alt="PinProbe A1 USB 子板（IO-PPA-CH318TUSBEXT）"></div>
+    </div>
+  </div>
+  <div class="page-footer">
+    <span>Accurate · Simple · Fast · Agile | General Test Systems Inc.</span>
+    <span>PinProbe A1 失效分析报告（初步） | 1 / 6</span>
+  </div>
+</div>
+<!-- P2 -->
+<div class="page">
+  <div class="page-header">
+    <div>
+      <h1>一、初步判断（待实测确认）</h1>
+      <div class="subtitle">PinProbe A1 TPS7A2033 输入侧失效初步分析报告</div>
+    </div>
+    <svg class="logo" viewBox="4400 6500 18750 3520" role="img" aria-label="GTS"><use href="#gts-logo"></use></svg>
+    <div class="doc-meta">
+      <strong>2026-10-10</strong>
+      失效分析报告（初步，未实测）<br>
+      PinProbe A1
+    </div>
+  </div>
+  <div class="main">
+<div class="section-title">一、初步判断（待实测确认）</div>
+<div class="chips">
+<div class="chip"><span class="k">失效器件</span><span class="v">U3 TPS7A2033（VIN max 6.5V）</span></div>
+<div class="chip"><span class="k">推断部位</span><span class="v">输入侧 VIN 附近（待验）</span></div>
+<div class="chip"><span class="k">失效链条</span><span class="v">输入级击穿 → VIN 短路 → 被 5V 灌流自烧（推断）</span></div>
+<div class="chip"><span class="k">整机变体</span><span class="v">主机 · 仅 VBUS 供电（已确认）</span></div>
+</div>
+<div class="summary">
+<div class="note-box"><strong>初步结论（未经验证）：</strong> 失效机为<strong>主机</strong>且主/从机贴装正确（12V 支路与 VCC5V 物理断开），整机出厂前工作正常，5V 仅来自 PC USB VBUS。结合&quot;损伤集中在 VIN 一侧、输出负载很轻&quot;，当前更倾向于 <strong>U3 输入级先被瞬态击穿、随后形成输入短路并被 PC VBUS 持续灌流而自烧</strong>，而不是&quot;CH318 后端短路把 U3 拖坏&quot;。以上均为推断，<strong>尚未经任何实物测量证实</strong>。</div>
+<div class="todo-box"><strong>取得实物后先做：</strong> ① 拆 U3 前后测 <code>VCC5V → GND</code>（区分&quot;芯片内短路&quot;与&quot;板级电容短路&quot;）② 核对现场插拔波形与 U12/U13 状态 ③ 核对线缆 pinout 与同口其它设备。第 ① 步即可把两条主假设分开。</div>
+</div>
+<h4>1.1 原因排序（工程先验估计，均未验证）</h4>
+<table class="compact">
+<thead><tr><th>排序与候选根因</th><th>概率</th><th>支持证据 / 证据缺口</th></tr></thead>
+<tbody>
+<tr><td>① <strong>ESD / 瞬态浪涌击穿 U3 输入级</strong>，随后形成 VIN 短路并自烧 <span class="tag red">假设1</span></td><td><strong>40%</strong></td><td>出厂正常 → 运输 → 到场首次插上即坏；<strong>损伤集中在 VIN 一侧</strong>；输入端无过压保护、取电路径无 TVS/保险丝 / <span class="danger-text">未测现场插拔波形；U12/U13 状态未知</span></td></tr>
+<tr><td>② 输入侧 MLCC（C8/C13）运输隐裂后首次上电击穿 <span class="tag orange">假设2</span></td><td><strong>35%</strong></td><td>运输/分板应力可致隐裂，出厂时电气正常；C8/C13 直并 VCC5V / <span class="danger-text">未测电容绝缘与漏电</span></td></tr>
+<tr><td>③ TPS7A2033 个体失效（潜在 ESD 损伤、焊接应力、封装缺陷） <span class="tag gray">假设3</span></td><td>15%</td><td>ppm 级失效率；同类&quot;首次上电失效&quot;案例 / 需 TI FA 与批次数据</td></tr>
+<tr><td>④ 其它：U12/U13 或磁珠损伤、外部极性/线序错误 <span class="tag gray">假设4</span></td><td>10%</td><td>无过流保护时能量集中于最弱环节，可解释多器件同时损伤 / 无器件实测；<span class="danger-text">线缆 pinout 未实测</span></td></tr>
+</tbody>
+</table>
+<p>排序依据：现场工程师结合&quot;损伤集中于 VIN 一侧 + 输出负载很轻 + 出厂正常但首次插上即坏&quot;给出的判断（假设1 与假设2 <strong>不互斥</strong>：过压/反压会加速已隐裂电容击穿）。</p>
+<figure class="doc-image"><img src="file:///E:/OneDrive/4.Code/STM32/PinProbeA1/STM32F103RCT6_PinprobeA1/Doc/%E5%A4%B1%E6%95%88%E7%85%A7%E7%89%87/image.png" alt="现场失效照片：TPS7A2033 输入侧（VIN 附近）烧损形貌（唯一实物证据，待显微复检）"><figcaption>现场失效照片：TPS7A2033 输入侧（VIN 附近）烧损形貌（唯一实物证据，待显微复检）</figcaption></figure>
+  </div>
+  <div class="page-footer">
+    <span>Accurate · Simple · Fast · Agile | General Test Systems Inc.</span>
+    <span>PinProbe A1 失效分析报告（初步） | 2 / 6</span>
+  </div>
+</div>
+<!-- P3 -->
+<div class="page">
+  <div class="page-header">
+    <div>
+      <h1>二、网表核对与供电回路</h1>
+      <div class="subtitle">PinProbe A1 TPS7A2033 输入侧失效初步分析报告</div>
+    </div>
+    <svg class="logo" viewBox="4400 6500 18750 3520" role="img" aria-label="GTS"><use href="#gts-logo"></use></svg>
+    <div class="doc-meta">
+      <strong>2026-10-10</strong>
+      失效分析报告（初步，未实测）<br>
+      PinProbe A1
+    </div>
+  </div>
+  <div class="main">
+<div class="section-title">二、网表核对与供电回路</div>
+<p>网表客观事实（节选自 <code>$NETS</code>）：</p>
+<pre data-lang="text"><code>VCC5V     ; C8.2 C13.2 F2.2 R1.2 U3.1 U3.3 U4.2 U5.2      ← 输入侧：C8 1uF ∥ C13 10uF
+&#x27;$1N64&#x27;   ; C12.2 C14.2 L2.1 U3.5                         ← U3 输出 → L2 → VDD3V3 → U1.16
+VCC5V_OUT ; C10.2 C11.2 C19.1 C20.1 F2.1 L4.2 R6.2        ← 从机降压 5V，须经 F2 才接入 VCC5V
+&#x27;$1N114&#x27;  ; U4.1 U12.2 USB1.1                             ← 主机 VBUS：U12(ESD) + U4(磁珠)
+VCC12V    ; CN1.1 D3.1 D4.2 D5.1 F1.2 RJ1.5~RJ1.8         ← 12V 侧：TVS + F1 保险丝</code></pre>
+<figure class="doc-image"><img src="file:///E:/OneDrive/4.Code/STM32/PinProbeA1/STM32F103RCT6_PinprobeA1/Doc/%E5%9B%BE/%E4%B8%BB%E6%9C%BA%E4%BE%9B%E7%94%B5%E5%9B%9E%E8%B7%AF.svg" alt="图 1　主机供电回路：整机仅由 PC USB VBUS 取电（失效机为本回路）"><figcaption>图 1　主机供电回路：整机仅由 PC USB VBUS 取电（失效机为本回路）</figcaption></figure>
+<figure class="doc-image"><img src="file:///E:/OneDrive/4.Code/STM32/PinProbeA1/STM32F103RCT6_PinprobeA1/Doc/%E5%9B%BE/%E4%BB%8E%E6%9C%BA%E4%BE%9B%E7%94%B5%E5%9B%9E%E8%B7%AF.svg" alt="图 2　从机供电回路：整机仅由 VCC12V 经降压取电（对照，失效机非本回路）"><figcaption>图 2　从机供电回路：整机仅由 VCC12V 经降压取电（对照，失效机非本回路）</figcaption></figure>
+<p>要点：C8/C13 直并 VCC5V（输入侧储能与短路候选之一）；F2 在 12V 降压侧，对 USB 取电路径无保护；U3 输入侧无过压保护与输入限流。</p>
+<h4>2.1 机型判定（失效机＝主机，已确认）</h4>
+<table class="compact">
+<thead><tr><th>器件</th><th>网表连接</th><th>作用</th></tr></thead>
+<tbody>
+<tr><td>R9 / R8</td><td>VDD3V3 / GND ↔ U1.13（网名 LED）</td><td><strong>互斥贴装</strong>，设置 CH318 主/从角色电平</td></tr>
+<tr><td>R11 / R10</td><td>VCC12V / GND ↔ U2.3（降压 EN）</td><td><strong>互斥贴装</strong>，使能或关断本机 12V→5V 降压</td></tr>
+<tr><td>F2</td><td>VCC5V_OUT ↔ VCC5V</td><td>贴装=<strong>降压 5V 并入 VCC5V</strong>；空贴=<strong>VCC5V 仅由 VBUS 供电</strong></td></tr>
+</tbody>
+</table>
+<table class="compact">
+<thead><tr><th>变体</th><th>供电来源</th><th>R9</th><th>R8</th><th>R11</th><th>R10</th><th>F2</th><th>与 VCC5V 的关系</th></tr></thead>
+<tbody>
+<tr><td><strong>主机（失效机，已确认）</strong></td><td><strong>仅 PC USB VBUS</strong></td><td>贴装</td><td>空贴</td><td>空贴</td><td>贴装</td><td>空贴</td><td><span class="danger-text">12V 支路物理断开</span></td></tr>
+<tr><td>从机</td><td>仅 VCC12V</td><td>空贴</td><td>贴装</td><td>贴装</td><td>空贴</td><td>贴装</td><td>12V 降压为唯一 5V 来源</td></tr>
+</tbody>
+</table>
+<p>判定：已确认失效机为<strong>主机</strong>且主/从机贴装正确，整机出厂前工作正常 → 5V <strong>仅来自 PC USB VBUS</strong>（U12/U13 → U4/U5 → C8/C13/U3），12V 支路在主机配置下与 VCC5V 断开，不存在 F2 误贴导致的 5V 双源并接或 12V 倒灌。</p>
+  </div>
+  <div class="page-footer">
+    <span>Accurate · Simple · Fast · Agile | General Test Systems Inc.</span>
+    <span>PinProbe A1 失效分析报告（初步） | 3 / 6</span>
+  </div>
+</div>
+<!-- P4 -->
+<div class="page">
+  <div class="page-header">
+    <div>
+      <h1>三、原因假设与保护现状</h1>
+      <div class="subtitle">PinProbe A1 TPS7A2033 输入侧失效初步分析报告</div>
+    </div>
+    <svg class="logo" viewBox="4400 6500 18750 3520" role="img" aria-label="GTS"><use href="#gts-logo"></use></svg>
+    <div class="doc-meta">
+      <strong>2026-10-10</strong>
+      失效分析报告（初步，未实测）<br>
+      PinProbe A1
+    </div>
+  </div>
+  <div class="main">
+<div class="section-title">三、原因假设与保护现状</div>
+<h4>3.1 暂排除路径（待实测复核）</h4>
+<table class="compact">
+<thead><tr><th>排除项</th><th>依据</th></tr></thead>
+<tbody>
+<tr><td><strong>CH318 负载过流 / 3.3V 后级短路</strong> <span class="tag gray">暂排除</span></td><td>功耗应落在 U3 内部调整管，表现为<strong>整颗芯片发热 / 限流打嗝</strong>；且 U3 带<strong>软启动 + 内部限流 + 热关断</strong>，输出侧还有 C12/C14 与 L2；照片显示 <strong>烧损在 VIN 一侧</strong></td></tr>
+<tr><td><strong>12V 输入异常</strong> <span class="tag gray">暂排除</span></td><td>已确认失效机为主机、贴装正确且出厂前正常 → <strong>F2 空贴、降压关断，12V 与 VCC5V 物理断开</strong>；12V LED 正常</td></tr>
+<tr><td><strong>PC 口输出 9V / 12V</strong> <span class="tag gray">暂排除</span></td><td>标准 USB-A 口 <strong>仅 5V</strong>，无 QC/PD 握手证据</td></tr>
+<tr><td><strong>USB 插头反插</strong> <span class="tag gray">暂排除</span></td><td>USB1 为防呆 A 型母座（VBUS 在 1/5 脚），<strong>插头无法反向插入</strong>；<span class="danger-text">外部极性/线序错误仍待实测排除</span></td></tr>
+</tbody>
+</table>
+<h4>3.2 候选机理（假设，待验证）</h4>
+<p><strong>假设1 · 输入级先击穿、随后被 5V 灌流自烧（当前首选）</strong>：LDO 内最靠近输入端的结构是<strong>输入 ESD 保护、Current Limit 检测电路与 Pass MOS 的源极/栅氧</strong>，它们直接连 VIN。高 dv/dt 尖峰或过压可导致 ① 输入 ESD 结构击穿（寄生 PN 结导通）或 ② Pass MOS 栅氧击穿，形成 <strong>VIN→GND（或 VIN→OUT）低阻通路</strong>。</p>
+<p>能量分两段：<strong>瞬态（ns~µs）负责&quot;打开缺口&quot;</strong>——ESD 接触放电峰值可达数十 A、纳秒级，浪涌 8/20µs 为几 A~数十 A，能量约亚 mJ~数 mJ；<strong>后续灌流（ms~s）负责&quot;烧出形貌&quot;</strong>——U3 输入侧<strong>无输入过压保护、无输入限流</strong>，故障无法自清除，PC VBUS 经 U4/U5 磁珠持续灌流（受端口限流约 0.5~0.9A），5V×0.5A 持续 1s ≈ <strong>2.5 J</strong>，比瞬态高 2~3 个数量级，足以熔化键合线/焊盘并碳化阻焊。PC 口自身完好，是因为端口有限流/OCP，且故障电流被线缆与磁珠电阻限制。<strong>待验证</strong>：现场插拔波形（V7）、U12/U13 是否同时受损（V12）、拆件后 <code>VCC5V→GND</code> 是否恢复高阻（V3）、FA 定位击穿点（V6）。</p>
+<p><strong>假设2 · 输入 MLCC 隐裂击穿</strong>：分板、装配与运输应力可在陶瓷体—端头交界处形成 <strong>45° 隐裂</strong>，出厂时电气正常；裂纹在湿度、温度循环与首次上电电压应力下扩展，漏电增大直至击穿，击穿呈低阻后由 VBUS 灌流烧蚀输入侧。与照片形貌同样相符，但 <strong><span class="danger-text">未做电容绝缘/漏电实测</span></strong>。与假设1 的判别点：<strong>短路点位置</strong> —— 拆 U3 后仍低阻 → 偏假设2；恢复高阻 → 偏假设1。</p>
+<p><strong>假设3~4</strong>：③ 器件个体失效需 TI FA 结论；④ U12/U13 或磁珠损伤时能量应耗散在磁珠（与照片形貌不符）；外部反接（前置 USB 排线错位、转接线压错、端子反接）会留下 <strong>U12/U13 正向击穿指纹</strong>，与假设1 可叠加。</p>
+<h4>3.3 保护配置现状（网表事实）</h4>
+<p>事实：12V 侧有 D3/D5（SMB）、D4（SMA）TVS 与 F1 保险丝；5V 侧仅 <strong>U12/U13 小尺寸 ESD 器件</strong>；主机变体下 F2 空贴，<span class="danger-text">USB 取电路径无保险丝或限流</span>。两侧保护等级不对称是网表可确认的事实，是否与本失效相关待实测判定；<strong>根因未定位前不给出整改建议</strong>。</p>
+<table class="compact">
+<thead><tr><th>防护措施</th><th>能处理</th><th>不能处理</th></tr></thead>
+<tbody>
+<tr><td>TVS（单/双向）</td><td>ESD、浪涌、过压尖峰</td><td><strong>持续短路 / 过流 / 过压、反极性</strong></td></tr>
+<tr><td>小尺寸 ESD 管（DFN1006 级）</td><td>接触放电级 ESD</td><td><strong>大能量浪涌、热插拔振铃、持续过压</strong></td></tr>
+<tr><td>磁珠 / 保险丝 / PTC</td><td>抑制高频尖峰；限制过流连带损伤</td><td><strong>已发生的首次击穿</strong></td></tr>
+<tr><td>反接保护（串联 MOSFET）</td><td>反极性、倒灌、双电源并接</td><td><strong>正向过压与短路</strong></td></tr>
+</tbody>
+</table>
+<p>上表仅用于判断&quot;现有防护能否解释现场形貌&quot;，不作为选型或整改依据。</p>
+  </div>
+  <div class="page-footer">
+    <span>Accurate · Simple · Fast · Agile | General Test Systems Inc.</span>
+    <span>PinProbe A1 失效分析报告（初步） | 4 / 6</span>
+  </div>
+</div>
+<!-- P5 -->
+<div class="page">
+  <div class="page-header">
+    <div>
+      <h1>四、验证方案（用于确认或推翻上述假设）</h1>
+      <div class="subtitle">PinProbe A1 TPS7A2033 输入侧失效初步分析报告</div>
+    </div>
+    <svg class="logo" viewBox="4400 6500 18750 3520" role="img" aria-label="GTS"><use href="#gts-logo"></use></svg>
+    <div class="doc-meta">
+      <strong>2026-10-10</strong>
+      失效分析报告（初步，未实测）<br>
+      PinProbe A1
+    </div>
+  </div>
+  <div class="main">
+<div class="section-title">四、验证方案（用于确认或推翻上述假设）</div>
+<p>无损检查（拆件前，可并行；均待实物到位后执行）：</p>
+<table class="compact">
+<thead><tr><th>步骤</th><th>操作</th><th>判据 → 结论指向</th></tr></thead>
+<tbody>
+<tr><td>V0</td><td>记录 R8/R9/R10/R11/F2 实装状态与阻值</td><td>留档用（贴装已确认正确，<strong>非判别项</strong>）</td></tr>
+<tr><td>V1</td><td>显微镜查 C8/C13 本体与端头、U3 VIN 引脚与焊盘、U4/U5</td><td><strong>裂纹 / 变色 / 碳化</strong>；熔化点位置偏 <strong>VIN 引脚</strong> 还是 <strong>电容下方</strong></td></tr>
+<tr><td>V2</td><td>测 VCC5V、VDD3V3 对地阻值；测 F1/F2 与磁珠通断</td><td><strong>&lt;10Ω 硬短路</strong>；百Ω~kΩ 且随电压漂移 = <strong>裂纹漏电</strong>；保险丝/磁珠开路 = 曾过流</td></tr>
+<tr><td>V10</td><td>核对 USB 线两端 pinout、是否 A-A 线/转接板、<strong>同口其它设备是否正常</strong></td><td>线序正确且同口正常 → 外部反接概率≈0（假设1/2 不受影响）</td></tr>
+<tr><td>V11</td><td>查 USB1 插座刮擦变形；测 1/5、4/8 脚对地连通</td><td>有损伤或极性异常 → 外部接线问题</td></tr>
+<tr><td>V12</td><td>二极管档双向测 VBUS–GND；查 U12/U13、F1、D3/D4/D5</td><td><strong>U12/U13 单向低阻 / 已损伤 → 支持瞬态经 VBUS 进入（假设1）</strong></td></tr>
+<tr><td>V14</td><td>读 TPS7A2033 数据手册：UVLO/EN 门限、内部限流值、慢启动时间、U3.4（NR/SS）悬空影响</td><td>明确&quot;输入过压时芯片能否自保&quot;、启动行为是否受该脚影响</td></tr>
+</tbody>
+</table>
+<p>破坏性定位与复现（按 V3 结果择序执行）：</p>
+<table class="compact">
+<thead><tr><th>步骤</th><th>操作</th><th>判据 → 结论指向</th></tr></thead>
+<tbody>
+<tr><td>V3</td><td>拆除 U3，复测 <code>VCC5V → GND</code></td><td><strong>最关键一步</strong>：恢复高阻 → 短路在 <strong>U3 内部（假设1/3）</strong>；仍低阻 → 输入侧元件短路（<strong>假设2</strong>）</td></tr>
+<tr><td>V4</td><td>依次拆 C13、C8 并复测（再查 U12/U13 支路）</td><td>拆某颗后恢复 → <strong>定位到该器件</strong></td></tr>
+<tr><td>V5</td><td>限流电源 50~100mA 缓慢升压 0→5V，记录 VCC5V 电流</td><td>某电压点 <strong>电流突增 / 发热</strong> → 复现漏电→击穿</td></tr>
+<tr><td>V6</td><td>拆下器件送 TI 或第三方 FA（开封、EOS/ESD 判据、形貌）</td><td><strong>输入 ESD 结构击穿 / 栅氧击穿 / 机械裂纹</strong> → 区分假设1 与假设2</td></tr>
+<tr><td>V7</td><td>完好样机插拔浪涌与 ±8kV 接触放电，示波器测 U4/U5 前后</td><td>峰值 <strong>超 6.5V 绝对最大额定</strong> → 支撑假设1 的过压能力</td></tr>
+<tr><td>V9</td><td>C8/C13 板弯（board flex）与运输振动复现</td><td>阻值下降或击穿 → 支撑假设2 的机械敏感性</td></tr>
+</tbody>
+</table>
+  </div>
+  <div class="page-footer">
+    <span>Accurate · Simple · Fast · Agile | General Test Systems Inc.</span>
+    <span>PinProbe A1 失效分析报告（初步） | 5 / 6</span>
+  </div>
+</div>
+<!-- P6 -->
+<div class="page">
+  <div class="page-header">
+    <div>
+      <h1>四、验证方案（用于确认或推翻上述假设）</h1>
+      <div class="subtitle">PinProbe A1 TPS7A2033 输入侧失效初步分析报告</div>
+    </div>
+    <svg class="logo" viewBox="4400 6500 18750 3520" role="img" aria-label="GTS"><use href="#gts-logo"></use></svg>
+    <div class="doc-meta">
+      <strong>2026-10-10</strong>
+      失效分析报告（初步，未实测）<br>
+      PinProbe A1
+    </div>
+  </div>
+  <div class="main">
+<h4>4.3 输入过压 / 浪涌耐受测试（计划：6.5V / 7V / 9V）</h4>
+<p>目的：标定 U3 输入侧的实际耐受边界，判定假设1（输入级击穿）能否单独解释现场形貌。</p>
+<p>样品与接法：完好样机（对照）+ 失效板；施加点取 <strong>VCC5V</strong>（U4/U5 之后、U3 引脚处），GND 就近取点，示波器探头直接跨接该两点。</p>
+<table class="compact">
+<thead><tr><th>施加电压</th><th>相对 6.5V 额定</th><th>测试目的</th><th>判据</th></tr></thead>
+<tbody>
+<tr><td><strong>6.5V</strong></td><td><strong>= 绝对最大额定</strong></td><td>边界标定（该额定为&quot;不应达到&quot;的极限）</td><td><strong>3.3V 输出是否保持</strong>；输入电流是否稳定</td></tr>
+<tr><td><strong>7V</strong></td><td><strong>超限 +8%</strong></td><td>轻微超限耐受</td><td>是否出现 <strong>漏电增大、输出漂移</strong></td></tr>
+<tr><td><strong>9V</strong></td><td><strong>超限 +38%</strong></td><td><strong>过压失效模式复现</strong></td><td><strong>是否出现输入侧击穿；形貌是否与现场照片一致</strong></td></tr>
+</tbody>
+</table>
+<p>波形与节奏（参数待确认）：</p>
+<ol class="small-list">
+<li>直流步进：每级保持 60s，电源限流 100mA，逐级加严（<strong>6.5V → 7V → 9V</strong>）。</li>
+<li>脉冲注入：<strong>10/1000µs 与 1ms 方波各 10 次</strong>，模拟插拔振铃与浪涌。</li>
+<li>每级结束断电复测：<code>VCC5V → GND</code> 阻值、3.3V 输出、U4/U5 与 U12/U13 状态。</li>
+</ol>
+<p>注意事项：逐级加严且每级后复测；串 10Ω 限流电阻并保护 3.3V 后级（避免连带损伤 CH318）；记录每级波形与电流；一旦失效 <strong>立即停表、留存样品送 FA</strong>；6.5V 结果仅用于标定余量，<strong>不作为合格判据</strong>。</p>
+<p>结果解读：若 <strong>7V / 9V 能复现输入侧击穿且形貌与照片一致 → 支持假设1</strong>；若 9V 下 U3 仍完好、仅个别器件损伤 → 反向支持假设2 / 4。</p>
+<h4>4.4 老化（持续运行）观察 <span class="tag blue">进行中</span></h4>
+<table class="compact">
+<thead><tr><th>项目</th><th>内容</th></tr></thead>
+<tbody>
+<tr><td>供电方式</td><td>PC 标准 USB 口（<strong>VBUS 5V</strong>），与现场工况一致（主机仅 VBUS 取电）</td></tr>
+<tr><td>当前状态</td><td><strong>持续运行老化中，数据待回填</strong></td></tr>
+<tr><td>监测项</td><td><strong>VCC5V 电压/电流趋势、3.3V 输出、U3 与 C8/C13 温度</strong>、累计运行时长、是否复现失效</td></tr>
+<tr><td>判据</td><td><strong>电流缓升、输出跌落或局部发热 → 立即断电</strong>，复测 <code>VCC5V → GND</code> 并记录形貌</td></tr>
+<tr><td>分析意义</td><td>① 复现性：同批次板是否再现同一失效；② 趋势：是否存在 MLCC 漏电增长或 U3 退化；③ 若长时间稳定，则&quot;必然性设计缺陷&quot;权重下降，偏向运输/装配偶发损伤</td></tr>
+</tbody>
+</table>
+<table class="compact">
+<thead><tr><th>待补充信息</th><th>用途</th></tr></thead>
+<tbody>
+<tr><td><strong>拆 U3 后 <code>VCC5V → GND</code> 阻值</strong></td><td><strong>区分假设1（芯片内短路）与假设2（板级短路）</strong></td></tr>
+<tr><td><strong>现场插拔波形、U12/U13 状态</strong></td><td><strong>支撑/否定假设1 的瞬态路径</strong></td></tr>
+<tr><td>现场线缆两端 pinout、同一 PC 口其它设备状态</td><td>排除外部反接（V10）</td></tr>
+<tr><td>C8/C13 介质与批次、U3 批次、U4/U5 与 U12/U13 型号</td><td>批次风险与防护等级评估</td></tr>
+<tr><td>U3 VIN 引脚、C8/C13、U4/U5、U12/U13 显微照片</td><td>完善证据链与形貌定位</td></tr>
+</tbody>
+</table>
+<div class="bar">当前判断（未实测）：<strong>更可能是&quot;U3 输入级先被瞬态击穿 → 形成输入短路 → 被 PC VBUS 持续灌流而自烧&quot;，而不是&quot;CH318 后端短路拖垮 U3&quot;</strong>；下一步以 拆件测阻（V3）+ 现场插拔波形（V7/V12）为主线验证。</div>
+  </div>
+  <div class="page-footer">
+    <span>Accurate · Simple · Fast · Agile | General Test Systems Inc.</span>
+    <span>PinProbe A1 失效分析报告（初步） | 6 / 6</span>
+  </div>
+</div>
+</body>
+</html>

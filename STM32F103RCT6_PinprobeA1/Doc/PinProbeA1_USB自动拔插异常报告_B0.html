@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PinProbeA1 USB自动拔插异常报告 B0</title>
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  body {
+    font-family:"Microsoft YaHei","SimSun","DengXian",Arial,sans-serif;
+    background:#d7d9df;
+    color:#1f2328;
+    padding:18px;
+    line-height:1.42;
+  }
+  @page { size:A4 portrait; margin:0; }
+  .page {
+    width:210mm;
+    height:297mm;
+    margin:0 auto 18px;
+    background:#fff;
+    box-shadow:0 3px 14px rgba(0,0,0,.16);
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+    break-after:page;
+    page-break-after:always;
+  }
+  .page:last-child { margin-bottom:0; }
+  .page-header {
+    padding:10mm 16mm 5mm;
+    border-bottom:5px solid #d9e1ef;
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:18px;
+  }
+  .page-header .logo { height:28px; width:auto; display:block; overflow:visible; }
+  .svg-defs { position:absolute; width:0; height:0; overflow:hidden; }
+  .doc-meta { text-align:right; font-size:10.5px; color:#687381; white-space:nowrap; }
+  .doc-meta strong { display:block; color:#1f3864; font-size:13px; margin-bottom:3px; }
+  .main { flex:1; padding:6mm 16mm 6mm; overflow:hidden; }
+  .page-footer {
+    padding:3mm 16mm 4mm;
+    border-top:5px solid #d9e1ef;
+    color:#8b949e;
+    font-size:9px;
+    display:flex;
+    justify-content:space-between;
+  }
+  h1 { font-size:23px; color:#172033; letter-spacing:0; margin-bottom:3px; }
+  h3 { font-size:13px; color:#1f3864; margin:7px 0 5px; }
+  h4, h5 { font-size:12px; color:#374151; margin:6px 0 4px; }
+  p { font-size:10.7px; margin:4px 0 6px; }
+  .subtitle { color:#5b6573; font-size:12px; }
+  .section-title {
+    font-size:14px;
+    color:#1f3864;
+    font-weight:700;
+    padding-bottom:4px;
+    border-bottom:2px solid #1f3864;
+    margin-bottom:6px;
+  }
+  table { width:100%; border-collapse:collapse; font-size:10.3px; border:1.5px solid #2f3542; margin:6px 0 8px; }
+  th {
+    background:#1f3864;
+    color:#fff;
+    text-align:left;
+    padding:5px 7px;
+    border:1px solid #182b4c;
+    font-weight:700;
+  }
+  th code {
+    color:#fff;
+    background:rgba(255,255,255,.16);
+    border-color:rgba(255,255,255,.28);
+    font-weight:700;
+  }
+  td { padding:4px 7px; border:1px solid #c8d1dc; vertical-align:top; }
+  tbody tr:nth-child(even) td { background:#f5f8fc; }
+  code {
+    font-family:Consolas,"Courier New",monospace;
+    font-size:9.5px;
+    background:#f5f8fc;
+    border:1px solid #dce3ed;
+    border-radius:3px;
+    padding:0 3px;
+  }
+  pre {
+    white-space:pre-wrap;
+    word-break:break-word;
+    font-size:10px;
+    background:#f5f8fc;
+    border:1px solid #dce3ed;
+    padding:6px 7px;
+    margin:5px 0 7px;
+  }
+  pre code { border:0; background:transparent; padding:0; font-size:10px; }
+  .note-box {
+    padding:7px 10px;
+    font-size:10.8px;
+    background:#f7fbf5;
+    border-left:4px solid #2e7d32;
+    margin:5px 0 7px;
+  }
+  .danger-text { color:#c1121f; font-weight:800; }
+  .summary {
+    display:grid;
+    grid-template-columns:1.15fr .85fr;
+    gap:10px;
+    align-items:stretch;
+    margin:5px 0 7px;
+  }
+  .summary > div { margin:0; }
+  .todo-box {
+    padding:7px 10px;
+    font-size:10.8px;
+    background:#fff8ed;
+    border-left:4px solid #d97706;
+    margin:5px 0 7px;
+  }
+  .todo-box strong { color:#a14d00; }
+  .coord-box {
+    padding:7px 10px;
+    font-size:10.8px;
+    background:#f5f7ff;
+    border-left:4px solid #6a1b9a;
+    margin:5px 0 7px;
+  }
+  .coord-box strong { color:#4a148c; }
+  .tag {
+    display:inline-block;
+    color:#fff;
+    font-weight:700;
+    font-size:9.5px;
+    padding:1px 6px;
+    border-radius:3px;
+    white-space:nowrap;
+  }
+  .tag.green { background:#2e7d32; }
+  .tag.blue { background:#1f3864; }
+  .tag.orange { background:#d97706; }
+  .tag.purple { background:#6a1b9a; }
+  .tag.gray { background:#687381; }
+  .tag.red { background:#c1121f; }
+  .bar {
+    margin-top:8px;
+    padding:7px 10px;
+    background:#172033;
+    color:#fff;
+    font-size:11.5px;
+    text-align:center;
+  }
+  .bar strong { color:#ffd166; }
+  .doc-figure {
+    margin:7px 0 9px;
+    padding:5px;
+    border:1px solid #d6deea;
+    background:#f8fafc;
+  }
+  .doc-figure svg {
+    display:block;
+    margin:0 auto;
+    max-width:100%;
+    height:auto;
+  }
+  .doc-figure figcaption {
+    margin-top:4px;
+    color:#5b6573;
+    font-size:9.8px;
+    text-align:center;
+  }
+  .doc-image {
+    margin:7px 0 9px;
+    padding:5px;
+    border:1px solid #d6deea;
+    background:#f8fafc;
+  }
+  .doc-image img {
+    width:100%;
+    height:auto;
+    max-height:82mm;
+    object-fit:contain;
+    display:block;
+  }
+  .doc-image figcaption {
+    margin-top:4px;
+    color:#5b6573;
+    font-size:9.8px;
+    text-align:center;
+  }
+  .small-list { font-size:10.8px; color:#2f3542; padding-left:17px; margin:4px 0 7px; }
+  li { margin:1px 0; }
+  .chips { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin:0 0 9px; }
+  .chip { border:1px solid #d9e1ef; border-left:4px solid #1f3864; padding:6px 8px; min-height:44px; background:#f8fafc; }
+  .chip:nth-child(2) { border-left-color:#2e7d32; }
+  .chip:nth-child(3) { border-left-color:#d97706; }
+  .chip:nth-child(4) { border-left-color:#6a1b9a; }
+  .chip .k { display:block; color:#687381; font-size:9.5px; margin-bottom:1px; }
+  .chip .v { display:block; color:#111827; font-size:12px; font-weight:700; }
+  .cover-page .page-header { padding-top:11mm; padding-bottom:8mm; align-items:center; }
+  .cover-header-text { min-width:40mm; }
+  .cover-doc-label { font-size:14px; color:#172033; font-weight:800; }
+  .cover-doc-subtitle { margin-top:3px; color:#687381; font-size:10px; }
+  .cover-page .logo { height:30px; }
+  .cover-main { justify-content:center; padding-top:8mm; padding-bottom:7mm; }
+  .cover-layout { display:flex; flex-direction:column; gap:11mm; justify-content:center; height:100%; }
+  .cover-copy { text-align:left; }
+  .cover-kicker { font-size:18px; color:#1f3864; font-weight:800; margin-bottom:4px; }
+  .cover-title { font-size:31px; line-height:1.24; color:#172033; font-weight:800; margin-bottom:12px; max-width:142mm; }
+  .cover-divider { width:86px; height:4px; background:#1f3864; margin:0 0 14px; }
+  .cover-subtitle { font-size:14px; color:#1f3864; margin-bottom:13px; }
+  .cover-info-line { display:flex; flex-wrap:wrap; gap:8px 20px; color:#374151; font-size:11px; font-weight:700; margin-bottom:10px; }
+  .cover-info-line span { padding-left:9px; border-left:3px solid #d9e1ef; }
+  .cover-info-line span:first-child { border-left-color:#1f3864; }
+  .cover-note { margin-top:0; padding:8px 10px; border-left:4px solid #2e7d32; background:#f7fbf5; color:#2f3542; font-size:11px; line-height:1.6; }
+  .cover-image-wrap { height:122mm; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+  .cover-image-wrap img { max-width:100%; max-height:122mm; object-fit:contain; display:block; }
+  @media print {
+    html, body {
+      width:210mm;
+      min-width:210mm;
+      max-width:210mm;
+      background:#fff;
+      padding:0;
+      overflow:visible;
+      -webkit-print-color-adjust:exact;
+      print-color-adjust:exact;
+    }
+    .page {
+      width:210mm !important;
+      height:297mm !important;
+      min-height:297mm !important;
+      margin:0;
+      box-shadow:none;
+      break-after:page;
+      page-break-after:always;
+      transform:none !important;
+    }
+  }
+</style>
+</head>
+<body>
+<svg class="svg-defs" aria-hidden="true" focusable="false" width="0" height="0">
+  <defs>
+<g id="gts-logo">
+<path fill="#D60037" fill-rule="nonzero" d="M7173.87 7805.86c65.71,49.76 152.92,-3.45 161.5,-85.48 34.14,-326.93 59.89,-778.58 -188.29,-867.15 -134.13,-47.88 -383.2,75.16 -647.9,276.41 -56.62,43.08 -58.44,137.1 -0.49,178.37 114.42,81.53 286.45,206.09 359.03,259.42 67.74,49.78 207.26,155.97 316.15,238.43z"/>
+  <path fill="#D60037" fill-rule="nonzero" d="M7010.48 8220.07c50.61,-15.73 89.1,44.99 53.52,84.38 -476,526.88 -1651.9,1775.4 -2028.19,1645.49 -295.42,-101.97 -217.57,-697.86 -167.67,-999.8 6.59,-39.95 38.12,-86.94 76.85,-98.98 300.73,-93.45 1586.52,-482.25 2065.49,-631.09z"/>
+  <path fill="#D60037" fill-rule="nonzero" d="M6289.45 9505.32c-45.04,49.87 -39.24,134.17 19.91,165.98 487.05,261.95 883.78,383.1 1180.58,206.51 339.14,-201.84 91.52,-1044.36 -91.35,-1494.25 -37.92,-93.31 -128.44,-95.32 -184.99,-20.01 -249.69,332.51 -548.72,726.2 -924.15,1141.77z"/>
+  <path fill="#D60037" fill-rule="nonzero" d="M6973.93 8073.83c88.35,-19.74 108.24,-132.68 33.57,-183.98 -760.56,-522.38 -1894.09,-1273.18 -2308.85,-988.78 -347.98,238.59 -54.33,1130.87 115.77,1565.41 18.63,47.61 69.13,74.43 118.96,63.29l2040.55 -455.94z"/>
+  <path fill="#000" fill-rule="nonzero" d="M9171.91 9327.15c-256.06,0 -459.29,-82.56 -609.64,-247.68 -150.37,-165.1 -225.55,-388.47 -225.55,-670.04 0,-287.18 78.19,-515.1 234.52,-683.81 156.33,-168.7 367.72,-253.07 634.14,-253.07 213.77,0 389.85,53.47 528.29,160.35 138.37,106.9 219.12,251.26 242.27,433.12l-367.33 0c-9.58,-76.57 -52.72,-143.74 -129.37,-201.61 -76.67,-57.83 -161.31,-86.75 -253.93,-86.75 -159.73,0 -284.72,55.26 -374.96,165.72 -90.24,110.51 -135.35,263.83 -135.35,460.05 0,199.45 43.3,351.2 129.86,455.31 86.57,104.07 213.26,156.11 380.02,156.11l-1.19 0c142.02,0 252.93,-54.22 332.73,-162.7 43.87,-61.43 76.2,-133.59 96.96,-216.58l0 -3.6 -414.07 0 0 -302.7 736.66 0 0 948.82 -245.28 0 -35.89 -227.36 -21.54 28.74c-123.64,165.12 -291.16,247.68 -502.55,247.68l1.2 0z"/>
+  <path fill="#000" fill-rule="nonzero" d="M11057 8494.38c-7.98,-78.18 -28.71,-139.2 -62.23,-183.06 -43.88,-58.22 -112.08,-87.35 -204.58,-87.35 -88.55,0 -155.98,33.93 -202.24,101.71 -28.72,43.08 -49.45,99.29 -62.22,168.7l531.27 0zm-262.03 818.41c-197.84,0 -350.41,-61.02 -457.67,-183.06 -107.3,-122.03 -160.94,-295.93 -160.94,-521.68 0,-208.2 54.65,-371.1 163.93,-488.76 109.26,-117.66 260.84,-176.5 454.68,-176.5 198.6,0 351.57,60.03 458.85,180.08 107.28,120.06 160.91,290.93 160.91,512.7 1.61,25.55 -0.39,51.43 -5.96,77.76l-886.62 0c7.97,102.91 30.71,179.89 68.2,230.92 47.87,63.84 127.63,95.72 239.3,95.72 51.85,0 99.92,-14.74 144.17,-44.27 44.28,-29.49 70.79,-64.99 79.59,-106.47l349.38 0c-29.52,132.41 -97.93,236.11 -205.21,311.09 -107.3,74.98 -241.5,112.47 -402.61,112.47z"/>
+  <path fill="#000" fill-rule="nonzero" d="M11604.85 7977.48l162.71 0 163.92 0 0 192.65c13.57,-23.13 28.32,-45.07 44.27,-65.82 84.55,-107.67 207.38,-161.52 368.53,-161.52 137.18,0 244.69,40.69 322.46,122.03 77.78,81.37 116.66,194.25 116.66,338.6l0 875.87 -171.1 0 -172.29 0 0 -813.65c0,-80.53 -17.37,-140.15 -52.06,-178.83 -34.68,-38.72 -87.92,-58.07 -159.74,-58.07 -90.14,0 -159.32,27.14 -207.57,81.35 -48.27,54.29 -72.4,132.46 -72.4,234.53l0 734.67 -171.09 0 -172.3 0 0 -1301.81z"/>
+  <path fill="#000" fill-rule="nonzero" d="M13843.63 8494.38c-7.99,-78.18 -28.72,-139.2 -62.22,-183.06 -43.9,-58.22 -112.07,-87.35 -204.6,-87.35 -88.55,0 -155.96,33.93 -202.22,101.71 -28.72,43.08 -49.45,99.29 -62.21,168.7l531.25 0zm-262.04 818.41c-197.83,0 -350.39,-61.02 -457.67,-183.06 -107.29,-122.03 -160.91,-295.93 -160.91,-521.68 0,-208.2 54.62,-371.1 163.9,-488.76 109.28,-117.66 260.84,-176.5 454.68,-176.5 198.6,0 351.58,60.03 458.87,180.08 107.26,120.06 160.92,290.93 160.92,512.7 1.59,25.55 -0.42,51.43 -5.98,77.76l-886.61 0c7.97,102.91 30.69,179.89 68.18,230.92 47.87,63.84 127.64,95.72 239.3,95.72 51.85,0 99.92,-14.74 144.2,-44.27 44.25,-29.49 70.77,-64.99 79.56,-106.47l349.39 0c-29.53,132.41 -97.92,236.11 -205.22,311.09 -107.29,74.98 -241.5,112.47 -402.61,112.47z"/>
+  <path fill="#000" fill-rule="nonzero" d="M14390.55 7977.48l162.7 0 163.93 0 0 233.32c11.98,-25.53 25.53,-50.23 40.7,-74.19 80.57,-129.21 184.63,-193.82 312.29,-193.82l77.77 1.2 0 350.57c-30.33,-3.19 -64.61,-4.78 -102.91,-4.78 -104.5,0 -182.45,25.92 -233.9,77.75 -51.46,51.87 -77.19,130.45 -77.19,235.74l0 676.02 -171.08 0 -172.31 0 0 -1301.81z"/>
+  <path fill="#000" fill-rule="nonzero" d="M16032.68 8798.3l0 -149.57c-39.89,22.33 -92.54,40.27 -157.94,53.84l-126.83 23.94c-59.84,11.17 -105.3,31.71 -136.41,61.6 -31.1,29.92 -46.65,67.61 -46.65,113.08 0,51.87 13.94,92.57 41.87,122.05 27.91,29.51 67.01,44.28 117.27,44.28 110.05,0 197.79,-38.69 263.21,-116.07 12.75,-15.13 23.53,-37.49 32.32,-67.02 8.75,-29.5 13.16,-58.2 13.16,-86.13zm-412.8 514.49c-120.44,0 -217.37,-34.49 -290.75,-103.48 -73.4,-69.02 -110.08,-159.77 -110.08,-272.22 0,-118.82 33.09,-213.97 99.32,-285.37 66.2,-71.38 162.72,-116.26 289.53,-134.61l226.14 -31.1c59.03,-7.99 108.08,-21.56 147.18,-40.68 16.74,-7.98 29.73,-22.32 38.89,-43.09 9.17,-20.72 12.57,-41.88 10.17,-63.4 -4.78,-36.68 -23.52,-65.42 -56.24,-86.17 -39.1,-24.7 -95.31,-37.08 -168.72,-37.08 -65.4,0 -116.44,15.97 -153.14,47.88 -36.69,31.9 -56.22,76.97 -58.62,135.19l-329.05 0c7.2,-152.32 59.03,-266.43 155.55,-342.21 96.51,-75.75 238.12,-113.65 424.76,-113.65 161.94,0 289.75,34.13 383.47,102.4 93.73,68.27 140.6,161.48 140.6,279.64l0 728.12c0,58.3 4.78,99.21 14.36,122.76 9.58,23.58 28.72,42.13 57.43,55.7l0 1.18 0 46.68 -185.46 0 -185.44 0 0 -1.18c-15.19,-52.66 -25.14,-104.11 -29.92,-154.35l-1.2 -2.42c-107.69,127.65 -247.28,191.46 -418.78,191.46z"/>
+  <polygon fill="#000" fill-rule="nonzero" points="16634.66,7520.42 16805.76,7520.42 16978.05,7520.42 16978.05,9279.28 16806.96,9279.28 16634.66,9279.28 "/>
+  <polygon fill="#000" fill-rule="nonzero" points="18393.51,7832.71 17862.26,7832.71 17862.26,7677.19 17862.26,7520.42 19292.09,7520.42 19292.09,7675.94 19292.09,7832.71 18760.84,7832.71 18760.84,9279.28 18577.78,9279.28 18393.51,9279.28 "/>
+  <path fill="#000" fill-rule="nonzero" d="M20018.43 8494.38c-7.98,-78.18 -28.72,-139.2 -62.21,-183.06 -43.9,-58.22 -112.08,-87.35 -204.6,-87.35 -88.54,0 -155.96,33.93 -202.22,101.71 -28.72,43.08 -49.48,99.29 -62.22,168.7l531.25 0zm-262.03 818.41c-197.84,0 -350.4,-61.02 -457.67,-183.06 -107.3,-122.03 -160.92,-295.93 -160.92,-521.68 0,-208.2 54.62,-371.1 163.91,-488.76 109.28,-117.66 260.83,-176.5 454.68,-176.5 198.6,0 351.56,60.03 458.86,180.08 107.26,120.06 160.92,290.93 160.92,512.7 1.59,25.55 -0.41,51.43 -5.98,77.76l-886.6 0c7.94,102.91 30.68,179.89 68.17,230.92 47.88,63.84 127.64,95.72 239.3,95.72 51.87,0 99.92,-14.74 144.18,-44.27 44.27,-29.49 70.81,-64.99 79.58,-106.47l349.39 0c-29.52,132.41 -97.91,236.11 -205.21,311.09 -107.3,74.98 -241.5,112.47 -402.61,112.47z"/>
+  <path fill="#000" fill-rule="nonzero" d="M21307.05 8367.53c0,-50.23 -20.77,-90.52 -62.27,-120.85 -41.51,-30.29 -96.58,-45.43 -165.21,-45.43 -66.26,0 -117.96,11.34 -155.05,34.08 -37.14,22.74 -55.69,54.45 -55.69,95.13 0,28.69 21.13,53.46 63.42,74.19 41.48,19.95 115.3,41.87 221.4,65.79 210.64,47.07 351.47,98.52 422.5,154.35 71.18,55.86 106.78,143.61 106.78,263.25 0,127.62 -51.67,230.31 -154.97,308.09 -103.31,77.77 -239.54,116.67 -408.67,116.67 -200.28,0 -354.43,-38.31 -462.55,-114.87 -108.09,-76.6 -165.72,-188.25 -172.91,-335.02l349.38 0c2.4,59.83 28.94,106.67 79.58,140.58 50.68,33.92 119.5,50.84 206.46,50.84 68.6,0 122.28,-11.74 160.99,-35.29 38.69,-23.5 58.04,-56.41 58.04,-98.72 0,-29.48 -18.74,-54.62 -56.21,-75.37 -37.49,-19.9 -103.33,-40.27 -197.46,-61.01 -220.2,-49.45 -367.39,-101.72 -441.58,-156.75 -74.08,-54.25 -111.11,-138.38 -111.11,-252.46 0,-129.23 48.03,-233.51 144.14,-312.88 96.08,-79.35 222.71,-119.06 379.81,-119.06 177.05,0 319.8,38.89 428.28,116.66 108.48,77.77 162.71,180.5 162.71,308.08l-339.81 0z"/>
+  <path fill="#000" fill-rule="nonzero" d="M22489.62 9286.48c-57.44,4.78 -128.03,7.16 -211.8,7.16 -121.27,0 -208.38,-21.71 -261.43,-65.2 -53.05,-43.47 -79.57,-114.67 -79.57,-213.59l0 -796.85 -180.66 0 0 -240.52 180.66 0 0 -350.57 343.39 0 0 350.57 209.41 0 0 240.52 -209.41 0 0 739.43c0,30.31 9,50.25 26.93,59.82 17.96,9.58 55.21,14.35 111.88,14.35l70.6 0 0 254.88z"/>
+ </g>
+  </defs>
+</svg>
+<!-- P1 -->
+<div class="page">
+  <div class="page-header">
+    <div>
+      <h1>PinProbeA1 USB自动拔插异常报告 B0</h1>
+      <div class="subtitle">开门后 USB 未自动回退 · 异常分析与优化方案</div>
+    </div>
+    <svg class="logo" viewBox="4400 6500 18750 3520" role="img" aria-label="GTS"><use href="#gts-logo"></use></svg>
+    <div class="doc-meta">
+      <strong>2026-10-10</strong>
+      异常报告 B0<br>
+      PinProbe A1
+    </div>
+  </div>
+  <div class="main">
+<p>文档更新时间：2026-10-10 ｜ 版本 B0 ｜ 依据：连续开关门指令测试日志（设备时间 T+32098.629～T+32145.304）与现场机构说明。</p>
+<div class="chips">
+<div class="chip"><span class="k">现象</span><span class="v">门开到位后 USB 未自动回退</span></div>
+<div class="chip"><span class="k">工况</span><span class="v">上位机连续指令开关门</span></div>
+<div class="chip"><span class="k">判定</span><span class="v">自动回退未执行（非&quot;发出后未到位&quot;）</span></div>
+<div class="chip"><span class="k">改进方向</span><span class="v">门位置自纠正 + 回退条件调整</span></div>
+</div>
+<div class="note-box"><strong>结论：</strong> 不是 USB 气缸、门气缸或到位传感的故障——最后一次未被打断的关门在 3850 ms 内正常到位。自动回退只在&quot;门已开到位 <strong>且</strong> 设备处于空闲待机状态&quot;时执行；连续指令开关门时，关门每次都在行程约 74% 处被下一条开门指令打断，设备流程始终停在&quot;关门进行中&quot;，自动回退因此从未执行。</div>
+<div class="section-title">一、异常现象与判定</div>
+<table class="compact">
+<thead><tr><th>项目</th><th>内容</th></tr></thead>
+<tbody>
+<tr><td>现象</td><td>门开到位后 USB 保持插入、未自动回退；整个记录中没有 USB 气缸动作，也没有任何告警</td></tr>
+<tr><td>工况</td><td>上位机按约 3.0 s 周期交替下发 <code>CONFigure:CYLInder1 OPEN</code> / <code>CLOSE</code>；随后补发一次开门指令</td></tr>
+<tr><td>排除</td><td><span class="danger-text">USB 气缸或到位传感故障</span>：该路在整个记录中没有动作；<span class="danger-text">门或气缸故障</span>：最后一次关门 3850 ms 正常到底</td></tr>
+<tr><td>判定</td><td>自动回退<strong>未被执行</strong>（回退指令没有发出），不是&quot;发出后未到位&quot;</td></tr>
+</tbody>
+</table>
+<div class="section-title">二、证据链（以下均为设备日志原文，可逐条复核）</div>
+<table class="compact">
+<thead><tr><th>观测项</th><th>日志记录</th><th>说明</th></tr></thead>
+<tbody>
+<tr><td>流程停留</td><td><code>RUNNING -&gt; COMPLETE stay=57550ms</code></td><td>设备进入&quot;关门进行中&quot;的时刻 = T+32084.754 s</td></tr>
+<tr><td>记录窗口</td><td>T+32098.629 → T+32142.304（44 s）</td><td>整段都落在那<strong>同一次</strong>&quot;关门进行中&quot;之内</td></tr>
+<tr><td>门开到位</td><td><code>CLOSE_PHASE ... phase=0</code> 出现 8 次</td><td>门到位时，设备流程仍处于&quot;关门进行中&quot;</td></tr>
+<tr><td>门关到底</td><td><code>phase=2</code> 仅 1 次，紧随 <code>CLOSE_DONE duration=3850ms</code></td><td>全行程 3850 ms（末段为缓冲棉条减速段），机构与传感正常</td></tr>
+<tr><td>指令周期</td><td><code>CLOSE</code> → <code>OPEN</code> = 3.0 s（6 次循环一致）</td><td>3.0 s &lt; 3.85 s，<strong>必然</strong>在约 74% 处被打断</td></tr>
+<tr><td>USB / 安全</td><td>0 条 <code>cyl=2</code>；无 <code>EMERGENCY</code>、无 <code>LASER</code></td><td>自动回退未执行；安全保护未介入</td></tr>
+</tbody>
+</table>
+<div class="section-title">三、原因分析</div>
+<p><strong>触发条件：</strong> 门体末段装配缓冲棉条，门到位前需减速缓冲，末段限位触发偏慢，全行程因此需要 3850 ms（现场机构说明，与设备记录的行程时间一致）。而上位机指令周期为 3.0 s，6 次关门全部在约 74% 处被下一条开门指令打断——<strong>开门指令恰好落在末段缓冲区内</strong>；而&quot;门关到底&quot;是&quot;关门进行中&quot;这一状态唯一的正常结束方式。</p>
+<p><strong>直接原因：</strong> 自动回退的执行条件是&quot;门已开到位 <strong>且</strong> 设备处于空闲待机状态&quot;，而设备流程在 44 s 内始终停留在&quot;关门进行中&quot;，自动回退的判定一次都没有执行。这与&quot;USB 显示已插入&quot;并不矛盾——该状态由&quot;输出 + 到位传感&quot;推导，其中有一条只看门上限位传感的兜底判断，所以门开着、USB 插着时，状态查询仍显示正常。</p>
+<p>改进因此分两处：门的位置需要能自动纠正；回退的判定不应只依赖单一的流程状态。见下章。</p>
+  </div>
+  <div class="page-footer">
+    <span>Accurate · Simple · Fast · Agile | General Test Systems Inc.</span>
+    <span>PinProbeA1 USB自动拔插异常报告 B0 | 1 / 2</span>
+  </div>
+</div>
+<!-- P2 -->
+<div class="page">
+  <div class="page-header">
+    <div>
+      <h1>四、优化方案</h1>
+      <div class="subtitle">PinProbeA1 USB自动拔插异常报告 B0</div>
+    </div>
+    <svg class="logo" viewBox="4400 6500 18750 3520" role="img" aria-label="GTS"><use href="#gts-logo"></use></svg>
+    <div class="doc-meta">
+      <strong>2026-10-10</strong>
+      异常报告 B0<br>
+      PinProbe A1
+    </div>
+  </div>
+  <div class="main">
+<div class="section-title">四、优化方案</div>
+<p><strong>目标：</strong> 门一旦开到位就保证 USB 回到回退位置；门的位置与设备流程状态不一致时，设备应自行纠正，而不是停在中间状态等待复位。</p>
+<table class="compact">
+<thead><tr><th>编号</th><th>改进项</th><th>改进后</th><th>现场效果</th></tr></thead>
+<tbody>
+<tr><td>O1</td><td>位置纠正</td><td>门已开到位、且没有正在执行的关门动作、也没有待执行的关门意图时，流程自动回到空闲待机</td><td>中途开门、断电复气后开门都能自行恢复到可操作状态；判定依据是门的位置而不是时间，不受末段缓冲减速影响</td></tr>
+<tr><td>O2</td><td>回退条件调整</td><td>执行条件改为&quot;门已开到位 + USB 仍处于插入状态 + 无关门意图&quot;</td><td>门开到位后 USB 必定回退，不再依赖单一流程状态</td></tr>
+<tr><td>O3</td><td>异常提示</td><td>未执行与未到位分别给出明确告警，并带原因与耗时</td><td>可一眼分清&quot;没有执行&quot;与&quot;执行失败&quot;</td></tr>
+<tr><td>O4</td><td>失败可恢复</td><td>安全条件满足时允许自动重试一次；仍失败则告警并保持状态可查询</td><td>偶发一次不到位，不会让 USB 永久留在插入状态</td></tr>
+</tbody>
+</table>
+<p>安全保护不变：急停、激光防夹、断电回锁与到位反馈都不受影响；接口指令与返回值定义不变；自动回退仍以&quot;门已开到位&quot;为安全前提。</p>
+<p><strong>自检方法（关门到位、绿灯亮起后发一次开门指令，再依次查询）：</strong> <code>READ:SYSTem:STATe?</code> 期望回到 <code>IDLE</code>；<code>READ:CYLInder2:STATe?</code> 期望数秒内变为 <code>OPENED</code>；若显示 <code>CYL ERR</code>，属&quot;已执行但未到位&quot;，请按告警原因检查回退机构与到位传感。</p>
+<div class="section-title">五、验收与关注点</div>
+<table class="compact">
+<thead><tr><th>编号</th><th>场景</th><th>通过判据</th></tr></thead>
+<tbody>
+<tr><td>A1</td><td>关门到位后发开门指令</td><td>USB 自动回退，状态查询与实际位置一致</td></tr>
+<tr><td>A2</td><td>关门过程中发开门指令</td><td>门开到位后流程回到空闲待机，并自动回退</td></tr>
+<tr><td>A3</td><td>人为制造回退到位传感异常</td><td>出现明确告警（含原因），状态可查询</td></tr>
+<tr><td>A4</td><td>制造一次回退不到位后恢复正常</td><td>自动重试一次后到位；仍失败则告警且保持可操作</td></tr>
+</tbody>
+</table>
+<p><strong>关注点：</strong> ① 门体末段装配缓冲棉条、到位前减速明显，设备对关门时间的判断（含防夹检测窗口）以完整行程为准——本次记录的 3850 ms 即为含缓冲的全行程时间；② 连续指令开关门（关门未完成即反向开门）不属于正常操作工况，且开门指令落在缓冲段内，对机构与气压损耗更大，建议上位机脚本改为&quot;等到位再发下一条&quot;；③ 该自动流程的实机验收基线将随 A1～A4 一并建立。</p>
+<div class="bar">本次为<strong>自动回退未被触发</strong>，机械与传感链路正常；整改以门位置纠正与回退条件调整为主线，同时补齐告警与重试；安全保护逻辑保持不变。</div>
+  </div>
+  <div class="page-footer">
+    <span>Accurate · Simple · Fast · Agile | General Test Systems Inc.</span>
+    <span>PinProbeA1 USB自动拔插异常报告 B0 | 2 / 2</span>
+  </div>
+</div>
+</body>
+</html>

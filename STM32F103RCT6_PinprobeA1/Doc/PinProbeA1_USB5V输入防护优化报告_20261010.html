@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PinProbe A1 USB 5V 输入防护优化报告</title>
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  body {
+    font-family:"Microsoft YaHei","SimSun","DengXian",Arial,sans-serif;
+    background:#d7d9df;
+    color:#1f2328;
+    padding:18px;
+    line-height:1.42;
+  }
+  @page { size:A4 portrait; margin:0; }
+  .page {
+    width:210mm;
+    height:297mm;
+    margin:0 auto 18px;
+    background:#fff;
+    box-shadow:0 3px 14px rgba(0,0,0,.16);
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+    break-after:page;
+    page-break-after:always;
+  }
+  .page:last-child { margin-bottom:0; }
+  .page-header {
+    padding:10mm 16mm 5mm;
+    border-bottom:5px solid #d9e1ef;
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:18px;
+  }
+  .page-header .logo { height:28px; width:auto; display:block; overflow:visible; }
+  .svg-defs { position:absolute; width:0; height:0; overflow:hidden; }
+  .doc-meta { text-align:right; font-size:10.5px; color:#687381; white-space:nowrap; }
+  .doc-meta strong { display:block; color:#1f3864; font-size:13px; margin-bottom:3px; }
+  .main { flex:1; padding:6mm 16mm 6mm; overflow:hidden; }
+  .page-footer {
+    padding:3mm 16mm 4mm;
+    border-top:5px solid #d9e1ef;
+    color:#8b949e;
+    font-size:9px;
+    display:flex;
+    justify-content:space-between;
+  }
+  h1 { font-size:23px; color:#172033; letter-spacing:0; margin-bottom:3px; }
+  h3 { font-size:13px; color:#1f3864; margin:7px 0 5px; }
+  h4, h5 { font-size:12px; color:#374151; margin:6px 0 4px; }
+  p { font-size:10.7px; margin:4px 0 6px; }
+  .subtitle { color:#5b6573; font-size:12px; }
+  .section-title {
+    font-size:14px;
+    color:#1f3864;
+    font-weight:700;
+    padding-bottom:4px;
+    border-bottom:2px solid #1f3864;
+    margin-bottom:6px;
+  }
+  table { width:100%; border-collapse:collapse; font-size:10.3px; border:1.5px solid #2f3542; margin:6px 0 8px; }
+  th {
+    background:#1f3864;
+    color:#fff;
+    text-align:left;
+    padding:5px 7px;
+    border:1px solid #182b4c;
+    font-weight:700;
+  }
+  th code {
+    color:#fff;
+    background:rgba(255,255,255,.16);
+    border-color:rgba(255,255,255,.28);
+    font-weight:700;
+  }
+  td { padding:4px 7px; border:1px solid #c8d1dc; vertical-align:top; }
+  tbody tr:nth-child(even) td { background:#f5f8fc; }
+  code {
+    font-family:Consolas,"Courier New",monospace;
+    font-size:9.5px;
+    background:#f5f8fc;
+    border:1px solid #dce3ed;
+    border-radius:3px;
+    padding:0 3px;
+  }
+  pre {
+    white-space:pre-wrap;
+    word-break:break-word;
+    font-size:10px;
+    background:#f5f8fc;
+    border:1px solid #dce3ed;
+    padding:6px 7px;
+    margin:5px 0 7px;
+  }
+  pre code { border:0; background:transparent; padding:0; font-size:10px; }
+  .note-box {
+    padding:7px 10px;
+    font-size:10.8px;
+    background:#f7fbf5;
+    border-left:4px solid #2e7d32;
+    margin:5px 0 7px;
+  }
+  .danger-text { color:#c1121f; font-weight:800; }
+  .summary {
+    display:grid;
+    grid-template-columns:1.15fr .85fr;
+    gap:10px;
+    align-items:stretch;
+    margin:5px 0 7px;
+  }
+  .summary > div { margin:0; }
+  .todo-box {
+    padding:7px 10px;
+    font-size:10.8px;
+    background:#fff8ed;
+    border-left:4px solid #d97706;
+    margin:5px 0 7px;
+  }
+  .todo-box strong { color:#a14d00; }
+  .coord-box {
+    padding:7px 10px;
+    font-size:10.8px;
+    background:#f5f7ff;
+    border-left:4px solid #6a1b9a;
+    margin:5px 0 7px;
+  }
+  .coord-box strong { color:#4a148c; }
+  .tag {
+    display:inline-block;
+    color:#fff;
+    font-weight:700;
+    font-size:9.5px;
+    padding:1px 6px;
+    border-radius:3px;
+    white-space:nowrap;
+  }
+  .tag.green { background:#2e7d32; }
+  .tag.blue { background:#1f3864; }
+  .tag.orange { background:#d97706; }
+  .tag.purple { background:#6a1b9a; }
+  .tag.gray { background:#687381; }
+  .tag.red { background:#c1121f; }
+  .bar {
+    margin-top:8px;
+    padding:7px 10px;
+    background:#172033;
+    color:#fff;
+    font-size:11.5px;
+    text-align:center;
+  }
+  .bar strong { color:#ffd166; }
+  .doc-figure {
+    margin:7px 0 9px;
+    padding:5px;
+    border:1px solid #d6deea;
+    background:#f8fafc;
+  }
+  .doc-figure svg {
+    display:block;
+    margin:0 auto;
+    max-width:100%;
+    height:auto;
+  }
+  .doc-figure figcaption {
+    margin-top:4px;
+    color:#5b6573;
+    font-size:9.8px;
+    text-align:center;
+  }
+  .doc-image {
+    margin:7px 0 9px;
+    padding:5px;
+    border:1px solid #d6deea;
+    background:#f8fafc;
+  }
+  .doc-image img {
+    width:100%;
+    height:auto;
+    max-height:82mm;
+    object-fit:contain;
+    display:block;
+  }
+  .doc-image figcaption {
+    margin-top:4px;
+    color:#5b6573;
+    font-size:9.8px;
+    text-align:center;
+  }
+  .small-list { font-size:10.8px; color:#2f3542; padding-left:17px; margin:4px 0 7px; }
+  li { margin:1px 0; }
+  .chips { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin:0 0 9px; }
+  .chip { border:1px solid #d9e1ef; border-left:4px solid #1f3864; padding:6px 8px; min-height:44px; background:#f8fafc; }
+  .chip:nth-child(2) { border-left-color:#2e7d32; }
+  .chip:nth-child(3) { border-left-color:#d97706; }
+  .chip:nth-child(4) { border-left-color:#6a1b9a; }
+  .chip .k { display:block; color:#687381; font-size:9.5px; margin-bottom:1px; }
+  .chip .v { display:block; color:#111827; font-size:12px; font-weight:700; }
+  .cover-page .page-header { padding-top:11mm; padding-bottom:8mm; align-items:center; }
+  .cover-header-text { min-width:40mm; }
+  .cover-doc-label { font-size:14px; color:#172033; font-weight:800; }
+  .cover-doc-subtitle { margin-top:3px; color:#687381; font-size:10px; }
+  .cover-page .logo { height:30px; }
+  .cover-main { justify-content:center; padding-top:8mm; padding-bottom:7mm; }
+  .cover-layout { display:flex; flex-direction:column; gap:11mm; justify-content:center; height:100%; }
+  .cover-copy { text-align:left; }
+  .cover-kicker { font-size:18px; color:#1f3864; font-weight:800; margin-bottom:4px; }
+  .cover-title { font-size:31px; line-height:1.24; color:#172033; font-weight:800; margin-bottom:12px; max-width:142mm; }
+  .cover-divider { width:86px; height:4px; background:#1f3864; margin:0 0 14px; }
+  .cover-subtitle { font-size:14px; color:#1f3864; margin-bottom:13px; }
+  .cover-info-line { display:flex; flex-wrap:wrap; gap:8px 20px; color:#374151; font-size:11px; font-weight:700; margin-bottom:10px; }
+  .cover-info-line span { padding-left:9px; border-left:3px solid #d9e1ef; }
+  .cover-info-line span:first-child { border-left-color:#1f3864; }
+  .cover-note { margin-top:0; padding:8px 10px; border-left:4px solid #2e7d32; background:#f7fbf5; color:#2f3542; font-size:11px; line-height:1.6; }
+  .cover-image-wrap { height:122mm; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+  .cover-image-wrap img { max-width:100%; max-height:122mm; object-fit:contain; display:block; }
+  @media print {
+    html, body {
+      width:210mm;
+      min-width:210mm;
+      max-width:210mm;
+      background:#fff;
+      padding:0;
+      overflow:visible;
+      -webkit-print-color-adjust:exact;
+      print-color-adjust:exact;
+    }
+    .page {
+      width:210mm !important;
+      height:297mm !important;
+      min-height:297mm !important;
+      margin:0;
+      box-shadow:none;
+      break-after:page;
+      page-break-after:always;
+      transform:none !important;
+    }
+  }
+</style>
+</head>
+<body>
+<svg class="svg-defs" aria-hidden="true" focusable="false" width="0" height="0">
+  <defs>
+<g id="gts-logo">
+<path fill="#D60037" fill-rule="nonzero" d="M7173.87 7805.86c65.71,49.76 152.92,-3.45 161.5,-85.48 34.14,-326.93 59.89,-778.58 -188.29,-867.15 -134.13,-47.88 -383.2,75.16 -647.9,276.41 -56.62,43.08 -58.44,137.1 -0.49,178.37 114.42,81.53 286.45,206.09 359.03,259.42 67.74,49.78 207.26,155.97 316.15,238.43z"/>
+  <path fill="#D60037" fill-rule="nonzero" d="M7010.48 8220.07c50.61,-15.73 89.1,44.99 53.52,84.38 -476,526.88 -1651.9,1775.4 -2028.19,1645.49 -295.42,-101.97 -217.57,-697.86 -167.67,-999.8 6.59,-39.95 38.12,-86.94 76.85,-98.98 300.73,-93.45 1586.52,-482.25 2065.49,-631.09z"/>
+  <path fill="#D60037" fill-rule="nonzero" d="M6289.45 9505.32c-45.04,49.87 -39.24,134.17 19.91,165.98 487.05,261.95 883.78,383.1 1180.58,206.51 339.14,-201.84 91.52,-1044.36 -91.35,-1494.25 -37.92,-93.31 -128.44,-95.32 -184.99,-20.01 -249.69,332.51 -548.72,726.2 -924.15,1141.77z"/>
+  <path fill="#D60037" fill-rule="nonzero" d="M6973.93 8073.83c88.35,-19.74 108.24,-132.68 33.57,-183.98 -760.56,-522.38 -1894.09,-1273.18 -2308.85,-988.78 -347.98,238.59 -54.33,1130.87 115.77,1565.41 18.63,47.61 69.13,74.43 118.96,63.29l2040.55 -455.94z"/>
+  <path fill="#000" fill-rule="nonzero" d="M9171.91 9327.15c-256.06,0 -459.29,-82.56 -609.64,-247.68 -150.37,-165.1 -225.55,-388.47 -225.55,-670.04 0,-287.18 78.19,-515.1 234.52,-683.81 156.33,-168.7 367.72,-253.07 634.14,-253.07 213.77,0 389.85,53.47 528.29,160.35 138.37,106.9 219.12,251.26 242.27,433.12l-367.33 0c-9.58,-76.57 -52.72,-143.74 -129.37,-201.61 -76.67,-57.83 -161.31,-86.75 -253.93,-86.75 -159.73,0 -284.72,55.26 -374.96,165.72 -90.24,110.51 -135.35,263.83 -135.35,460.05 0,199.45 43.3,351.2 129.86,455.31 86.57,104.07 213.26,156.11 380.02,156.11l-1.19 0c142.02,0 252.93,-54.22 332.73,-162.7 43.87,-61.43 76.2,-133.59 96.96,-216.58l0 -3.6 -414.07 0 0 -302.7 736.66 0 0 948.82 -245.28 0 -35.89 -227.36 -21.54 28.74c-123.64,165.12 -291.16,247.68 -502.55,247.68l1.2 0z"/>
+  <path fill="#000" fill-rule="nonzero" d="M11057 8494.38c-7.98,-78.18 -28.71,-139.2 -62.23,-183.06 -43.88,-58.22 -112.08,-87.35 -204.58,-87.35 -88.55,0 -155.98,33.93 -202.24,101.71 -28.72,43.08 -49.45,99.29 -62.22,168.7l531.27 0zm-262.03 818.41c-197.84,0 -350.41,-61.02 -457.67,-183.06 -107.3,-122.03 -160.94,-295.93 -160.94,-521.68 0,-208.2 54.65,-371.1 163.93,-488.76 109.26,-117.66 260.84,-176.5 454.68,-176.5 198.6,0 351.57,60.03 458.85,180.08 107.28,120.06 160.91,290.93 160.91,512.7 1.61,25.55 -0.39,51.43 -5.96,77.76l-886.62 0c7.97,102.91 30.71,179.89 68.2,230.92 47.87,63.84 127.63,95.72 239.3,95.72 51.85,0 99.92,-14.74 144.17,-44.27 44.28,-29.49 70.79,-64.99 79.59,-106.47l349.38 0c-29.52,132.41 -97.93,236.11 -205.21,311.09 -107.3,74.98 -241.5,112.47 -402.61,112.47z"/>
+  <path fill="#000" fill-rule="nonzero" d="M11604.85 7977.48l162.71 0 163.92 0 0 192.65c13.57,-23.13 28.32,-45.07 44.27,-65.82 84.55,-107.67 207.38,-161.52 368.53,-161.52 137.18,0 244.69,40.69 322.46,122.03 77.78,81.37 116.66,194.25 116.66,338.6l0 875.87 -171.1 0 -172.29 0 0 -813.65c0,-80.53 -17.37,-140.15 -52.06,-178.83 -34.68,-38.72 -87.92,-58.07 -159.74,-58.07 -90.14,0 -159.32,27.14 -207.57,81.35 -48.27,54.29 -72.4,132.46 -72.4,234.53l0 734.67 -171.09 0 -172.3 0 0 -1301.81z"/>
+  <path fill="#000" fill-rule="nonzero" d="M13843.63 8494.38c-7.99,-78.18 -28.72,-139.2 -62.22,-183.06 -43.9,-58.22 -112.07,-87.35 -204.6,-87.35 -88.55,0 -155.96,33.93 -202.22,101.71 -28.72,43.08 -49.45,99.29 -62.21,168.7l531.25 0zm-262.04 818.41c-197.83,0 -350.39,-61.02 -457.67,-183.06 -107.29,-122.03 -160.91,-295.93 -160.91,-521.68 0,-208.2 54.62,-371.1 163.9,-488.76 109.28,-117.66 260.84,-176.5 454.68,-176.5 198.6,0 351.58,60.03 458.87,180.08 107.26,120.06 160.92,290.93 160.92,512.7 1.59,25.55 -0.42,51.43 -5.98,77.76l-886.61 0c7.97,102.91 30.69,179.89 68.18,230.92 47.87,63.84 127.64,95.72 239.3,95.72 51.85,0 99.92,-14.74 144.2,-44.27 44.25,-29.49 70.77,-64.99 79.56,-106.47l349.39 0c-29.53,132.41 -97.92,236.11 -205.22,311.09 -107.29,74.98 -241.5,112.47 -402.61,112.47z"/>
+  <path fill="#000" fill-rule="nonzero" d="M14390.55 7977.48l162.7 0 163.93 0 0 233.32c11.98,-25.53 25.53,-50.23 40.7,-74.19 80.57,-129.21 184.63,-193.82 312.29,-193.82l77.77 1.2 0 350.57c-30.33,-3.19 -64.61,-4.78 -102.91,-4.78 -104.5,0 -182.45,25.92 -233.9,77.75 -51.46,51.87 -77.19,130.45 -77.19,235.74l0 676.02 -171.08 0 -172.31 0 0 -1301.81z"/>
+  <path fill="#000" fill-rule="nonzero" d="M16032.68 8798.3l0 -149.57c-39.89,22.33 -92.54,40.27 -157.94,53.84l-126.83 23.94c-59.84,11.17 -105.3,31.71 -136.41,61.6 -31.1,29.92 -46.65,67.61 -46.65,113.08 0,51.87 13.94,92.57 41.87,122.05 27.91,29.51 67.01,44.28 117.27,44.28 110.05,0 197.79,-38.69 263.21,-116.07 12.75,-15.13 23.53,-37.49 32.32,-67.02 8.75,-29.5 13.16,-58.2 13.16,-86.13zm-412.8 514.49c-120.44,0 -217.37,-34.49 -290.75,-103.48 -73.4,-69.02 -110.08,-159.77 -110.08,-272.22 0,-118.82 33.09,-213.97 99.32,-285.37 66.2,-71.38 162.72,-116.26 289.53,-134.61l226.14 -31.1c59.03,-7.99 108.08,-21.56 147.18,-40.68 16.74,-7.98 29.73,-22.32 38.89,-43.09 9.17,-20.72 12.57,-41.88 10.17,-63.4 -4.78,-36.68 -23.52,-65.42 -56.24,-86.17 -39.1,-24.7 -95.31,-37.08 -168.72,-37.08 -65.4,0 -116.44,15.97 -153.14,47.88 -36.69,31.9 -56.22,76.97 -58.62,135.19l-329.05 0c7.2,-152.32 59.03,-266.43 155.55,-342.21 96.51,-75.75 238.12,-113.65 424.76,-113.65 161.94,0 289.75,34.13 383.47,102.4 93.73,68.27 140.6,161.48 140.6,279.64l0 728.12c0,58.3 4.78,99.21 14.36,122.76 9.58,23.58 28.72,42.13 57.43,55.7l0 1.18 0 46.68 -185.46 0 -185.44 0 0 -1.18c-15.19,-52.66 -25.14,-104.11 -29.92,-154.35l-1.2 -2.42c-107.69,127.65 -247.28,191.46 -418.78,191.46z"/>
+  <polygon fill="#000" fill-rule="nonzero" points="16634.66,7520.42 16805.76,7520.42 16978.05,7520.42 16978.05,9279.28 16806.96,9279.28 16634.66,9279.28 "/>
+  <polygon fill="#000" fill-rule="nonzero" points="18393.51,7832.71 17862.26,7832.71 17862.26,7677.19 17862.26,7520.42 19292.09,7520.42 19292.09,7675.94 19292.09,7832.71 18760.84,7832.71 18760.84,9279.28 18577.78,9279.28 18393.51,9279.28 "/>
+  <path fill="#000" fill-rule="nonzero" d="M20018.43 8494.38c-7.98,-78.18 -28.72,-139.2 -62.21,-183.06 -43.9,-58.22 -112.08,-87.35 -204.6,-87.35 -88.54,0 -155.96,33.93 -202.22,101.71 -28.72,43.08 -49.48,99.29 -62.22,168.7l531.25 0zm-262.03 818.41c-197.84,0 -350.4,-61.02 -457.67,-183.06 -107.3,-122.03 -160.92,-295.93 -160.92,-521.68 0,-208.2 54.62,-371.1 163.91,-488.76 109.28,-117.66 260.83,-176.5 454.68,-176.5 198.6,0 351.56,60.03 458.86,180.08 107.26,120.06 160.92,290.93 160.92,512.7 1.59,25.55 -0.41,51.43 -5.98,77.76l-886.6 0c7.94,102.91 30.68,179.89 68.17,230.92 47.88,63.84 127.64,95.72 239.3,95.72 51.87,0 99.92,-14.74 144.18,-44.27 44.27,-29.49 70.81,-64.99 79.58,-106.47l349.39 0c-29.52,132.41 -97.91,236.11 -205.21,311.09 -107.3,74.98 -241.5,112.47 -402.61,112.47z"/>
+  <path fill="#000" fill-rule="nonzero" d="M21307.05 8367.53c0,-50.23 -20.77,-90.52 -62.27,-120.85 -41.51,-30.29 -96.58,-45.43 -165.21,-45.43 -66.26,0 -117.96,11.34 -155.05,34.08 -37.14,22.74 -55.69,54.45 -55.69,95.13 0,28.69 21.13,53.46 63.42,74.19 41.48,19.95 115.3,41.87 221.4,65.79 210.64,47.07 351.47,98.52 422.5,154.35 71.18,55.86 106.78,143.61 106.78,263.25 0,127.62 -51.67,230.31 -154.97,308.09 -103.31,77.77 -239.54,116.67 -408.67,116.67 -200.28,0 -354.43,-38.31 -462.55,-114.87 -108.09,-76.6 -165.72,-188.25 -172.91,-335.02l349.38 0c2.4,59.83 28.94,106.67 79.58,140.58 50.68,33.92 119.5,50.84 206.46,50.84 68.6,0 122.28,-11.74 160.99,-35.29 38.69,-23.5 58.04,-56.41 58.04,-98.72 0,-29.48 -18.74,-54.62 -56.21,-75.37 -37.49,-19.9 -103.33,-40.27 -197.46,-61.01 -220.2,-49.45 -367.39,-101.72 -441.58,-156.75 -74.08,-54.25 -111.11,-138.38 -111.11,-252.46 0,-129.23 48.03,-233.51 144.14,-312.88 96.08,-79.35 222.71,-119.06 379.81,-119.06 177.05,0 319.8,38.89 428.28,116.66 108.48,77.77 162.71,180.5 162.71,308.08l-339.81 0z"/>
+  <path fill="#000" fill-rule="nonzero" d="M22489.62 9286.48c-57.44,4.78 -128.03,7.16 -211.8,7.16 -121.27,0 -208.38,-21.71 -261.43,-65.2 -53.05,-43.47 -79.57,-114.67 -79.57,-213.59l0 -796.85 -180.66 0 0 -240.52 180.66 0 0 -350.57 343.39 0 0 350.57 209.41 0 0 240.52 -209.41 0 0 739.43c0,30.31 9,50.25 26.93,59.82 17.96,9.58 55.21,14.35 111.88,14.35l70.6 0 0 254.88z"/>
+ </g>
+  </defs>
+</svg>
+<!-- P1 -->
+<div class="page">
+  <div class="page-header">
+    <div>
+      <h1>PinProbe A1 USB 5V 输入防护优化报告</h1>
+      <div class="subtitle">USB 5V 输入防护 · 器件对比 · 仿真指南 ｜ 2026-10-10</div>
+    </div>
+    <svg class="logo" viewBox="4400 6500 18750 3520" role="img" aria-label="GTS"><use href="#gts-logo"></use></svg>
+    <div class="doc-meta">
+      <strong>2026-10-10</strong>
+      防护优化设计参考<br>
+      PinProbe A1
+    </div>
+  </div>
+  <div class="main">
+<div class="section-title">一、结论摘要</div>
+<div class="chips">
+<div class="chip"><span class="k">保护目标</span><span class="v">LDO 输入 &lt; 6.5V</span></div>
+<div class="chip"><span class="k">设计窗口</span><span class="v">5.25V（不得导通）～ 6.5V</span></div>
+<div class="chip"><span class="k">钳位器件</span><span class="v">ESD441DPLR（6.28V @0.9A）</span></div>
+<div class="chip"><span class="k">过流保护</span><span class="v">保险丝（防扩大）</span></div>
+</div>
+<div class="summary">
+<div class="note-box"><strong>核心结论：</strong> 在候选器件中，<strong>只有 ESD441DPLR 能在 0.9A / 5A 量级把电压钳在 6.5V 以内</strong>（0.9A→6.28V、5A→6.5V@TLP）；其余单颗均不满足：SMF5.0A 6.80V、ESD441DPY 7.07V、H5VU06BS 约 6.5–7V、RCLAMP0521T-ES <strong>9.8V</strong>、TPD4S012（VBUS 脚）<strong>根本不导通</strong>。保险丝的作用是 <strong>防扩大（击穿后不被持续灌流）</strong>，它<strong>不提供任何电压钳位</strong>。</div>
+<div class="todo-box"><strong>下一步：</strong> ① 按第六章清单做 LTspice 仿真（V_BR、容量、磁珠容差角）② 台架做 6.5/7/9V 浪涌与热插拔波形标定 ③ 按第五章定保险丝规格（区分主机/从机回路电流）。</div>
+</div>
+<h4>1.1 关键选型要点</h4>
+<table class="compact">
+<thead><tr><th>要点</th><th>内容</th></tr></thead>
+<tbody>
+<tr><td>器件取向</td><td><strong>低钳位优先于低电容</strong>：VBUS 是电源线，电容不敏感；低电容器件的动态电阻往往大 10～20 倍</td></tr>
+<tr><td>动态电阻</td><td>目标 R_DYN ≤0.2Ω；ESD441DPL 0.1Ω、SMF5.0A 0.115Ω、RCLAMP0521T-ES <strong>2.0Ω</strong></td></tr>
+<tr><td>能量能力</td><td>浪涌能量由大功率器件承担：SMF5.0A 200W 级 vs ESD441 6A/45W 级</td></tr>
+<tr><td>过流保护</td><td>保险丝串在 <strong>LDO 输入支路</strong>（VCC5V → U3）；该支路主机/从机均为 ≤80mA，<strong>一个规格覆盖两种变体</strong>（表 5-1）</td></tr>
+<tr><td>封装取舍</td><td>ESD441<strong>DPL</strong>=0201 钳位更低但需改焊盘；<strong>DPY</strong>=0402 兼容现板焊盘但钳位高约 0.8V</td></tr>
+</tbody>
+</table>
+<div class="section-title">二、问题定义与设计窗口</div>
+<table class="compact">
+<thead><tr><th>项</th><th>数值</th><th>含义</th></tr></thead>
+<tbody>
+<tr><td>被保护器件</td><td>U3 = TPS7A2033，<strong>VIN 绝对最大额定 6.5V</strong></td><td>保护上限</td></tr>
+<tr><td>母线正常上限</td><td>VBUS 5.25V（USB 5V±5%）</td><td>保护器件<strong>在此电压下不得导通</strong></td></tr>
+<tr><td>可用设计窗口</td><td><strong>1.25V</strong></td><td>决定了&quot;单靠被动器件钳位&quot;极难成立</td></tr>
+</tbody>
+</table>
+<p>窗口为什么窄：任何 5V 档 TVS/ESD 器件的<strong>击穿电压 V_BR 最低也在 6.0～6.4V</strong>（低于 5.5V 会在正常工作时漏电/微导通），&quot;导通点&quot;已经贴着 6.5V，再叠加动态电阻压降就必然超限：</p>
+<table class="compact">
+<thead><tr><th>器件类型</th><th>V_BR</th><th>事件电流 1A 时的钳位</th><th>是否 &lt;6.5V</th></tr></thead>
+<tbody>
+<tr><td>普通 5V TVS（SMF5.0A 类）</td><td>6.4～7.0V</td><td>6.8～7.1V</td><td>✗（临界）</td></tr>
+<tr><td>低钳位 ESD（ESD441DPL）</td><td>6.0～8.0V</td><td><strong>6.28V</strong></td><td>✓</td></tr>
+<tr><td>高速数据线 ESD（RCLAMP 类）</td><td>6.0V</td><td>9.8～10V</td><td>✗</td></tr>
+</tbody>
+</table>
+  </div>
+  <div class="page-footer">
+    <span>Accurate · Simple · Fast · Agile | General Test Systems Inc.</span>
+    <span>PinProbe A1 防护优化报告 | 1 / 4</span>
+  </div>
+</div>
+<!-- P2 -->
+<div class="page">
+  <div class="page-header">
+    <div>
+      <h1>三、候选器件参数对比（规格书核对）</h1>
+      <div class="subtitle">PinProbe A1 USB 5V 输入防护优化报告</div>
+    </div>
+    <svg class="logo" viewBox="4400 6500 18750 3520" role="img" aria-label="GTS"><use href="#gts-logo"></use></svg>
+    <div class="doc-meta">
+      <strong>2026-10-10</strong>
+      防护优化设计参考<br>
+      PinProbe A1
+    </div>
+  </div>
+  <div class="main">
+<div class="section-title">三、候选器件参数对比（规格书核对）</div>
+<table class="compact">
+<thead><tr><th>参数</th><th><strong>ESD441DPL</strong>（单向）</th><th>ESD441DPY（单向）</th><th>SMF5.0A（单向 TVS）</th><th>RCLAMP0521T-ES（双向）</th><th>H5VU06BS（双向）</th><th>TPD4S012（VBUS 脚）</th></tr></thead>
+<tbody>
+<tr><td>V_RWM</td><td><strong>5.5V</strong></td><td>5.5V</td><td>5.0V</td><td>5.0V</td><td>5.0V</td><td>15V 容忍</td></tr>
+<tr><td>V_BR</td><td>6/7/8V @1mA</td><td>同</td><td>6.4～7.0V</td><td>6.0V min</td><td>~5.6V</td><td><strong>20～24V</strong></td></tr>
+<tr><td>钳位 @0.9A</td><td><strong>6.28V</strong></td><td>7.07V</td><td>6.80V</td><td><strong>9.8V</strong>（外推）</td><td>约 6.5–7V</td><td>不导通</td></tr>
+<tr><td>钳位 @5A</td><td><strong>6.5V</strong>（TLP）</td><td>7.3V</td><td>约 7.3V</td><td>—</td><td>—</td><td>—</td></tr>
+<tr><td>钳位 @8/20µs 6A</td><td><strong>7.6V</strong></td><td>8.6V</td><td>—（21.7A→9.2V）</td><td>—（1A→10V）</td><td>—</td><td>—</td></tr>
+<tr><td>R_DYN</td><td><strong>0.1Ω</strong></td><td>0.16Ω</td><td>0.115Ω</td><td><strong>2.0Ω</strong></td><td>—</td><td>—</td></tr>
+<tr><td>浪涌额定</td><td>6A / 45W</td><td>6A / 45W</td><td><strong>21.7A / 200W</strong></td><td>4A / 80W</td><td>5A</td><td>3A</td></tr>
+<tr><td>ESD 等级</td><td><strong>±30kV 接触/空气</strong></td><td>±30kV</td><td>—</td><td>±10kV</td><td>±8～10kV</td><td>±10kV</td></tr>
+<tr><td>电容</td><td>1pF</td><td>1pF</td><td>—</td><td>0.3pF</td><td>—</td><td>11pF</td></tr>
+<tr><td>封装</td><td>0201（0.6×0.3）</td><td><strong>0402（1.0×0.6）</strong></td><td>SOD-123FL</td><td>DFN1006-2L</td><td>小封装</td><td>SON-6</td></tr>
+<tr><td><strong>能否 &lt;6.5V</strong></td><td><strong>✓</strong></td><td>✗（差 0.6V）</td><td>✗（临界）</td><td>✗（差 3.3V）</td><td>✗</td><td>✗</td></tr>
+</tbody>
+</table>
+<p>注：RCLAMP0521T-ES 手册只给 1A/4A 两点，0.9A 为线性外推；H5VU06BS 数据来自商城/同系列页面，<strong>未核对原厂规格书</strong>。</p>
+<p><strong>判读要点：</strong> 低电容与低钳位不可兼得——RCLAMP0521T-ES 用 0.3pF 换来 <strong>2.0Ω</strong> 动态电阻，而 ESD441DPL 只有 <strong>0.1Ω</strong>（相差 20 倍）。同时注意 ESD441 的 <strong>DPL 与 DPY 是同一芯片的不同封装</strong>，0201 比 0402 钳位低 0.8～1.0V。</p>
+<div class="section-title">四、保护器件选择与保护边界</div>
+<p><strong>表 4-1　推荐器件</strong></p>
+<table class="compact">
+<thead><tr><th>项</th><th>选择</th><th>依据</th></tr></thead>
+<tbody>
+<tr><td>钳位器件</td><td><strong>ESD441DPLR</strong>（0201，需改焊盘）</td><td>唯一在 0.9A/5A 量级满足 &lt;6.5V 的候选；V_RWM 5.5V、漏电 50nA、±30kV</td></tr>
+<tr><td>兼容替代</td><td>ESD441<strong>DPYR</strong>（0402，兼容现板焊盘）</td><td>钳位 7.07V@0.9A，引脚兼容备选</td></tr>
+<tr><td>大能量需求</td><td>SMF5.0A（200W 级）</td><td>事件电流可达几 A 时由它承担能量</td></tr>
+</tbody>
+</table>
+  </div>
+  <div class="page-footer">
+    <span>Accurate · Simple · Fast · Agile | General Test Systems Inc.</span>
+    <span>PinProbe A1 防护优化报告 | 2 / 4</span>
+  </div>
+</div>
+<!-- P3 -->
+<div class="page">
+  <div class="page-header">
+    <div>
+      <h1>四、保护器件选择与保护边界</h1>
+      <div class="subtitle">PinProbe A1 USB 5V 输入防护优化报告</div>
+    </div>
+    <svg class="logo" viewBox="4400 6500 18750 3520" role="img" aria-label="GTS"><use href="#gts-logo"></use></svg>
+    <div class="doc-meta">
+      <strong>2026-10-10</strong>
+      防护优化设计参考<br>
+      PinProbe A1
+    </div>
+  </div>
+  <div class="main">
+<p><strong>表 4-2　保护边界（单颗 ESD441DPL）</strong></p>
+<table class="compact">
+<thead><tr><th>事件电流</th><th>钳位电压</th><th>是否 &lt;6.5V</th><th>说明</th><th></th><th>---</th><th>---</th><th>---</th><th>---</th></tr></thead>
+<tbody>
+<tr><td>≤1A</td><td>6.3V</td><td><strong>✓</strong></td><td>覆盖 ESD 与小幅瞬态</td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td>5A（TLP）</td><td>6.5V</td><td>临界</td><td>已到边界</td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td>6A（8/20µs）</td><td>7.6V</td><td><strong>✗</strong></td><td>超过 6.5V 约 1.1V</td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td>16A（TLP）</td><td>7.6V</td><td><strong>✗</strong></td><td>大能量事件需另加措施</td><td></td><td></td><td></td><td></td><td></td></tr>
+</tbody>
+</table>
+<p><strong>若后续实测事件能量确实到几 A 级</strong>，可按以下两条加强（均作用于保护器件侧）：</p>
+<ol class="small-list">
+<li><strong>换更高输入耐压的 LDO</strong>（18V/36V 输入级）：把 6.5V 约束放宽到 18V，SMF5.0A 单级即可满足，钳位器件选型随之自由；</li>
+<li><strong>加 OVP 开关</strong>（5.8V 门限、µs 级断开）：过压时&quot;断开&quot;而非&quot;钳位&quot;，后级电压被硬性限制；代价是增加器件、压降与成本。</li>
+</ol>
+<div class="section-title">五、过流保护（保险丝）选型</div>
+<p><strong>作用</strong>：在发生击穿等低阻故障时切断持续灌流电流（防扩大、防烧板）；电压钳位由第四章的钳位器件负责。</p>
+<p><strong>放置位置</strong>：串在 <strong>VCC5V 与 U3 VIN 之间（LDO 输入支路）</strong>。该支路在主机/从机两种变体下都只有 ≤80mA，因此：</p>
+<ul class="small-list">
+<li>不受从机侧 1.5A DUT 供电电流影响，<strong>一个规格即可覆盖两种变体</strong>，无需贴装区分；</li>
+<li>共用 VBUS 通路（U4/U5 → DUT）保持原状，不影响 DUT 供电能力。</li>
+</ul>
+<p><strong>表 5-1　保险丝规格</strong></p>
+<table class="compact">
+<thead><tr><th>支路</th><th>稳态电流</th><th>推荐规格</th><th>说明</th></tr></thead>
+<tbody>
+<tr><td>LDO 输入支路（VCC5V → U3）</td><td><strong>≤80mA</strong>（主机/从机相同）</td><td><strong>0.25A</strong> 慢熔或 PTC</td><td>PC 口限流 ≤0.5～0.9A 时可在秒级熔断</td></tr>
+</tbody>
+</table>
+<p><strong>配套改动</strong>（保证保护链顺序正确）：</p>
+<table class="compact">
+<thead><tr><th>项</th><th>做法</th></tr></thead>
+<tbody>
+<tr><td>器件与电容布置</td><td>ESD441DPLR 与本地电容（≥1µF，建议 10µF）均放在 <strong>LDO 侧</strong>（保险丝之后、紧贴 U3 VIN）；现有 C8/C13 在 VCC5V 侧，需移一颗过去</td></tr>
+<tr><td>脉冲耐受</td><td>钳位器件的瞬态电流经过保险丝：5A/20µs 的 I²t≈5×10⁻⁴ A²s，远低于 0.25A 慢熔保险丝耐受值，不会误断</td></tr>
+</tbody>
+</table>
+<p><strong>保护链分工</strong>：短时瞬态由钳位器件吸收；持续过压/短路由保险丝隔离该支路。</p>
+<p><strong>从机侧 1.5A 供 DUT 的核对项</strong>（与保险丝位置无关，但同属本次评审；该电流已超出 USB 2.0 标准口 0.5A）：</p>
+<table class="compact">
+<thead><tr><th>项</th><th>需要确认</th></tr></thead>
+<tbody>
+<tr><td>F2（VCC5V_OUT→VCC5V）</td><td>额定电流 ≥2A（1.5A DUT + 80mA 板内），现值需核对</td></tr>
+<tr><td>U4/U5 磁珠</td><td>1.5A 经两个 VBUS 脚分流，<strong>每颗约 0.75A</strong>，须在额定电流内</td></tr>
+<tr><td>U2 降压 + L4</td><td>能否持续输出 1.5A + 80mA（决定 DUT 供电能力上限）</td></tr>
+<tr><td>VBUS 路径铜箔/过孔</td><td>1.5A 下的压降与温升</td></tr>
+</tbody>
+</table>
+  </div>
+  <div class="page-footer">
+    <span>Accurate · Simple · Fast · Agile | General Test Systems Inc.</span>
+    <span>PinProbe A1 防护优化报告 | 3 / 4</span>
+  </div>
+</div>
+<!-- P4 -->
+<div class="page">
+  <div class="page-header">
+    <div>
+      <h1>六、LTspice 仿真清单</h1>
+      <div class="subtitle">PinProbe A1 USB 5V 输入防护优化报告</div>
+    </div>
+    <svg class="logo" viewBox="4400 6500 18750 3520" role="img" aria-label="GTS"><use href="#gts-logo"></use></svg>
+    <div class="doc-meta">
+      <strong>2026-10-10</strong>
+      防护优化设计参考<br>
+      PinProbe A1
+    </div>
+  </div>
+  <div class="main">
+<div class="section-title">六、LTspice 仿真清单</div>
+<p><strong>表 6-1　器件等效模型</strong>（按规格书曲线反推，均已与手册点校验）</p>
+<table class="compact">
+<thead><tr><th>器件</th><th>膝点 V_BR_eff</th><th>R_DYN</th><th>校验</th></tr></thead>
+<tbody>
+<tr><td>ESD441<strong>DPL</strong></td><td>6.2V</td><td>0.09Ω</td><td>1A→6.3V ✓ 5A→6.5V ✓ 16A→7.6V ✓</td></tr>
+<tr><td>ESD441<strong>DPY</strong></td><td>7.0V</td><td>0.075Ω</td><td>1A→7.1V ✓ 5A→7.3V ✓ 16A→8.2V ✓</td></tr>
+<tr><td>SMF5.0A</td><td>6.7V</td><td>0.115Ω</td><td>21.7A→9.2V ✓</td></tr>
+<tr><td>RCLAMP0521T-ES</td><td>8.0V</td><td>2.0Ω</td><td>1A→10V ✓ 4A→16V ✓</td></tr>
+</tbody>
+</table>
+<pre data-lang="text"><code>* 行为源写法（LTspice）
+B2 LDO 0 I = 0.05*ln(1+exp((V(LDO)-6.2)/0.05))/0.09     ; ESD441DPL
+B1 VCC 0 I = 0.05*ln(1+exp((V(VCC)-6.7)/0.05))/0.115    ; SMF5.0A</code></pre>
+<p><strong>表 6-2　必须包含的要素</strong></p>
+<table class="compact">
+<thead><tr><th>要素</th><th>建模方式</th><th>为什么</th></tr></thead>
+<tbody>
+<tr><td>端口 / 线缆</td><td>5V 源 + 0.1～0.2Ω + 线缆 L 0.5～1µH</td><td>热插拔振铃的能量来源</td></tr>
+<tr><td>磁珠 / 电容 / 负载</td><td>厂家 Z(f) 等效（R+L）+ DCR；电容<strong>按 DC 偏压降额</strong>（6～7µF）+ ESR；负载取 LDO 输入电流（≤80mA）</td><td>理想电感会高估滤波；降额与负载决定实际波形</td></tr>
+</tbody>
+</table>
+<p><strong>源与扫描角</strong>：源取 ① IEC 61000-4-5 组合波（2Ω）② 硬阶跃（0.1Ω）③ 6.5/7/9V 三档 ④ 热插拔 0→5V；扫描角取 V_BR 三档（DPL 6.2/6.7/7.2V）｜C 两档（11µF / 6.5µF 降额）｜磁珠两档｜温度 −40/25/85℃。</p>
+<p><strong>判据</strong>：V(LDO) 峰值 <strong>&lt;6.5V</strong>，且超 6.5V 的时长/能量落在实测无害区（后者由第七章台架给出 SOA）。<strong>建模要点</strong>：钳位器件用行为源表示 V-I 曲线；磁珠取厂家 Z(f) 等效；电容取 DC 偏压降额值；源含端口阻抗与线缆电感。</p>
+<div class="section-title">七、验证矩阵（仿真 → 台架）</div>
+<table class="compact">
+<thead><tr><th>项</th><th>方法</th><th>通过判据</th></tr></thead>
+<tbody>
+<tr><td>过压 / 浪涌</td><td>6.5/7/9V 直流步进（每级 60s、限流 100mA）；8/20µs、10/1000µs、1ms 方波各 10 次，逐级加严</td><td>3.3V 输出保持；LDO 侧峰值 &lt;6.5V；U3 无损</td></tr>
+<tr><td>热插拔 / 寿命</td><td>示波器测钳位器件前/后节点并反复插拔；500 次/天等效插拔 + 电流/温度监测</td><td>无过冲超限、无振铃放大；无漂移、无复现</td></tr>
+<tr><td>短路注入 / 反接</td><td>人为短接 LDO 输入；VBUS/GND 反接</td><td>保险丝动作、板面无烧蚀；后级无损（单向器件为牺牲件）</td></tr>
+</tbody>
+</table>
+<div class="section-title">待确认参数</div>
+<table class="compact">
+<thead><tr><th>参数</th><th>用途</th></tr></thead>
+<tbody>
+<tr><td>从机侧 VBUS 供 DUT 的实际电流</td><td>定从机回路保险丝规格（1A 或按实测）</td></tr>
+<tr><td>U8～U16 现有 ESD 器件型号 + ESD441 封装选择（DPL 改焊盘 / DPY 兼容）</td><td>是否需要替换；决定钳位 6.28V 还是 7.07V</td></tr>
+<tr><td>台架 SOA（U3 在 6.5/7/9V 各脉宽下的耐受）</td><td>决定是否必须覆盖几 A 级事件（进而决定是否换高耐压 LDO 或加 OVP）</td></tr>
+</tbody>
+</table>
+<div class="bar">结论：<strong>钳位器件选 ESD441DPLR</strong>（唯一在 0.9A/5A 量级满足 &lt;6.5V 的候选）；<strong>电源回路不串电阻</strong>，过流保护用保险丝（主机 0.25A / 从机 1A，慢熔或 PTC）；若台架显示事件能量达几 A 级，则需换高耐压 LDO 或加 OVP 开关——按第六章仿真与第七章台架确认后定 BOM。</div>
+  </div>
+  <div class="page-footer">
+    <span>Accurate · Simple · Fast · Agile | General Test Systems Inc.</span>
+    <span>PinProbe A1 防护优化报告 | 4 / 4</span>
+  </div>
+</div>
+</body>
+</html>

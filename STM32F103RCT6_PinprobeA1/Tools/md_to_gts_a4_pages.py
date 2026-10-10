@@ -35,6 +35,10 @@ class Page:
     title: str
     subtitle: str
     blocks: list[Block]
+    locked: bool = False
+
+
+TAG_COLORS = ("green", "blue", "orange", "purple", "gray", "red")
 
 
 def inline_md(text: str) -> str:
@@ -42,6 +46,12 @@ def inline_md(text: str) -> str:
     escaped = html.escape(text)
     escaped = re.sub(r"\*\*([^*]+)\*\*", r"<strong>\1</strong>", escaped)
     escaped = re.sub(r"`([^`]+)`", r"<code>\1</code>", escaped)
+    escaped = re.sub(r"!!([^!]+)!!", r'<span class="danger-text">\1</span>', escaped)
+    escaped = re.sub(
+        r"\[\[(?:(" + "|".join(TAG_COLORS) + r"):)?([^\]\|]+)\]\]",
+        lambda m: f'<span class="tag {m.group(1) or "blue"}">{m.group(2).strip()}</span>',
+        escaped,
+    )
     escaped = escaped.replace("禁止修改", '<span class="danger-text">禁止修改</span>')
     return escaped
 
@@ -90,6 +100,28 @@ def parse_markdown(path: Path) -> tuple[str, list[Block]]:
             i += 1
             continue
 
+        if re.fullmatch(r"<!--\s*page-?break\s*-->", stripped, re.I):
+            blocks.append(Block(kind="pagebreak"))
+            i += 1
+            continue
+
+        directive = re.fullmatch(r":::\s*(chips|note|todo|coord|bar)\s*", stripped, re.I)
+        if directive:
+            kind = directive.group(1).lower()
+            body_lines: list[str] = []
+            i += 1
+            while i < len(lines) and lines[i].strip() != ":::":
+                if lines[i].strip():
+                    body_lines.append(lines[i].strip())
+                i += 1
+            if i < len(lines):
+                i += 1
+            if kind == "chips":
+                blocks.append(Block(kind="chips", items=body_lines))
+            else:
+                blocks.append(Block(kind=kind, text=" ".join(body_lines)))
+            continue
+
         if stripped.startswith("```"):
             lang = stripped[3:].strip()
             code_lines: list[str] = []
@@ -99,7 +131,8 @@ def parse_markdown(path: Path) -> tuple[str, list[Block]]:
                 i += 1
             if i < len(lines):
                 i += 1
-            blocks.append(Block(kind="code", text=lang, lines=code_lines))
+            kind = "svg" if lang.lower() == "svg" else "code"
+            blocks.append(Block(kind=kind, text=lang, lines=code_lines))
             continue
 
         image = re.match(r"^!\[([^\]]*)\]\(([^)]+)\)\s*$", stripped)
@@ -173,21 +206,48 @@ def table_row_units(headers: list[str], row: list[str]) -> float:
     return 0.62 + chars / (92.0 * min(width, 4)) + code_penalty
 
 
+def image_block_units(src: str) -> float:
+    """Estimate block units for an image; SVG figures use their real aspect ratio."""
+    if src.lower().endswith(".svg"):
+        try:
+            from urllib.parse import unquote
+
+            source = Path(unquote(src.replace("file:///", ""))).read_text(encoding="utf-8")
+            viewbox = re.search(r'viewBox="[\d.\s]*?([\d.]+)\s+([\d.]+)"', source)
+            if viewbox:
+                vw, vh = float(viewbox.group(1)), float(viewbox.group(2))
+                height_mm = min(178.0 * (vh / vw), 82.0) + 8.0
+                return max(3.0, min(16.0, height_mm / 5.7))
+        except Exception:
+            return 8.0
+    return 16.0
+
+
 def block_units(block: Block) -> float:
     if block.kind == "heading":
         return 1.8 if block.level == 2 else 1.25
     if block.kind == "doc_title":
         return 0.0
+    if block.kind == "pagebreak":
+        return 0.0
     if block.kind == "p":
         return 0.95 + len(block.text) / 125.0
+    if block.kind == "chips":
+        return 1.0 + 2.2 * ((len(block.items or []) + 3) // 4)
+    if block.kind in ("note", "todo", "coord"):
+        return 1.15 + len(block.text) / 120.0
+    if block.kind == "bar":
+        return 1.7 + len(block.text) / 130.0
     if block.kind == "quote":
         return 1.25 + len(block.text) / 115.0
     if block.kind in ("ul", "ol"):
         return 1.0 + sum(0.85 + len(item) / 110.0 for item in (block.items or []))
     if block.kind == "code":
         return 1.1 + len(block.lines or []) * 0.45
+    if block.kind == "svg":
+        return 13.0
     if block.kind == "image":
-        return 16.0
+        return image_block_units(block.src)
     if block.kind == "table":
         rows = block.rows or []
         headers = block.headers or []
@@ -262,6 +322,18 @@ def paginate(title: str, blocks: list[Block]) -> list[Page]:
         if block.kind == "doc_title":
             continue
 
+        if block.kind == "pagebreak":
+            flush()
+            if pages:
+                pages[-1].locked = True
+            if pending:
+                nxt = pending[0]
+                if nxt.kind == "heading" and nxt.level == 2:
+                    section_title = re.sub(r"`", "", nxt.text)
+                current_title = section_title or title
+                current_subtitle = title
+            continue
+
         if block.kind == "heading" and block.level == 2:
             section_title = re.sub(r"`", "", block.text)
             lookahead = [block]
@@ -274,6 +346,8 @@ def paginate(title: str, blocks: list[Block]) -> list[Page]:
             section_units = sum(block_units(item) for item in lookahead)
             if current and (section_title == "修订记录" or used + section_units > MAX_UNITS):
                 flush()
+                if section_title == "修订记录" and pages:
+                    pages[-1].locked = True
             if not current:
                 current_title = section_title
                 current_subtitle = title
@@ -354,14 +428,14 @@ def merge_trailing_sparse_page(pages: list[Page]) -> list[Page]:
         previous = pages[-3]
         sparse = pages[-2]
         combined_units = sum(block_units(block) for block in previous.blocks + sparse.blocks)
-        if combined_units <= TRAILING_MERGE_UNITS:
+        if combined_units <= TRAILING_MERGE_UNITS and not sparse.locked and not previous.locked:
             title = previous.title if previous.title == sparse.title else f"{previous.title} / {sparse.title}"
             merged = Page(title=title, subtitle=previous.subtitle, blocks=previous.blocks + sparse.blocks)
             return pages[:-3] + [merged, pages[-1]]
 
     previous = pages[-2]
     last = pages[-1]
-    if last.title == "修订记录":
+    if last.title == "修订记录" or last.locked or previous.locked:
         return pages
     combined_units = sum(block_units(block) for block in previous.blocks + last.blocks)
     if combined_units > TRAILING_MERGE_UNITS:
@@ -390,10 +464,25 @@ def block_to_html(block: Block) -> str:
         lang = html.escape(block.text)
         code = html.escape("\n".join(block.lines or []))
         return f'<pre data-lang="{lang}"><code>{code}</code></pre>'
+    if block.kind == "svg":
+        return '<figure class="doc-figure">\n' + "\n".join(block.lines or []) + "\n</figure>"
     if block.kind == "image":
         caption = inline_md(block.text) if block.text else ""
         caption_html = f"<figcaption>{caption}</figcaption>" if caption else ""
         return f'<figure class="doc-image"><img src="{html.escape(block.src)}" alt="{html.escape(block.text)}">{caption_html}</figure>'
+    if block.kind == "chips":
+        chips = []
+        for item in block.items or []:
+            key, _, value = item.partition("|")
+            chips.append(
+                f'<div class="chip"><span class="k">{inline_md(key.strip())}</span>'
+                f'<span class="v">{inline_md(value.strip())}</span></div>'
+            )
+        return '<div class="chips">\n' + "\n".join(chips) + "\n</div>"
+    if block.kind in ("note", "todo", "coord"):
+        return f'<div class="{block.kind}-box">{inline_md(block.text)}</div>'
+    if block.kind == "bar":
+        return f'<div class="bar">{inline_md(block.text)}</div>'
     if block.kind == "table":
         headers = block.headers or []
         rows = block.rows or []
@@ -407,14 +496,48 @@ def block_to_html(block: Block) -> str:
     return ""
 
 
-def page_html(page: Page, index: int, total: int, doc_date: str, doc_kind: str, footer_name: str) -> str:
-    body = "\n".join(block_to_html(block) for block in page.blocks)
+def blocks_to_html(blocks: list[Block]) -> str:
+    """Render blocks, pairing an adjacent note/todo/coord pair into a two-column row."""
+    parts: list[str] = []
+    i = 0
+    while i < len(blocks):
+        block = blocks[i]
+        nxt = blocks[i + 1] if i + 1 < len(blocks) else None
+        paired = ({"note", "todo", "coord"}, {"note", "todo", "coord"})
+        if nxt is not None and block.kind in paired[0] and nxt.kind in paired[1]:
+            parts.append(
+                '<div class="summary">\n'
+                + block_to_html(block)
+                + "\n"
+                + block_to_html(nxt)
+                + "\n</div>"
+            )
+            i += 2
+            continue
+        parts.append(block_to_html(block))
+        i += 1
+    return "\n".join(parts)
+
+
+def page_html(
+    page: Page,
+    index: int,
+    total: int,
+    doc_date: str,
+    doc_kind: str,
+    footer_name: str,
+    title_override: str | None = None,
+    subtitle_override: str | None = None,
+) -> str:
+    body = blocks_to_html(page.blocks)
+    head_title = title_override if title_override is not None else page.title
+    head_subtitle = subtitle_override if subtitle_override is not None else page.subtitle
     return f"""<!-- P{index} -->
 <div class="page">
   <div class="page-header">
     <div>
-      <h1>{inline_md(page.title)}</h1>
-      <div class="subtitle">{inline_md(page.subtitle)}</div>
+      <h1>{inline_md(head_title)}</h1>
+      <div class="subtitle">{inline_md(head_subtitle)}</div>
     </div>
     <svg class="logo" viewBox="4400 6500 18750 3520" role="img" aria-label="GTS"><use href="#gts-logo"></use></svg>
     <div class="doc-meta">
@@ -443,8 +566,18 @@ def build_html(
     doc_kind: str = "SCPI Reference",
     cover_subtitle: str = "通信指令 · 设备控制 · 异常处理",
     footer_name: str = "PinProbe A1 文档",
+    cover_label: str = "客户交付文档",
+    cover_label_sub: str = "Customer Delivery",
+    cover_info: list[str] | None = None,
+    cover_image_alt: str = "PinProbe A1 箱体示意图",
+    include_cover: bool = True,
 ) -> str:
-    total = len(pages) + 1
+    total = len(pages) + (1 if include_cover else 0)
+    if not cover_info:
+        cover_info = ["客户联调资料", "SCPI / UART", doc_date]
+    cover_info_html = "\n".join(
+        f"          <span>{html.escape(item)}</span>" for item in cover_info
+    )
     cover_product = "PinProbe A1"
     cover_doc_name = title
     if cover_doc_name.startswith(cover_product):
@@ -453,13 +586,13 @@ def build_html(
         cover_doc_name = cover_doc_name[len("PinProbeA1"):].strip()
     cover_img_html = ""
     if cover_image is not None:
-        cover_img_html = f'<div class="cover-image-wrap"><img src="{html.escape(cover_image.resolve().as_uri())}" alt="PinProbe A1 箱体示意图"></div>'
+        cover_img_html = f'<div class="cover-image-wrap"><img src="{html.escape(cover_image.resolve().as_uri())}" alt="{html.escape(cover_image_alt)}"></div>'
     cover = f"""<!-- P1 Cover -->
 <div class="page cover-page">
   <div class="page-header cover-header">
     <div class="cover-header-text">
-      <div class="cover-doc-label">客户交付文档</div>
-      <div class="cover-doc-subtitle">Customer Delivery</div>
+      <div class="cover-doc-label">{html.escape(cover_label)}</div>
+      <div class="cover-doc-subtitle">{html.escape(cover_label_sub)}</div>
     </div>
     <svg class="logo" viewBox="4400 6500 18750 3520" role="img" aria-label="GTS"><use href="#gts-logo"></use></svg>
     <div class="doc-meta">
@@ -476,9 +609,7 @@ def build_html(
         <div class="cover-divider"></div>
         <div class="cover-subtitle">{html.escape(cover_subtitle)}</div>
         <div class="cover-info-line">
-          <span>客户联调资料</span>
-          <span>SCPI / UART</span>
-          <span>{html.escape(doc_date)}</span>
+{cover_info_html}
         </div>
         <div class="cover-note">{inline_md(cover_note) if cover_note else "本文用于客户侧上位机联调、设备控制与维护参考。"}</div>
       </div>
@@ -490,9 +621,19 @@ def build_html(
     <span>{html.escape(footer_name)} | 1 / {total}</span>
   </div>
 </div>"""
-    rendered_pages = [cover]
+    rendered_pages = [cover] if include_cover else []
+    first_index = 2 if include_cover else 1
     rendered_pages.extend(
-        page_html(page, i + 2, total, doc_date, doc_kind, footer_name)
+        page_html(
+            page,
+            i + first_index,
+            total,
+            doc_date,
+            doc_kind,
+            footer_name,
+            title_override=title if (i == 0 and not include_cover) else None,
+            subtitle_override=cover_subtitle if (i == 0 and not include_cover) else None,
+        )
         for i, page in enumerate(pages)
     )
     return f"""<!DOCTYPE html>
@@ -601,6 +742,72 @@ def build_html(
     margin:5px 0 7px;
   }}
   .danger-text {{ color:#c1121f; font-weight:800; }}
+  .summary {{
+    display:grid;
+    grid-template-columns:1.15fr .85fr;
+    gap:10px;
+    align-items:stretch;
+    margin:5px 0 7px;
+  }}
+  .summary > div {{ margin:0; }}
+  .todo-box {{
+    padding:7px 10px;
+    font-size:10.8px;
+    background:#fff8ed;
+    border-left:4px solid #d97706;
+    margin:5px 0 7px;
+  }}
+  .todo-box strong {{ color:#a14d00; }}
+  .coord-box {{
+    padding:7px 10px;
+    font-size:10.8px;
+    background:#f5f7ff;
+    border-left:4px solid #6a1b9a;
+    margin:5px 0 7px;
+  }}
+  .coord-box strong {{ color:#4a148c; }}
+  .tag {{
+    display:inline-block;
+    color:#fff;
+    font-weight:700;
+    font-size:9.5px;
+    padding:1px 6px;
+    border-radius:3px;
+    white-space:nowrap;
+  }}
+  .tag.green {{ background:#2e7d32; }}
+  .tag.blue {{ background:#1f3864; }}
+  .tag.orange {{ background:#d97706; }}
+  .tag.purple {{ background:#6a1b9a; }}
+  .tag.gray {{ background:#687381; }}
+  .tag.red {{ background:#c1121f; }}
+  .bar {{
+    margin-top:8px;
+    padding:7px 10px;
+    background:#172033;
+    color:#fff;
+    font-size:11.5px;
+    text-align:center;
+  }}
+  .bar strong {{ color:#ffd166; }}
+  .doc-figure {{
+    margin:7px 0 9px;
+    padding:5px;
+    border:1px solid #d6deea;
+    background:#f8fafc;
+  }}
+  .doc-figure svg {{
+    display:block;
+    margin:0 auto;
+    max-width:100%;
+    height:auto;
+  }}
+  .doc-figure figcaption {{
+    margin-top:4px;
+    color:#5b6573;
+    font-size:9.8px;
+    text-align:center;
+  }}
   .doc-image {{
     margin:7px 0 9px;
     padding:5px;
@@ -693,6 +900,11 @@ def main() -> None:
     parser.add_argument("--doc-kind", default="SCPI Reference")
     parser.add_argument("--cover-subtitle", default="通信指令 · 设备控制 · 异常处理")
     parser.add_argument("--footer-name", default="PinProbe A1 文档")
+    parser.add_argument("--cover-label", default="客户交付文档")
+    parser.add_argument("--cover-label-sub", default="Customer Delivery")
+    parser.add_argument("--cover-info", nargs="+")
+    parser.add_argument("--cover-image-alt", default="PinProbe A1 箱体示意图")
+    parser.add_argument("--no-cover", action="store_true", help="省略封面页（施工日报式：首页即正文）")
     args = parser.parse_args()
 
     title, blocks = parse_markdown(args.markdown)
@@ -709,9 +921,14 @@ def main() -> None:
         args.doc_kind,
         args.cover_subtitle,
         args.footer_name,
+        args.cover_label,
+        args.cover_label_sub,
+        args.cover_info,
+        args.cover_image_alt,
+        not args.no_cover,
     )
     args.html.write_text(output, encoding="utf-8", newline="\n")
-    print(f"Wrote {args.html} ({len(pages) + 1} pages)")
+    print(f"Wrote {args.html} ({len(pages) + (0 if args.no_cover else 1)} pages)")
 
 
 if __name__ == "__main__":
