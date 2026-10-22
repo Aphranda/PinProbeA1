@@ -1,5 +1,29 @@
 # STM32F103RCT6 PinProbeA1
 
+## 文档入口
+
+文档已按域目录化管理，唯一入口是 [`docs/README.md`](docs/README.md)。常用跳转：
+
+| 想查什么 | 去哪 |
+|---|---|
+| 总体架构、RTOS 任务与内存预算 | [`docs/arch/ARCH_PRODUCT_ARCHITECTURE.md`](docs/arch/ARCH_PRODUCT_ARCHITECTURE.md) |
+| 状态机、动作编排、控制模式权限 | [`docs/control/CONTROL_STATE_MACHINE_ARCHITECTURE.md`](docs/control/CONTROL_STATE_MACHINE_ARCHITECTURE.md) |
+| SCPI 命令表与串口/RS485 协议 | [`docs/interface/SCPI_COMMANDS.md`](docs/interface/SCPI_COMMANDS.md)、[`docs/interface/INTERFACE_COMMUNICATION_ARCHITECTURE.md`](docs/interface/INTERFACE_COMMUNICATION_ARCHITECTURE.md) |
+| IO 位映射（16 入 / 16 出） | [`docs/hardware/HARDWARE_IO_CONSTRAINTS.md`](docs/hardware/HARDWARE_IO_CONSTRAINTS.md) |
+| Flash / W25Q128 分区与日志 | [`docs/storage/README.md`](docs/storage/README.md) |
+| OTA、Bootloader 与升级流程 | [`docs/ota/OTA_CAN_DISTRIBUTION_ARCHITECTURE.md`](docs/ota/OTA_CAN_DISTRIBUTION_ARCHITECTURE.md) |
+| CAN 多机演进方案 | [`docs/multinode/README.md`](docs/multinode/README.md) |
+| 当前待办与优先级 | [`docs/PROJECT_TODO.md`](docs/PROJECT_TODO.md) |
+| 客户交付件（HTML/PDF） | [`docs/reports/README.md`](docs/reports/README.md) |
+| 历史 SCPI 版本与上游资料 | [`docs/legacy/README.md`](docs/legacy/README.md) |
+
+文档门禁（新增/改名/移动文档后必须运行）：
+
+```powershell
+python Tools\docs_check.py
+python Tools\docs_check.py --strict-names
+```
+
 ## EIDE 编译配置
 
 工程配置文件：`.eide/eide.yml`

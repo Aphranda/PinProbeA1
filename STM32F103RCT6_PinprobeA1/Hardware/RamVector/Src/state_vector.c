@@ -560,6 +560,7 @@ void StateVector_Input(void)
      *                (或风险模式: 气压+超时确认)
      *
      *    COMPLETE ── door_open + door_up到位 ──→ IDLE (关灯)
+     *    RUNNING/COMPLETE ── door_up + 开门输出 + 无关门输出 ──→ IDLE (IO 观测纠偏, 关灯)
      *
      *    EMERGENCY ── 激光清 + 急停清 ──→ LOCK
      * ══════════════════════════════════════════════════════════════════════ */
@@ -600,6 +601,30 @@ void StateVector_Input(void)
     if (system_status == V_STATE_READY) {
         if (!IS_LED_YELLOW_STATE(led_state)) system_status = V_STATE_IDLE;  /* 黄灯被清除 → 回 Idle */
         if (IS_DOOR_CLOSING(out_lo) && !IS_DOOR_DOWN(in_lo)) system_status = V_STATE_RUNNING;  /* 开始关门 */
+    }
+
+    /*
+     * Running/Complete → Idle: 门已回到上限位 + 开门输出有效 + 无关门输出 (IO 观测纠偏)
+     *   - RUNNING: 关门途中被开门打断, 门回到上限位后原先无出口
+     *   - COMPLETE: 与下方 Complete → Idle 条件一致, 此处提前到 USB 绑定之前
+     * 只看物理位置 + 门气缸输出, 与开门入口 (按钮/SCPI/安全开门) 无关;
+     * 要求开门输出有效: 只在明确开门到位时纠偏, 掉气上浮等无输出场景不动;
+     * 必须带 !IS_DOOR_CLOSING, 否则关门起始仍在上限位的那段会被误纠偏。
+     * 落到 Idle 后, 同拍后续 USB 自动绑定即可投递回退。
+     */
+    if ((system_status == V_STATE_RUNNING || system_status == V_STATE_COMPLETE) &&
+        IS_DOOR_UP(in_lo) && !IS_DOOR_DOWN(in_lo) &&
+        IS_DOOR_OPENING(out_lo) && !IS_DOOR_CLOSING(out_lo)) {
+        RamVector_PostLED(VCMD_LED_OFF, CMD_PRIO_USER);
+        if (door_open_start_tick != 0U)
+            VEC_ACTION(APPLOG_ACT_OPEN_DONE, now - door_open_start_tick);
+        door_open_start_tick  = 0;
+        door_close_timing     = 0;
+        door_close_start_tick = 0;
+        door_close_from_full  = 0;
+        door_close_done_tick  = 0;
+        poweron_position_ok   = 0;                  /* 与 Complete → Idle 一致: 完成一周期, 复位人工确认 */
+        system_status = V_STATE_IDLE;
     }
 
     /*
